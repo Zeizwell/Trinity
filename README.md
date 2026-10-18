@@ -1,6 +1,9 @@
 # ZX Trinity
 
-Звуковая карта для ZX Spectrum / ZX Evolution: настоящие AY + таймерные эффекты (RP2350), потом GS.
+Звуковая карта для ZX Spectrum / ZX Evolution — **три платформы в одной (отсюда Trinity): Atari + Amiga + MSX**:
+- **Atari** — настоящие AY + таймерные эффекты (SID, Sync, FM, свип) и SNDH-плеер — RP-AY;
+- **Amiga** — GS со звуком Paula (BLEP, фильтры A500 / A1200), совместимость с GS / NeoGS — RP-GS;
+- **MSX** — OPL4 (Moonsound, YMF278B через ymfm) — RP-GS, режимом вместо GS.
 Всё обсуждение и решения — в репозитории FT2: `doc/zx-trinity.md`, протокол обмена — `doc/ay-ports-map.md` (п.5а).
 
 ## Прошивки
@@ -26,10 +29,9 @@ CMake, Ninja, pioasm, picotool; в систему не ставятся).
 - **OPL4 (Moonsound) — на RP-GS**, режимом вместо GS (вместе не влезут): ymfm (BSD), ROM волн YRW801 с SD
   пользователя. Решение и проверка (PicoVerse 2350) — FT2 `doc/trinity-concept.md`.
 - **GS / NeoGS** — руководство GS: FT2 `pentevo/docs/GS/gs_prog.pdf`; **исходники NeoGS целиком** (ПЗУ Z80, ПЛИС,
-  руководство программиста) — `D:\_Work\Speccyef-neogs
-eogs` (зеркало github.com/alfishe/neogs). Опознание GS / NeoGS —
+  руководство программиста) — `D:/_Work/Speccy/ref-neogs/neogs` (зеркало github.com/alfishe/neogs). Опознание GS / NeoGS —
   ПЗУ `#0004` (версия BCD), `#0080` (патч), `#0100` (копирайты) через команду `#17`: наш движок кладёт туда «Trinity».
 - **Образцы на RP:** PicoGUS (FT2 `Paula/picogus-main`, GUS / SB на RP2040, шина через PIO, PSRAM, I2S), PiCard3
   (FT2 `schemes/PiCard3`, ПЗУ GS 1.05b в эмуляторе Z80 на Pico) — только справочник (GPL).
-- **Драйверы дисков WC** (IDE Nemo / SMUC, SD ZC / NeoGS) — `D:\_Work\Speccyef-wc`.
+- **Драйверы дисков WC** (IDE Nemo / SMUC, SD ZC / NeoGS) — `D:/_Work/Speccy/ref-wc`.
 - **Указатель всего найденного** — FT2 `doc/trinity-sources.md`.
