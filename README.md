@@ -12,3 +12,10 @@
 CMake, Ninja, pioasm, picotool; в систему не ставятся).
 
 Прошивка: зажать BOOT, воткнуть USB (плата вынута из слота), кинуть `build\rp_ay.uf2` на появившийся диск.
+
+## Найдено (на потом)
+
+- **SNDH-плеер (Atari ST) для RP-AY** — 2026-10-18. Плеер `ref/SndhArchivePlayer` (exe, Leonard / Oxygene; копия из
+  `d:\Data\Speccy\Atari\SndhArchivePlayer`; `ref/` не в git). Движок — библиотека **AtariAudio**
+  (github.com/arnaud-carre/AtariAudio, MIT): 68000 (Musashi) + MFP + YM2149. Записи в YM — одно место
+  (`AtariMachine.cpp`, `#FF8800/#FF8802`) — подменить на живой AY. Разбор — FT2 `doc/trinity-sndh.md`. Пока не делаем.
