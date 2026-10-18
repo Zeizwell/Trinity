@@ -1,0 +1,70 @@
+; Шина слота (макет: CPLD MultiSound -> наш чип). Ножки: IN_BASE = GP0: D0..D7 (0..7), /CS (8), /WR (9),
+; /RD (10), A0 (11). RP в разрыве: с чипа не читаем, на чтение отвечает RP.
+
+; ---- Записи: на каждый /WR при /CS = 0 - в FIFO 12 бит: D0..D7, /CS, /WR, /RD, A0 (ядро 1 отбросит без /CS)
+.program bus_wr
+.define public DELAY 7               ; тактов PIO после /WR вниз до чтения данных (cfg.wr_sample_delay - для лога)
+.wrap_target
+    wait 0 gpio 9                    ; /WR вниз
+    nop [DELAY]                      ; данные устоялись
+    in pins, 12                      ; D0..D7, /CS, /WR, /RD, A0
+    push noblock                     ; переполнение - теряем (счётчик - ядро 1 по уровню FIFO)
+    wait 1 gpio 9                    ; /WR вверх
+.wrap
+
+% c-sdk {
+static inline void bus_wr_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_wr_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, 0);
+    sm_config_set_in_shift(&c, false, false, 32);   // влево: бит GP0 - младший
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);  // 8 записей в запасе
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+; ---- Чтения: /RD = 0 и /CS = 0 - выдать на D0..D7 из X (его держит ядро 1): A0 = 1 - младший байт X (значение
+; выбранного регистра из тени), A0 = 0 - второй байт X (статус, cfg.status_answer). Потом - снова входы.
+.program bus_rd
+.wrap_target
+top:
+    wait 0 gpio 10                   ; /RD вниз
+    mov isr, null
+    in pins, 1                       ; /CS (IN_BASE = GP8)
+    mov y, isr
+    jmp !y ours                      ; /CS = 0 - наш чип
+    wait 1 gpio 10                   ; чужой - ждать конца
+    jmp top
+ours:
+    mov osr, x
+    jmp pin drive                    ; JMP_PIN = A0: 1 - данные (младший байт)
+    out null, 8                      ; A0 = 0 - статус (второй байт)
+drive:
+    out pins, 8                      ; значение на D0..D7
+    mov osr, ~null
+    out pindirs, 8                   ; выходы
+    wait 1 gpio 10                   ; /RD вверх
+    mov osr, null
+    out pindirs, 8                   ; снова входы
+.wrap
+
+% c-sdk {
+static inline void bus_rd_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_rd_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, 8);                    // /CS
+    sm_config_set_out_pins(&c, 0, 8);                // D0..D7
+    sm_config_set_jmp_pin(&c, 11);                   // A0
+    sm_config_set_out_shift(&c, true, false, 32);    // вправо: младший бит - D0
+    sm_config_set_in_shift(&c, false, false, 32);
+    for (uint i = 0; i < 8; i++) pio_gpio_init(pio, i);
+    pio_sm_set_consecutive_pindirs(pio, sm, 0, 8, false);   // по умолчанию - входы
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+// Новый ответ: X = статус << 8 | данные (пока PIO ждёт /RD - инструкции извне)
+static inline void bus_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status) {
+    pio_sm_put(pio, sm, (uint32_t)status << 8 | data);
+    pio_sm_exec(pio, sm, pio_encode_pull(false, false));
+    pio_sm_exec(pio, sm, pio_encode_mov(pio_x, pio_osr));
+}
+%}
