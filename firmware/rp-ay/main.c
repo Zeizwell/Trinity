@@ -43,7 +43,20 @@ static void do_reset(void) {                      // /IC: сбросить вс�
 }
 
 // ---- Ядро 1: реальное время
+// Проверка RP -> чип при включении: нота в канале A на cfg.boot_beep_ms, потом тишина (записи слота в это время теряются)
+static void boot_beep(void) {
+    if (!cfg.boot_beep_ms) return;
+    static const uint8_t on[][2] = { {0, 0xF8}, {1, 0x00}, {7, 0x3E}, {8, 15} };   // период #0F8: ~440 Гц при такте AY 1.75 МГц
+    for (unsigned i = 0; i < sizeof on / sizeof on[0]; i++) chip_put(on[i][0], on[i][1]);
+    uint32_t t0 = time_us_32();
+    while (time_us_32() - t0 < cfg.boot_beep_ms * 1000u) chip_poll();
+    chip_put(8, 0);
+    chip_put(7, 0x3F);
+    while (!chip_idle()) chip_poll();
+}
+
 static void core1_main(void) {
+    boot_beep();
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;
