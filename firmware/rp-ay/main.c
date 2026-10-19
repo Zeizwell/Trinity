@@ -95,6 +95,8 @@ int main(void) {
     led_sm = 0;
     uint off = pio_add_program(led_pio, &ws2812_program);
     ws2812_program_init(led_pio, led_sm, off, PIN_RGB, 800000);
+    rgb(64, 64, 64);                                   // прошивка жива: яркий белый 0.5 с
+    sleep_ms(500);
 
     for (uint p = PIN_SLOT_CS; p <= PIN_SLOT_A0; p++) {   // стробы слота - входы (у RP2350 ножка до gpio_init
         gpio_init(p);                                      //   изолирована, PIO её не видит)
@@ -133,7 +135,7 @@ int main(void) {
         if (chip_stat.q_lost || chip_stat.fifo_full) rgb(k, 0, 0);       // красный - теряли записи
         else if (wr != last_wr && cw != last_cw) rgb(0, k, 0);            // зелёный - записи идут в чип (за эти 100 мс)
         else if (wr != last_wr) rgb(0, 0, k);                             // синий - приходят, в чип не уходят
-        else rgb(k / 4, k / 4, k / 4);                                    // тускло-белый - тишина
+        else rgb(k / 2, k / 2, k / 2);                                    // белый (слабее цветов) - тишина
         last_wr = wr, last_cw = cw;
         if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
             t_log = 0;
