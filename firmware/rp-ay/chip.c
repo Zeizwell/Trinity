@@ -27,6 +27,9 @@ static uint32_t c_setup, c_pulse, c_addr, c_ssg, c_fm;   // длительнос
 static uint32_t ns_to_cyc(uint32_t ns) {
     return (uint32_t)((uint64_t)clock_get_hz(clk_sys) * ns / 1000000000u) + 1;
 }
+static uint32_t ht_to_cyc(uint32_t half_t) {          // полутакты Z80 -> такты RP (вверх)
+    return (uint32_t)(((uint64_t)half_t * clock_get_hz(clk_sys) + 2u * cfg.z80_hz - 1) / (2u * cfg.z80_hz));
+}
 static uint32_t clk_to_cyc(uint32_t chip_clk) {      // такты чипа -> такты RP (вверх)
     return (uint32_t)(((uint64_t)chip_clk * clock_get_hz(clk_sys) + cfg.phim_hz - 1) / cfg.phim_hz);
 }
@@ -40,10 +43,10 @@ void chip_init(void) {
     gpio_init(PIN_CHIP_RD);                                     // /RD чипа - вверх (чтение только в тесте)
     gpio_put(PIN_CHIP_RD, 1);
     gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
-    c_setup = ns_to_cyc(cfg.setup_ns);
-    c_pulse = ns_to_cyc(cfg.wr_pulse_ns);
-    c_addr  = clk_to_cyc(cfg.wait_addr_clk);
-    c_ssg   = clk_to_cyc(cfg.wait_ssg_clk);
+    c_setup = ht_to_cyc(cfg.setup_ht);
+    c_pulse = ht_to_cyc(cfg.pulse_ht);
+    c_addr  = ht_to_cyc(cfg.gap_addr_ht);
+    c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
     c_fm    = clk_to_cyc(cfg.wait_fm_clk);
     wr_sm = pio_claim_unused_sm(wr_pio, true);
     chip_wr_init(wr_pio, wr_sm, pio_add_program(wr_pio, &chip_wr_program), PIN_CHIP_D0);

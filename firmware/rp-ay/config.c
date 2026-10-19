@@ -4,11 +4,12 @@
 cfg_t cfg;
 
 void cfg_defaults(void) {
+    cfg.z80_hz           = 3500000;     // ритм записи - как Z80 3.5 МГц
+    cfg.setup_ht         = 2;           // 1 такт   = 286 нс
+    cfg.pulse_ht         = 5;           // 2.5 такта = 714 нс
+    cfg.gap_addr_ht      = 22;          // 11 тактов = 3.1 мкс
+    cfg.gap_ssg_ht       = 22;          // 11 тактов = 3.1 мкс
     cfg.phim_hz          = 3500000;     // макет: такт YM2203 из слота MultiSound (уточнить замером φM)
-    cfg.wr_pulse_ns      = 1000;        // макет: с запасом 1 мкс (YM2203 - 200), подобрать тестом чтения
-    cfg.setup_ns         = 200;         // макет: с запасом
-    cfg.wait_addr_clk    = 17;          // YM2203: адрес -> данные
-    cfg.wait_ssg_clk     = 17;          // YM2203 SSG: по даташиту 0, берём как адрес - с запасом
     cfg.wait_fm_clk      = 83;          // YM2203 FM
     cfg.rd_pulse_ns      = 500;         // тест чтения: с запасом
     cfg.status_answer    = 0x00;        // никогда не занят: очередь в RP сама держит паузы чипа
