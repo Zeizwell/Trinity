@@ -45,8 +45,6 @@ typedef struct {
     // --- AY FX (таймерные эффекты, движок engine/ayfx.c)
     uint32_t ay_clock_hz;       // такт AY для таймеров эффектов: такт тона = ay_clock_hz / 8
     uint8_t  frame_hz;          // кадр для свипа ШИМ, Гц (0 - свипа нет)
-    // --- шина слота
-    uint8_t  wr_sample_delay;   // PIO: тактов PIO после /WR вниз до чтения данных (задано в bus.pio, тут - для лога)
     // --- служебное
     uint8_t  led_bright;        // яркость светодиода 0..255
     uint16_t log_period_ms;     // счётчики в USB-консоль, мс (0 - не писать)
