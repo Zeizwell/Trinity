@@ -1,6 +1,6 @@
-// RP-AY, шаг 1 (FT2 doc/zx-trinity.md, 14а и п.15): режим AY - записи из слота -> тень -> чип,
-// чтение из слота - ответ RP из тени. Каркас режимов и настроек - под FX, ATARI, обновление.
-// Ядро 1: шина (разбор записей PIO), писатель в чип, сброс. Ядро 0: USB-консоль, светодиод.
+// RP-AY (FT2 doc/zx-trinity.md, 14а и п.15): режимы AY и FX - записи из слота -> тень -> чип, эффекты AY FX
+// (движок engine/ayfx.c), чтение из слота - ответ RP из тени. Каркас режимов и настроек - под ATARI, обновление.
+// Ядро 1: шина (разбор PIO), карта (card.c), писатель в чип, сброс. Ядро 0: USB-консоль, светодиод.
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -9,20 +9,21 @@
 #include "config.h"
 #include "modes.h"
 #include "chip.h"
+#include "card.h"
 #include "ws2812.pio.h"
 #include "bus.pio.h"
 
 static PIO  bus_pio = pio1;
 static uint sm_wr, sm_rd;
 
-// Ответ на чтение: тень выбранного регистра, статус - из cfg
+// Ответ на чтение: данные - от карты, статус - из cfg
 static void answer_update(void) {
-    bus_rd_set(bus_pio, sm_rd, chip_regs[chip_sel], cfg.status_answer);
+    bus_rd_set(bus_pio, sm_rd, card_answer(), cfg.status_answer);
 }
 
 static void do_reset(void) {                      // /IC: сбросить всё (doc 14а)
-    chip_reset_state();
     mode_reset();
+    card_reset();
     answer_update();
     chip_stat.resets++;
 }
@@ -35,9 +36,15 @@ static void core1_main(void) {
         while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
             uint32_t w = pio_sm_get(bus_pio, sm_wr);    // D0..D7, /CS (8), /WR (9), /RD (10), A0 (11)
             if (w & (1u << 8)) continue;                // /CS = 1 - не наш чип
-            chip_slot_write((w >> 11) & 1, (uint8_t)w);
+            card_slot_write((w >> 11) & 1, (uint8_t)w);
             answer_update();
         }
+        while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
+            pio_sm_get(bus_pio, sm_rd);
+            card_read_done();
+            answer_update();
+        }
+        card_poll();
         chip_poll();
         bool ic = gpio_get(PIN_SLOT_IC);
         if (!ic && ic_was) do_reset();                  // /IC вниз
@@ -68,6 +75,7 @@ int main(void) {
     gpio_init(PIN_SLOT_PHIM); gpio_set_dir(PIN_SLOT_PHIM, GPIO_IN);
     chip_init();
     mode_reset();
+    card_reset();
 
     sm_wr = pio_claim_unused_sm(bus_pio, true);
     sm_rd = pio_claim_unused_sm(bus_pio, true);
@@ -92,7 +100,7 @@ int main(void) {
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,
                    (unsigned long)chip_stat.q_lost, (unsigned long)chip_stat.fifo_full,
-                   (unsigned long)chip_stat.resets, chip_sel);
+                   (unsigned long)chip_stat.resets, card_sel());
         }
     }
 }

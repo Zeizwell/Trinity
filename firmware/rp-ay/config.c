@@ -15,6 +15,8 @@ void cfg_defaults(void) {
     cfg.silence_on_reset = true;
     cfg.fx_timeout_s     = 5;
     cfg.chips            = 2;
+    cfg.ay_clock_hz      = 1750000;     // такт AY Спектрума (YM2203 на макете - проверить делитель SSG)
+    cfg.frame_hz         = 50;
     cfg.wr_sample_delay  = 8;
     cfg.led_bright       = 16;
     cfg.log_period_ms    = 1000;

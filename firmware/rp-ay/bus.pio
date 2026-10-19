@@ -25,6 +25,7 @@ static inline void bus_wr_init(PIO pio, uint sm, uint offset) {
 
 ; ---- Чтения: /RD = 0 и /CS = 0 - выдать на D0..D7 из X (его держит ядро 1): A0 = 1 - младший байт X (значение
 ; выбранного регистра из тени), A0 = 0 - второй байт X (статус, cfg.status_answer). Потом - снова входы.
+; После чтения данных - метка в FIFO (ответ мог быть потоком, как INFO протокола AY FX).
 .program bus_rd
 .wrap_target
 top:
@@ -35,10 +36,13 @@ top:
     jmp !y ours                      ; /CS = 0 - наш чип
     wait 1 gpio 10                   ; чужой - ждать конца
     jmp top
-ours:
+ours:                                ; здесь Y = 0
     mov osr, x
-    jmp pin drive                    ; JMP_PIN = A0: 1 - данные (младший байт)
+    jmp pin data                     ; JMP_PIN = A0: 1 - данные (младший байт)
     out null, 8                      ; A0 = 0 - статус (второй байт)
+    jmp drive
+data:
+    set y, 1                         ; читали данные - в конце метка в FIFO
 drive:
     out pins, 8                      ; значение на D0..D7
     mov osr, ~null
@@ -46,6 +50,8 @@ drive:
     wait 1 gpio 10                   ; /RD вверх
     mov osr, null
     out pindirs, 8                   ; снова входы
+    jmp !y top                       ; статус - без метки
+    push noblock                     ; метка "прочитали данные": ядро 1 сдвинет ответ (INFO) и обновит X
 .wrap
 
 % c-sdk {
