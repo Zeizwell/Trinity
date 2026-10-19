@@ -15,7 +15,7 @@ void cfg_defaults(void) {
     cfg.mode_after_reset = MODE_AY;
     cfg.silence_on_reset = true;
     cfg.fx_timeout_s     = 5;
-    cfg.chips            = 2;
+    cfg.chips            = 1;           // макет: чип TurboSound выбирает CPLD MultiSound, в слот U4 - только его записи
     cfg.ay_clock_hz      = 1750000;     // такт AY Спектрума (YM2203 на макете - проверить делитель SSG)
     cfg.frame_hz         = 50;
     cfg.wr_sample_delay  = 8;

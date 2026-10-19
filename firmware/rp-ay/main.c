@@ -100,7 +100,7 @@ int main(void) {
 
     multicore_launch_core1(core1_main);
 
-    uint32_t last_wr = 0, t_log = 0;
+    uint32_t last_wr = 0, last_cw = 0, t_log = 0;
     while (true) {
         sleep_ms(100);
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
@@ -117,10 +117,10 @@ int main(void) {
         uint32_t wr = chip_stat.slot_wr, cw = chip_stat.chip_wr;
         uint8_t k = cfg.led_bright;
         if (chip_stat.q_lost || chip_stat.fifo_full) rgb(k, 0, 0);       // красный - теряли записи
-        else if (wr != last_wr && cw) rgb(0, k, 0);                       // зелёный - записи идут в чип
+        else if (wr != last_wr && cw != last_cw) rgb(0, k, 0);            // зелёный - записи идут в чип (за эти 100 мс)
         else if (wr != last_wr) rgb(0, 0, k);                             // синий - приходят, в чип не уходят
         else rgb(k / 4, k / 4, k / 4);                                    // тускло-белый - тишина
-        last_wr = wr;
+        last_wr = wr, last_cw = cw;
         if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
             t_log = 0;
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X\n",

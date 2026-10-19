@@ -39,7 +39,7 @@ typedef struct {
     mode_t   mode_after_reset;  // режим после сброса (/IC) и включения
     bool     silence_on_reset;  // после сброса - тишина в чип (громкости 0)
     uint16_t fx_timeout_s;      // FX: нет пакетов и записей столько секунд - эффекты выкл (0 - никогда)
-    uint8_t  chips;             // чипов (TurboSound - 2; на макете второй "в никуда")
+    uint8_t  chips;             // чипов: 2 - RP сама выбирает чип по #FE / #FF (плата); 1 - выбор не её (макет за CPLD)
     // --- AY FX (таймерные эффекты, движок engine/ayfx.c)
     uint32_t ay_clock_hz;       // такт AY для таймеров эффектов: такт тона = ay_clock_hz / 8
     uint8_t  frame_hz;          // кадр для свипа ШИМ, Гц (0 - свипа нет)
