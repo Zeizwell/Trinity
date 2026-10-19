@@ -1,0 +1,26 @@
+; Запись в чип (YM2203 / AY): ножки GP28..GP38 = D0..D7, /CS, /WR, A0. Цикл ведёт PIO, ядро только кладёт слова
+; (chip.c): одно слово - одно состояние ножек и сколько его держать. Ядро не ждёт ни импульса, ни пауз чипа.
+
+.program chip_wr
+; слово: биты 0..10 - ножки (D0..D7, /CS, /WR, A0), биты 11..31 - держать тактов PIO (сверх 4)
+.wrap_target
+    pull block                       ; следующее состояние (нет - ножки стоят как есть)
+    out pins, 11                     ; ножки
+    out x, 21                        ; сколько держать
+hold:
+    jmp x-- hold
+.wrap
+
+% c-sdk {
+// Ножки base..base+10 - выходы, начальное состояние - /CS и /WR вверх (кладёт chip.c первым словом)
+static inline void chip_wr_init(PIO pio, uint sm, uint offset, uint base) {
+    pio_sm_config c = chip_wr_program_get_default_config(offset);
+    for (uint i = 0; i < 11; i++) pio_gpio_init(pio, base + i);
+    pio_sm_set_consecutive_pindirs(pio, sm, base, 11, true);
+    sm_config_set_out_pins(&c, base, 11);
+    sm_config_set_out_shift(&c, true, false, 32);    // вправо: бит 0 - D0
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);   // 8 слов в запасе
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

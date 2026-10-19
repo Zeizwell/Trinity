@@ -91,6 +91,7 @@ int main(void) {
     cfg_defaults();
     stdio_init_all();
 
+    pio_set_gpio_base(led_pio, 16);                    // pio0 видит GP16..47: светодиод (20) и запись в чип (28..38)
     led_sm = 0;
     uint off = pio_add_program(led_pio, &ws2812_program);
     ws2812_program_init(led_pio, led_sm, off, PIN_RGB, 800000);
