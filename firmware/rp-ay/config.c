@@ -10,6 +10,7 @@ void cfg_defaults(void) {
     cfg.wait_addr_clk    = 17;          // YM2203: адрес -> данные
     cfg.wait_ssg_clk     = 17;          // YM2203 SSG: по даташиту 0, берём как адрес - с запасом
     cfg.wait_fm_clk      = 83;          // YM2203 FM
+    cfg.rd_pulse_ns      = 500;         // тест чтения: с запасом
     cfg.status_answer    = 0x00;        // никогда не занят: очередь в RP сама держит паузы чипа
     cfg.mode_after_reset = MODE_AY;
     cfg.silence_on_reset = true;

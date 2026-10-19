@@ -83,6 +83,10 @@ void card_read_done(void) {
 
 uint8_t card_sel(void) { return sel[cur]; }
 
+void card_resend(void) {
+    for (uint8_t r = 0; r < 14; r++) chip_put(r, regs[0][r]);
+}
+
 void card_reset(void) {
     memset(regs, 0, sizeof regs);
     memset(sel, 0, sizeof sel);

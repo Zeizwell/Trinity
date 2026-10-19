@@ -18,6 +18,7 @@
 #define PIN_CHIP_CS     36
 #define PIN_CHIP_WR     37
 #define PIN_CHIP_A0     38
+#define PIN_CHIP_RD     39  // /RD чипа - только для теста (режим TEST); на чипе подтяжка 10к к +5 В
 #define PIN_RGB         20  // светодиод WS2812 на Spotpear
 
 // ---- Режимы (doc 14а). Порядок - как в таблице переходов modes.c
@@ -31,6 +32,7 @@ typedef struct {
     uint16_t wait_addr_clk;     // после записи адреса - пауза, тактов чипа (YM2203: 17)
     uint16_t wait_ssg_clk;      // после данных в регистр SSG 0..15 (YM2203: 0, берём с запасом)
     uint16_t wait_fm_clk;       // после данных в регистр FM (YM2203: 83)
+    uint16_t rd_pulse_ns;       // тест: /RD вниз -> читаем данные
     // --- ответ на чтение со стороны Спектрума
     uint8_t  status_answer;     // чтение A0 = 0 (статус YM2203): 0 - никогда не занят
     // --- режимы

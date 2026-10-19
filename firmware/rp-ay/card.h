@@ -12,3 +12,4 @@ uint8_t card_answer(void);                  // что отдать на чтен
 void    card_read_done(void);               // данные прочитали (метка PIO) - ответ-поток сдвинуть
 void    card_poll(void);                    // в цикле ядра 1: таймеры эффектов, кадр, таймаут FX
 uint8_t card_sel(void);                     // выбранный регистр текущего чипа (лог)
+void    card_resend(void);                  // тень Спектрума (SSG 0..13) - снова в чип (после теста)

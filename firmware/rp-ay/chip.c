@@ -23,6 +23,9 @@ static uint32_t clk_to_us(uint32_t chip_clk) {      // такты чипа -> м
 
 void chip_init(void) {
     for (uint p = PIN_CHIP_D0; p <= PIN_CHIP_A0; p++) gpio_init(p);
+    gpio_init(PIN_CHIP_RD);                                     // /RD чипа - вверх (чтение только в тесте)
+    gpio_put(PIN_CHIP_RD, 1);
+    gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
     gpio_put_masked64(CHIP_PINS_MASK, (1ull << PIN_CHIP_CS) | (1ull << PIN_CHIP_WR));
     gpio_set_dir_masked64(CHIP_PINS_MASK, CHIP_PINS_MASK);
     chip_reset_state();
@@ -70,4 +73,56 @@ void chip_poll(void) {
     data_next = false;
     q_tail = (q_tail + 1) & (CHIP_Q_SIZE - 1);
     ready_at = time_us_32() + clk_to_us(reg < 16 ? cfg.wait_ssg_clk : cfg.wait_fm_clk);
+}
+
+bool chip_idle(void) { return q_tail == q_head && !data_next; }
+
+// ---- Тест чтения. Пишем и читаем сразу, паузы - те же из cfg
+#define CHIP_D_MASK  (0xFFull << PIN_CHIP_D0)
+
+static void wait_clk(uint32_t clk) { busy_wait_us_32(clk_to_us(clk)); }
+
+static void write_now(uint8_t reg, uint8_t v) {
+    chip_cycle(false, reg); wait_clk(cfg.wait_addr_clk);
+    chip_cycle(true, v);    wait_clk(cfg.wait_ssg_clk);
+}
+
+// Чтение: регистр, потом данные - вход, /CS и /RD вниз при A0 = 1, читаем, всё вверх, данные снова выход
+static uint8_t read_now(uint8_t reg) {
+    chip_cycle(false, reg); wait_clk(cfg.wait_addr_clk);
+    gpio_set_dir_masked64(CHIP_D_MASK, 0);                      // сначала отпустить данные
+    gpio_put_masked64((1ull << PIN_CHIP_A0) | (1ull << PIN_CHIP_CS), 1ull << PIN_CHIP_A0);   // A0 = 1, /CS = 0
+    busy_wait_at_least_cycles(ns_to_cyc(cfg.setup_ns));
+    gpio_put(PIN_CHIP_RD, 0);
+    busy_wait_at_least_cycles(ns_to_cyc(cfg.rd_pulse_ns));
+    uint8_t v = (uint8_t)(gpio_get_all64() >> PIN_CHIP_D0);
+    gpio_put(PIN_CHIP_RD, 1);
+    gpio_put(PIN_CHIP_CS, 1);
+    busy_wait_at_least_cycles(ns_to_cyc(cfg.wr_pulse_ns));      // чип отпустил шину
+    gpio_set_dir_masked64(CHIP_D_MASK, CHIP_D_MASK);            // данные - снова выход
+    return v;
+}
+
+// Сколько бит в регистрах SSG 0..13 (R7: биты портов 6, 7 не трогаем)
+static const uint8_t ssg_mask[14] = { 0xFF, 0x0F, 0xFF, 0x0F, 0xFF, 0x0F, 0x1F, 0x3F, 0x1F, 0x1F, 0x1F, 0xFF, 0xFF, 0x0F };
+
+static void cmp(chip_test_t *r, uint8_t reg, uint8_t v, uint8_t got) {
+    r->checks++;
+    if (((v ^ got) & ssg_mask[reg]) == 0) return;
+    if (!r->errors) r->bad_reg = reg, r->bad_wrote = v, r->bad_read = got;
+    r->errors++;
+}
+
+void chip_test(chip_test_t *r) {
+    static const uint8_t pat[4] = { 0x00, 0xFF, 0x55, 0xAA };
+    *r = (chip_test_t){ 0 };
+    for (int p = 0; p < 4; p++)                                 // 1) каждый регистр: записать и сразу прочитать
+        for (uint8_t reg = 0; reg < 14; reg++) {
+            write_now(reg, pat[p] & ssg_mask[reg]);
+            cmp(r, reg, pat[p], read_now(reg));
+        }
+    for (uint8_t reg = 0; reg < 14; reg++)                      // 2) все разными, потом все прочитать (адреса не путаются)
+        write_now(reg, (uint8_t)(reg * 0x11 + 0x23) & ssg_mask[reg]);
+    for (uint8_t reg = 0; reg < 14; reg++)
+        cmp(r, reg, (uint8_t)(reg * 0x11 + 0x23), read_now(reg));
 }

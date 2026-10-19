@@ -16,6 +16,20 @@
 static PIO  bus_pio = pio1;
 static uint sm_wr, sm_rd;
 
+// Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
+static volatile bool test_req, test_done;
+static chip_test_t   test_res;
+
+static void test_run(void) {                      // ядро 1: дождаться очереди, тест, вернуть тень, режим AY
+    if (!chip_idle()) return;                     //   (пока очередь не пуста - в следующий раз)
+    busy_wait_us_32(100);                         //   чип закончил последнюю запись
+    chip_test(&test_res);
+    card_resend();
+    test_req = false;
+    test_done = true;
+    mode_set(MODE_AY);
+}
+
 // Ответ на чтение: данные - от карты, статус - из cfg
 static void answer_update(void) {
     bus_rd_set(bus_pio, sm_rd, card_answer(), cfg.status_answer);
@@ -46,6 +60,7 @@ static void core1_main(void) {
         }
         card_poll();
         chip_poll();
+        if (test_req) test_run();
         bool ic = gpio_get(PIN_SLOT_IC);
         if (!ic && ic_was) do_reset();                  // /IC вниз
         ic_was = ic;
@@ -88,6 +103,17 @@ int main(void) {
     uint32_t last_wr = 0, t_log = 0;
     while (true) {
         sleep_ms(100);
+        int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
+        if (key == 't' && !test_req) {
+            if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
+            else printf("test: нельзя из режима %s\n", mode_name[mode]);
+        }
+        if (test_done) {
+            test_done = false;
+            if (!test_res.errors) printf("test: OK, %u сравнений\n", test_res.checks);
+            else printf("test: %u ошибок из %u, первая: R%u записали %02X прочитали %02X\n",
+                        test_res.errors, test_res.checks, test_res.bad_reg, test_res.bad_wrote, test_res.bad_read);
+        }
         uint32_t wr = chip_stat.slot_wr, cw = chip_stat.chip_wr;
         uint8_t k = cfg.led_bright;
         if (chip_stat.q_lost || chip_stat.fifo_full) rgb(k, 0, 0);       // красный - теряли записи
