@@ -55,7 +55,8 @@ int main(void) {
     card_slot_write(0, 8);
     check("ответ на чтение #FFFD = 0F", card_answer() == 0x0F);
 
-    card_test_result(0x123, 0x50, 4, 0x10, 0x00); // итог теста - в #E0..#E5, и сброс его не стирает
+    static const uint8_t tr[6] = { 0x23, 0x01, 0x50, 4, 0x10, 0x00 };
+    card_test_bytes(tr, 6);                      // итог теста - в #E0.., и сброс его не стирает
     card_reset();
     uint8_t t[6];
     for (int i = 0; i < 6; i++) { card_slot_write(0, (uint8_t)(0xE0 + i)); t[i] = card_answer(); }

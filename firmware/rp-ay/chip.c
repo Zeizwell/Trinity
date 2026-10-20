@@ -43,12 +43,7 @@ void chip_init(void) {
     gpio_init(PIN_CHIP_RD);                                     // /RD чипа - вверх (чтение только в тесте)
     gpio_put(PIN_CHIP_RD, 1);
     gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
-    c_setup = ht_to_cyc(cfg.setup_ht);
-    c_pulse = ht_to_cyc(cfg.pulse_ht);
-    c_hold  = ht_to_cyc(cfg.hold_ht);
-    c_addr  = ht_to_cyc(cfg.gap_addr_ht);
-    c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
-    c_fm    = clk_to_cyc(cfg.wait_fm_clk);
+    chip_timing(0);
     wr_sm = pio_claim_unused_sm(wr_pio, true);
     wr_off = pio_add_program(wr_pio, &chip_wr_program);
     chip_wr_init(wr_pio, wr_sm, wr_off, PIN_CHIP_D0);
@@ -59,6 +54,22 @@ void chip_init(void) {
 void chip_reset_state(void) {
     q_head = q_tail = 0;
     step = 0;
+}
+
+void chip_timing(int set) {
+    c_setup = ht_to_cyc(cfg.setup_ht);
+    c_pulse = ht_to_cyc(cfg.pulse_ht);
+    c_hold  = ht_to_cyc(cfg.hold_ht);
+    c_addr  = ht_to_cyc(cfg.gap_addr_ht);
+    c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
+    c_fm    = clk_to_cyc(cfg.wait_fm_clk);
+    if (set == 1) {                                             // даташит YM2203: 17 тактов чипа (3.5 МГц: 4.86 мкс)
+        c_addr = clk_to_cyc(17);
+        c_ssg  = clk_to_cyc(17);
+    }
+    if (set == 2) {                                             // всё в 4 раза медленнее
+        c_setup *= 4, c_pulse *= 4, c_hold *= 4, c_addr *= 4, c_ssg *= 4;
+    }
 }
 
 bool chip_put(uint8_t reg, uint8_t v) {

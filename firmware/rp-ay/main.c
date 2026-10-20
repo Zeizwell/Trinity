@@ -63,10 +63,25 @@ static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
     boot_stage = 2;
     while (!chip_idle()) chip_poll();
+    // Тест трижды с разными паузами (chip_timing): видно, дело в паузах чипа или в проводах / помехах.
+    // #E0..: ошибок (мл, ст), плохие биты, первая ошибка (регистр, записали, прочитали) - для каждого набора по 6 байт
+    uint8_t out[16] = { 0 };
+    int bad0 = 0;
+    for (int s = 0; s < 2; s++) {
+        chip_timing(s);
+        chip_test(&test_res);
+        uint8_t *o = out + s * 6;
+        o[0] = (uint8_t)test_res.errors, o[1] = (uint8_t)(test_res.errors >> 8), o[2] = test_res.bad_bits;
+        o[3] = test_res.bad_reg, o[4] = test_res.bad_wrote, o[5] = test_res.bad_read;
+        if (s == 0) bad0 = test_res.errors;
+    }
+    chip_timing(2);                               // третий набор: только число ошибок (#EC, #ED)
     chip_test(&test_res);
+    out[12] = (uint8_t)test_res.errors, out[13] = (uint8_t)(test_res.errors >> 8);
+    chip_timing(0);
+    card_test_bytes(out, 16);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
-    card_test_result(test_res.errors, test_res.bad_bits, test_res.bad_reg, test_res.bad_wrote, test_res.bad_read);
-    boot_result = test_res.errors ? 1 : 0;
+    boot_result = bad0 ? 1 : 0;
 }
 
 static void core1_main(void) {

@@ -19,18 +19,13 @@ start:  di
         ld hl,t_head : call print              ; заголовок
         call newline : call newline
 
-        ld hl,t_chip : call print              ; ЧИП (тест RP при старте): ошибок (#E1 #E0), плохие биты (#E2),
-        ld a,#E1 : call rdreg : call phex      ;   первая ошибка: регистр (#E3), записали (#E4), прочитали (#E5)
-        ld a,#E0 : call rdreg : call phex
-        ld hl,t_bits : call print
-        ld a,#E2 : call rdreg : call phex
-        call newline
-        ld hl,t_first : call print
-        ld a,#E3 : call rdreg : call phex
-        ld hl,t_w : call print
-        ld a,#E4 : call rdreg : call phex
-        ld hl,t_r : call print
-        ld a,#E5 : call rdreg : call phex
+        ld hl,t_chip : call print              ; ЧИП (тест RP при старте), три набора пауз: ошибок из 3584,
+        call newline                           ;   плохие биты, первая ошибка (регистр, записали, прочитали)
+        ld hl,t_set0 : call print : ld a,#E0 : call set_line
+        ld hl,t_set1 : call print : ld a,#E6 : call set_line
+        ld hl,t_set2 : call print              ; третий: только ошибок
+        ld a,#ED : call rdreg : call phex
+        ld a,#EC : call rdreg : call phex
         call newline : call newline
         ld hl,t_rp : call print                ; дальше - связь Спектрум <-> RP (не чип)
         call newline
@@ -103,6 +98,22 @@ newline: xor a : ld (cur_x),a
         ld hl,cur_y : inc (hl)
         ret
 
+; Строка набора: A - первый номер (ошибок мл, ст, биты, регистр, записали, прочитали)
+set_line:
+        ld (sl_n),a
+        inc a : call rdreg : call phex         ; ошибок: старший, младший
+        ld a,(sl_n) : call rdreg : call phex
+        ld hl,t_bits : call print
+        ld a,(sl_n) : add a,2 : call rdreg : call phex
+        ld hl,t_first : call print
+        ld a,(sl_n) : add a,3 : call rdreg : call phex
+        ld hl,t_w : call print
+        ld a,(sl_n) : add a,4 : call rdreg : call phex
+        ld hl,t_r : call print
+        ld a,(sl_n) : add a,5 : call rdreg : call phex
+        jp newline
+sl_n:   db 0
+
 ; Прочитать регистр A у RP: выбрать в #FFFD, прочитать #FFFD
 rdreg:  ld bc,#FFFD : out (c),a : in a,(c) : ret
 
@@ -116,9 +127,12 @@ t_bad:  db "BAD ",0
 t_w:    db " W ",0
 t_r:    db " R ",0
 t_tone: db "TONE A ~440 HZ",0
-t_chip: db "CHIP (RP TEST): ERR ",0
-t_bits: db " BITS ",0
-t_first:db "FIRST: R",0
+t_chip: db "CHIP TEST BY RP (OF 3584):",0
+t_set0: db "Z80 11T  ",0
+t_set1: db "YM 17CLK ",0
+t_set2: db "SLOW X4  ",0
+t_bits: db " B",0
+t_first:db " R",0
 t_rp:   db "SPECCY <-> RP (NOT CHIP):",0
 
 pats:   db #00,#FF,#01,#02,#04,#08,#10,#20,#40,#80,#55,#AA
