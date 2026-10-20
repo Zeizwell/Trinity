@@ -18,6 +18,7 @@ static uint sm_wr, sm_rd;
 
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
+static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки
 static chip_test_t   test_res;
 
 static void test_run(void) {                      // ядро 1: дождаться очереди, тест, вернуть тень, режим AY
@@ -55,8 +56,18 @@ static void boot_beep(void) {
     while (!chip_idle()) chip_poll();
 }
 
+// Тест чипа при старте (cfg.boot_test): записать и прочитать регистры, итог - светодиодом (ядро 0)
+static void boot_check(void) {
+    if (!cfg.boot_test) { boot_result = 0; return; }
+    while (!chip_idle()) chip_poll();
+    chip_test(&test_res);
+    card_resend();                                // в чип - тень (после старта - нули, тишина)
+    boot_result = test_res.errors ? 1 : 0;
+}
+
 static void core1_main(void) {
     boot_beep();
+    boot_check();
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;
@@ -115,6 +126,11 @@ int main(void) {
     answer_update();
 
     multicore_launch_core1(core1_main);
+    while (boot_result < 0) sleep_ms(10);                          // итог теста чипа: 3 с
+    if (cfg.boot_test) {
+        if (boot_result) rgb(64, 0, 0); else rgb(0, 64, 0);        // красный - ошибки, зелёный - OK
+        sleep_ms(3000);
+    }
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
     while (true) {
