@@ -16,7 +16,7 @@ static volatile uint32_t q_head, q_tail;  // head - писать сюда, tail 
 static uint8_t  step;                     // какое состояние записи q_tail кладём следующим (0..5)
 
 static PIO  wr_pio = pio0;                // окно ножек 16..47 (main: pio_set_gpio_base)
-static uint wr_sm;
+static uint wr_sm, wr_off;                // машина записи и адрес её программы (pull - первая команда)
 static uint32_t c_setup, c_pulse, c_addr, c_ssg, c_fm;   // длительности из cfg, такты PIO
 
 #define CHIP_PINS_MASK  ((0xFFull << PIN_CHIP_D0) | (1ull << PIN_CHIP_CS) | (1ull << PIN_CHIP_WR) | (1ull << PIN_CHIP_A0))
@@ -49,7 +49,8 @@ void chip_init(void) {
     c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
     c_fm    = clk_to_cyc(cfg.wait_fm_clk);
     wr_sm = pio_claim_unused_sm(wr_pio, true);
-    chip_wr_init(wr_pio, wr_sm, pio_add_program(wr_pio, &chip_wr_program), PIN_CHIP_D0);
+    wr_off = pio_add_program(wr_pio, &chip_wr_program);
+    chip_wr_init(wr_pio, wr_sm, wr_off, PIN_CHIP_D0);
     pio_sm_put(wr_pio, wr_sm, word(P_CS | P_WR, 0));            // покой: /CS и /WR вверх
     chip_reset_state();
 }
@@ -91,13 +92,11 @@ void chip_poll(void) {
     }
 }
 
-// Всё записано: очередь пуста, PIO доел своё и стоит на pull
+// Всё записано: очередь пуста, у PIO пусто и он стоит на pull (первая команда программы), а не держит состояние.
+// (Флаг TXSTALL не годится: ставится только в момент остановки, после сброса снова не встаёт.)
 bool chip_idle(void) {
     if (q_tail != q_head || !pio_sm_is_tx_fifo_empty(wr_pio, wr_sm)) return false;
-    uint32_t stall = 1u << (PIO_FDEBUG_TXSTALL_LSB + wr_sm);
-    wr_pio->fdebug = stall;                                     // сбросить флаг "стоял на pull"
-    busy_wait_at_least_cycles(8);
-    return (wr_pio->fdebug & stall) != 0;                       // снова встал - держать нечего
+    return pio_sm_get_pc(wr_pio, wr_sm) == wr_off;
 }
 
 // ---- Тест чтения. Ножки чипа - на время теста ядру (SIO), пишем и читаем сразу, паузы - те же из cfg

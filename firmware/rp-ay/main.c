@@ -126,10 +126,10 @@ int main(void) {
     answer_update();
 
     multicore_launch_core1(core1_main);
-    while (boot_result < 0) sleep_ms(10);                          // итог теста чипа: 3 с
+    while (boot_result < 0) sleep_ms(10);                          // итог теста чипа: 5 с
     if (cfg.boot_test) {
         if (boot_result) rgb(64, 0, 0); else rgb(0, 64, 0);        // красный - ошибки, зелёный - OK
-        sleep_ms(3000);
+        sleep_ms(5000);
     }
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
