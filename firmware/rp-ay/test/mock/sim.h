@@ -67,5 +67,6 @@ extern uint8_t  sim_ym_regs[256];       // регистры модели YM2203
 extern uint32_t sim_ym_writes;          // записей данных в чип
 extern uint32_t sim_led;                // последний цвет светодиода (GRB << 8)
 extern uint32_t sim_wr_min_ns, sim_gap_addr_min_ns;   // самый короткий /WR и пауза адрес -> данные
+extern bool     sim_no_chip;            // чипа нет: шина держит последнее, что на неё выставили
 extern uint8_t  sim_fault_tie;          // склеить биты данных чипа (маска двух бит; 0 - исправен)
 void sim_run_main(int (*m)(void), uint32_t ms);   // запустить main прошивки на ms модельного времени

@@ -136,10 +136,13 @@ static void write_now(uint8_t reg, uint8_t v) {
     sio_cycle(true, v);    wait_cyc(c_ssg);
 }
 
-// Чтение: регистр, потом данные - вход, /CS и /RD вниз при A0 = 1, читаем, всё вверх, данные снова выход
-static uint8_t read_now(uint8_t reg) {
+// Чтение: регистр, потом на шину - ОБРАТНОЕ ожидаемому (не чип - так и прочитается: ошибка, а не ложный OK; шина
+// без хозяина держит последнее), данные - вход, /CS и /RD вниз при A0 = 1, читаем, всё вверх, данные снова выход
+static uint8_t read_now(uint8_t reg, uint8_t expect) {
     sio_cycle(false, reg); wait_cyc(c_addr);
-    gpio_set_dir_masked64(CHIP_D_MASK, 0);                      // сначала отпустить данные
+    gpio_put_masked64(CHIP_D_MASK, (uint64_t)(uint8_t)~expect << PIN_CHIP_D0);
+    wait_cyc(c_setup);
+    gpio_set_dir_masked64(CHIP_D_MASK, 0);                      // отпустить данные
     gpio_put_masked64((1ull << PIN_CHIP_A0) | (1ull << PIN_CHIP_CS), 1ull << PIN_CHIP_A0);   // A0 = 1, /CS = 0
     wait_cyc(c_setup);
     gpio_put(PIN_CHIP_RD, 0);
@@ -169,6 +172,6 @@ void chip_test(chip_test_t *r) {
     for (uint8_t reg = 0; reg < 14; reg++)
         for (uint v = 0; v < 256; v++) {
             write_now(reg, (uint8_t)v & ssg_mask[reg]);
-            cmp(r, reg, (uint8_t)v, read_now(reg));
+            cmp(r, reg, (uint8_t)v, read_now(reg, (uint8_t)v & ssg_mask[reg]));
         }
 }

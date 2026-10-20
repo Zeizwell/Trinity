@@ -44,6 +44,11 @@ int main(void) {
     chip_test(&r);
     check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
     check("склеенные D4 / D6: плохие биты = 50", r.bad_bits == 0x50);
+    sim_no_chip = true;                          // чипа нет (или не туда воткнут): тест не должен давать ложный OK
+    chip_test(&r);
+    printf("  чипа нет: %u ошибок из %u\n", r.errors, r.checks);
+    check("чипа нет: ошибки во всех проверках, биты FF", r.errors == r.checks && r.bad_bits == 0xFF);
+    sim_no_chip = false;
     sim_fault_tie = 0;
     check("после теста запись в чип идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
 

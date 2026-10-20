@@ -20,6 +20,7 @@ static uint32_t pio_pins11;             // ножки GP28..38 от PIO запи
 uint8_t  sim_ym_regs[256];
 uint32_t sim_ym_writes;
 uint8_t  sim_fault_tie;
+bool     sim_no_chip;
 static uint8_t ym_addr;
 static bool    prev_wr = true;
 static uint64_t wr_fall_cyc, addr_latch_cyc;
@@ -99,7 +100,7 @@ void gpio_set_dir_masked64(uint64_t m, uint64_t v) { sio_oe = (sio_oe & ~m) | (v
 uint64_t gpio_get_all64(void) {          // чтение: /CS, /RD внизу, A0 = 1, данные - входы -> чип отдаёт регистр
     advance(1);
     uint64_t v = sio_out;
-    bool reading = !pin(36) && !pin(39) && pin(38) && !((sio_oe >> CHIP_BASE) & 0xFF);
+    bool reading = !sim_no_chip && !pin(36) && !pin(39) && pin(38) && !((sio_oe >> CHIP_BASE) & 0xFF);
     if (reading) v = (v & ~(0xFFull << CHIP_BASE)) | ((uint64_t)tie(sim_ym_regs[ym_addr]) << CHIP_BASE);
     return v;
 }
