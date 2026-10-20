@@ -43,7 +43,7 @@ void chip_init(void) {
     gpio_init(PIN_CHIP_RD);                                     // /RD чипа - вверх (чтение только в тесте)
     gpio_put(PIN_CHIP_RD, 1);
     gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
-    chip_timing(0);
+    chip_timing(CHIP_TIMING_RUN);
     wr_sm = pio_claim_unused_sm(wr_pio, true);
     wr_off = pio_add_program(wr_pio, &chip_wr_program);
     chip_wr_init(wr_pio, wr_sm, wr_off, PIN_CHIP_D0);

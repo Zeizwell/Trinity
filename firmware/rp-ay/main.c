@@ -78,7 +78,7 @@ static void boot_check(void) {
     chip_timing(2);                               // третий набор: только число ошибок (#EC, #ED)
     chip_test(&test_res);
     out[12] = (uint8_t)test_res.errors, out[13] = (uint8_t)(test_res.errors >> 8);
-    chip_timing(0);
+    chip_timing(CHIP_TIMING_RUN);
     card_test_bytes(out, 16);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
     boot_result = bad0 ? 1 : 0;
