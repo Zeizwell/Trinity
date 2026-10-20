@@ -13,7 +13,7 @@ static uint8_t  cur;                        // выбранный чип TurboSo
 static ayfx_t   fx[CARD_CHIPS];             // движок эффектов - на каждый чип
 static uint32_t t_last, t_frame, t_act;     // мкс: прошлый опрос, прошлый кадр, последняя запись Спектрума
 static uint64_t tick_acc;                   // остаток для пересчёта мкс -> такты тона
-static uint8_t  test_err, test_bits;        // итог теста чипа: ошибок, плохие биты (#E0 / #E1 тени)
+static uint8_t  test_res[6];                // итог теста чипа (#E0..#E5 тени)
 
 // Сколько чипов включено (cfg, не больше CARD_CHIPS)
 static int chips(void) { return cfg.chips < CARD_CHIPS ? cfg.chips : CARD_CHIPS; }
@@ -72,9 +72,10 @@ void card_slot_write(bool a0, uint8_t v) {
     if (a0) data_write(v); else addr_write(v);
 }
 
-void card_test_result(uint8_t errors, uint8_t bad_bits) {
-    test_err = errors, test_bits = bad_bits;
-    regs[0][0xE0] = test_err, regs[0][0xE1] = test_bits;
+void card_test_result(uint16_t errors, uint8_t bad_bits, uint8_t reg, uint8_t wrote, uint8_t got) {
+    uint8_t t[6] = { (uint8_t)errors, (uint8_t)(errors >> 8), bad_bits, reg, wrote, got };
+    memcpy(test_res, t, 6);
+    memcpy(&regs[0][0xE0], test_res, 6);
 }
 
 uint8_t card_answer(void) {
@@ -95,7 +96,7 @@ void card_resend(void) {
 
 void card_reset(void) {
     memset(regs, 0, sizeof regs);
-    regs[0][0xE0] = test_err, regs[0][0xE1] = test_bits;   // итог теста чипа сброс не стирает
+    memcpy(&regs[0][0xE0], test_res, 6);        // итог теста чипа сброс не стирает
     memset(sel, 0, sizeof sel);
     cur = 0;
     for (int c = 0; c < CARD_CHIPS; c++) ayfx_init(&fx[c], fx_out, (void *)(uintptr_t)c);

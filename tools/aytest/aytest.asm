@@ -19,11 +19,21 @@ start:  di
         ld hl,t_head : call print              ; заголовок
         call newline : call newline
 
-        ld hl,t_chip : call print              ; итог теста чипа при старте RP: #E0 - ошибок, #E1 - плохие биты
-        ld bc,#FFFD : ld a,#E0 : out (c),a : in a,(c) : call phex
+        ld hl,t_chip : call print              ; ЧИП (тест RP при старте): ошибок (#E1 #E0), плохие биты (#E2),
+        ld a,#E1 : call rdreg : call phex      ;   первая ошибка: регистр (#E3), записали (#E4), прочитали (#E5)
+        ld a,#E0 : call rdreg : call phex
         ld hl,t_bits : call print
-        ld bc,#FFFD : ld a,#E1 : out (c),a : in a,(c) : call phex
+        ld a,#E2 : call rdreg : call phex
+        call newline
+        ld hl,t_first : call print
+        ld a,#E3 : call rdreg : call phex
+        ld hl,t_w : call print
+        ld a,#E4 : call rdreg : call phex
+        ld hl,t_r : call print
+        ld a,#E5 : call rdreg : call phex
         call newline : call newline
+        ld hl,t_rp : call print                ; дальше - связь Спектрум <-> RP (не чип)
+        call newline
 
         xor a : ld (reg),a
 reg_loop:
@@ -93,6 +103,9 @@ newline: xor a : ld (cur_x),a
         ld hl,cur_y : inc (hl)
         ret
 
+; Прочитать регистр A у RP: выбрать в #FFFD, прочитать #FFFD
+rdreg:  ld bc,#FFFD : out (c),a : in a,(c) : ret
+
 phex:   push af : rrca : rrca : rrca : rrca : call .dig : pop af
 .dig:   and #0F : add a,"0" : cp "9"+1 : jr c,.p : add a,7
 .p:     jp putc
@@ -103,8 +116,10 @@ t_bad:  db "BAD ",0
 t_w:    db " W ",0
 t_r:    db " R ",0
 t_tone: db "TONE A ~440 HZ",0
-t_chip: db "CHIP TEST: ERR ",0
-t_bits: db " BAD BITS ",0
+t_chip: db "CHIP (RP TEST): ERR ",0
+t_bits: db " BITS ",0
+t_first:db "FIRST: R",0
+t_rp:   db "SPECCY <-> RP (NOT CHIP):",0
 
 pats:   db #00,#FF,#01,#02,#04,#08,#10,#20,#40,#80,#55,#AA
 NPAT    equ $-pats

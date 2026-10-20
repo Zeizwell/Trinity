@@ -152,20 +152,16 @@ static void cmp(chip_test_t *r, uint8_t reg, uint8_t v, uint8_t got) {
     r->errors++;
 }
 
+// Каждый регистр SSG 0..13 - все значения 0..255: записать в чип и сразу прочитать обратно (3584 проверки)
 void chip_test(chip_test_t *r) {
-    static const uint8_t pat[4] = { 0x00, 0xFF, 0x55, 0xAA };
     *r = (chip_test_t){ 0 };
     gpio_put_masked64(CHIP_PINS_MASK, (1ull << PIN_CHIP_CS) | (1ull << PIN_CHIP_WR));   // ножки - ядру, покой
     gpio_set_dir_masked64(CHIP_PINS_MASK, CHIP_PINS_MASK);
     for (uint p = PIN_CHIP_D0; p <= PIN_CHIP_A0; p++) gpio_set_function(p, GPIO_FUNC_SIO);
-    for (int p = 0; p < 4; p++)                                 // 1) каждый регистр: записать и сразу прочитать
-        for (uint8_t reg = 0; reg < 14; reg++) {
-            write_now(reg, pat[p] & ssg_mask[reg]);
-            cmp(r, reg, pat[p], read_now(reg));
-        }
-    for (uint8_t reg = 0; reg < 14; reg++)                      // 2) все разными, потом все прочитать (адреса не путаются)
-        write_now(reg, (uint8_t)(reg * 0x11 + 0x23) & ssg_mask[reg]);
     for (uint8_t reg = 0; reg < 14; reg++)
-        cmp(r, reg, (uint8_t)(reg * 0x11 + 0x23), read_now(reg));
+        for (uint v = 0; v < 256; v++) {
+            write_now(reg, (uint8_t)v & ssg_mask[reg]);
+            cmp(r, reg, (uint8_t)v, read_now(reg));
+        }
     for (uint p = PIN_CHIP_D0; p <= PIN_CHIP_A0; p++) pio_gpio_init(wr_pio, p);   // ножки - снова PIO (стоит в покое)
 }

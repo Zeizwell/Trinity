@@ -65,7 +65,7 @@ static void boot_check(void) {
     while (!chip_idle()) chip_poll();
     chip_test(&test_res);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
-    card_test_result(test_res.errors > 255 ? 255 : (uint8_t)test_res.errors, test_res.bad_bits);
+    card_test_result(test_res.errors, test_res.bad_bits, test_res.bad_reg, test_res.bad_wrote, test_res.bad_read);
     boot_result = test_res.errors ? 1 : 0;
 }
 

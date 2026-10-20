@@ -39,7 +39,7 @@ int main(void) {
     printf("--- тест чтения чипа\n");
     chip_test_t r;
     chip_test(&r);
-    check("исправный чип: 0 ошибок из 70", r.errors == 0 && r.checks == 70);
+    check("исправный чип: 0 ошибок из 3584 (14 регистров x 256)", r.errors == 0 && r.checks == 3584);
     sim_fault_tie = 0x50;
     chip_test(&r);
     check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
@@ -55,11 +55,11 @@ int main(void) {
     card_slot_write(0, 8);
     check("ответ на чтение #FFFD = 0F", card_answer() == 0x0F);
 
-    card_test_result(3, 0x50);                   // итог теста - в #E0 / #E1, и сброс его не стирает
+    card_test_result(0x123, 0x50, 4, 0x10, 0x00); // итог теста - в #E0..#E5, и сброс его не стирает
     card_reset();
-    card_slot_write(0, 0xE0); uint8_t e = card_answer();
-    card_slot_write(0, 0xE1); uint8_t b = card_answer();
-    check("итог теста читается после сброса: #E0 = 3, #E1 = 50", e == 3 && b == 0x50);
+    uint8_t t[6];
+    for (int i = 0; i < 6; i++) { card_slot_write(0, (uint8_t)(0xE0 + i)); t[i] = card_answer(); }
+    check("итог теста читается после сброса: 23 01 50 04 10 00", t[0] == 0x23 && t[1] == 0x01 && t[2] == 0x50 && t[3] == 4 && t[4] == 0x10 && t[5] == 0);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;
