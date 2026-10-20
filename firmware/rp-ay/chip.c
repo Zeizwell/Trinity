@@ -147,6 +147,7 @@ static const uint8_t ssg_mask[14] = { 0xFF, 0x0F, 0xFF, 0x0F, 0xFF, 0x0F, 0x1F, 
 static void cmp(chip_test_t *r, uint8_t reg, uint8_t v, uint8_t got) {
     r->checks++;
     if (((v ^ got) & ssg_mask[reg]) == 0) return;
+    r->bad_bits |= (uint8_t)((v ^ got) & ssg_mask[reg]);
     if (!r->errors) r->bad_reg = reg, r->bad_wrote = v, r->bad_read = got;
     r->errors++;
 }

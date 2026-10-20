@@ -27,5 +27,6 @@ bool chip_idle(void);                     // очередь пуста, запи
 typedef struct {
     uint16_t checks, errors;              // сколько сравнений, сколько не совпало
     uint8_t  bad_reg, bad_wrote, bad_read;// первое несовпадение
+    uint8_t  bad_bits;                    // все биты, что хоть раз не совпали (линия данных)
 } chip_test_t;
 void chip_test(chip_test_t *r);           // только когда chip_idle(); после теста в чипе мусор - вернуть тень

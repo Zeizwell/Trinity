@@ -2,7 +2,7 @@
 ; 1) Каждый регистр 0..13: пишем через #BFFD 12 значений (00, FF, бегущая единица, 55, AA), читаем через #FFFD,
 ;    печатаем, какие БИТЫ не совпали (одни и те же биты везде - линия данных: провод / пайка).
 ; 2) Нота в канале A (~440 Гц): слышно - путь Спектрум -> RP -> чип работает.
-; Чип на MultiSound: #FE в #FFFD - YM1 (слот U4, там RP), чтение регистров (не статуса).
+; Сначала - итог теста чипа, что RP сделала при старте (R15 - ошибок, R14 - плохие биты; 00 00 - чип в порядке).
 ; Порты TS-Config: VCONFIG #00AF, VPAGE #01AF, PAGE1 #11AF.
 
         DEVICE NOSLOT64K
@@ -16,9 +16,13 @@ start:  di
         ld hl,#4000 : ld de,#4001 : ld bc,#17FF : ld (hl),0 : ldir   ; экран - чисто
         ld hl,#5800 : ld de,#5801 : ld bc,#02FF : ld (hl),#07 : ldir ; атрибуты - белый по чёрному
 
-        ld bc,#FFFD : ld a,#FE : out (c),a     ; MultiSound: YM1 (U4), читать регистры
-
         ld hl,t_head : call print              ; заголовок
+        call newline : call newline
+
+        ld hl,t_chip : call print              ; итог теста чипа при старте RP: R15 - ошибок, R14 - плохие биты
+        ld bc,#FFFD : ld a,15 : out (c),a : in a,(c) : call phex
+        ld hl,t_bits : call print
+        ld bc,#FFFD : ld a,14 : out (c),a : in a,(c) : call phex
         call newline : call newline
 
         xor a : ld (reg),a
@@ -99,6 +103,8 @@ t_bad:  db "BAD ",0
 t_w:    db " W ",0
 t_r:    db " R ",0
 t_tone: db "TONE A ~440 HZ",0
+t_chip: db "CHIP TEST: ERR ",0
+t_bits: db " BAD BITS ",0
 
 pats:   db #00,#FF,#01,#02,#04,#08,#10,#20,#40,#80,#55,#AA
 NPAT    equ $-pats

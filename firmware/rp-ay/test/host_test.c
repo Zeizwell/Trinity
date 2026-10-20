@@ -43,6 +43,7 @@ int main(void) {
     sim_fault_tie = 0x50;
     chip_test(&r);
     check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
+    check("склеенные D4 / D6: плохие биты = 50", r.bad_bits == 0x50);
     sim_fault_tie = 0;
     check("после теста ножки снова у PIO: запись идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
 
@@ -53,6 +54,12 @@ int main(void) {
     check("дошло до чипа", drain(100) && sim_ym_regs[8] == 0x0F && sim_ym_regs[7] == 0x3E);
     card_slot_write(0, 8);
     check("ответ на чтение #FFFD = 0F", card_answer() == 0x0F);
+
+    card_test_result(3, 0x50);                   // итог теста - в R15 / R14, и сброс его не стирает
+    card_reset();
+    card_slot_write(0, 15); uint8_t e = card_answer();
+    card_slot_write(0, 14); uint8_t b = card_answer();
+    check("итог теста читается после сброса: R15 = 3, R14 = 50", e == 3 && b == 0x50);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;
