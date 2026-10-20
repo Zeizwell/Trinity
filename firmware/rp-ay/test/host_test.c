@@ -29,7 +29,7 @@ int main(void) {
     chip_put(0, 0x5A); chip_put(1, 0x0C); chip_put(13, 0x0E);
     check("очередь дошла до чипа (chip_idle стал true)", drain(100));
     check("R0 = 5A, R1 = 0C, R13 = 0E", sim_ym_regs[0] == 0x5A && sim_ym_regs[1] == 0x0C && sim_ym_regs[13] == 0x0E);
-    check("chip_idle повторно, когда PIO уже стоит, - сразу true", chip_idle() && chip_idle());
+    check("chip_idle повторно, когда всё записано, - сразу true", chip_idle() && chip_idle());
     printf("  /WR самый короткий %u нс (нужно >= 714), адрес -> данные %u нс (нужно >= 3140)\n",
            sim_wr_min_ns, sim_gap_addr_min_ns);
     check("/WR >= 714 нс (2.5 такта Z80)", sim_wr_min_ns >= 714);
@@ -45,7 +45,7 @@ int main(void) {
     check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
     check("склеенные D4 / D6: плохие биты = 50", r.bad_bits == 0x50);
     sim_fault_tie = 0;
-    check("после теста ножки снова у PIO: запись идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
+    check("после теста запись в чип идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
 
     // 4. Спектрум: #FFFD (выбор регистра) и #BFFD (данные) через card.c -> чип и ответ на чтение
     printf("--- запись Спектрума через card.c\n");
