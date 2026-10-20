@@ -13,11 +13,11 @@ chip_stat_t chip_stat;
 
 static uint16_t q[CHIP_Q_SIZE];           // регистр << 8 | данные
 static volatile uint32_t q_head, q_tail;  // head - писать сюда, tail - брать отсюда
-static uint8_t  step;                     // какое состояние записи q_tail кладём следующим (0..5)
+static uint8_t  step;                     // какое состояние записи q_tail кладём следующим (0..7)
 
 static PIO  wr_pio = pio0;                // окно ножек 16..47 (main: pio_set_gpio_base)
 static uint wr_sm, wr_off;                // машина записи и адрес её программы (pull - первая команда)
-static uint32_t c_setup, c_pulse, c_addr, c_ssg, c_fm;   // длительности из cfg, такты PIO
+static uint32_t c_setup, c_pulse, c_hold, c_addr, c_ssg, c_fm;   // длительности из cfg, такты PIO
 
 #define CHIP_PINS_MASK  ((0xFFull << PIN_CHIP_D0) | (1ull << PIN_CHIP_CS) | (1ull << PIN_CHIP_WR) | (1ull << PIN_CHIP_A0))
 #define P_CS  (1u << 8)                   // биты состояния ножек в слове PIO
@@ -45,6 +45,7 @@ void chip_init(void) {
     gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
     c_setup = ht_to_cyc(cfg.setup_ht);
     c_pulse = ht_to_cyc(cfg.pulse_ht);
+    c_hold  = ht_to_cyc(cfg.hold_ht);
     c_addr  = ht_to_cyc(cfg.gap_addr_ht);
     c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
     c_fm    = clk_to_cyc(cfg.wait_fm_clk);
@@ -68,15 +69,18 @@ bool chip_put(uint8_t reg, uint8_t v) {
     return true;
 }
 
-// Шесть состояний на запись: регистр (установка, /WR, пауза адреса), данные (установка, /WR, пауза занятости)
+// Восемь состояний на запись, как цикл Z80: регистр (установка, /WR вниз, /WR вверх при /CS внизу, /CS вверх и
+// пауза адреса), данные (то же, в конце - пауза занятости). Чип защёлкивает по подъёму /WR, /CS должен быть ещё внизу
 static uint32_t step_word(uint8_t reg, uint8_t v, uint8_t s) {
     switch (s) {
     case 0:  return word(reg | P_WR, c_setup);                  // регистр, A0 = 0, /CS = 0
     case 1:  return word(reg, c_pulse);                         //   /WR вниз
-    case 2:  return word(reg | P_CS | P_WR, c_addr);            //   всё вверх, пауза после адреса
-    case 3:  return word(v | P_A0 | P_WR, c_setup);             // данные, A0 = 1, /CS = 0
-    case 4:  return word(v | P_A0, c_pulse);                    //   /WR вниз
-    default: return word(v | P_A0 | P_CS | P_WR, reg < 16 ? c_ssg : c_fm);   // всё вверх, пауза занятости
+    case 2:  return word(reg | P_WR, c_hold);                   //   /WR вверх, /CS ещё внизу
+    case 3:  return word(reg | P_CS | P_WR, c_addr);            //   /CS вверх, пауза после адреса
+    case 4:  return word(v | P_A0 | P_WR, c_setup);             // данные, A0 = 1, /CS = 0
+    case 5:  return word(v | P_A0, c_pulse);                    //   /WR вниз
+    case 6:  return word(v | P_A0 | P_WR, c_hold);              //   /WR вверх, /CS ещё внизу
+    default: return word(v | P_A0 | P_CS | P_WR, reg < 16 ? c_ssg : c_fm);   // /CS вверх, пауза занятости
     }
 }
 
@@ -85,7 +89,7 @@ void chip_poll(void) {
     while (q_tail != q_head && !pio_sm_is_tx_fifo_full(wr_pio, wr_sm)) {
         uint16_t e = q[q_tail];
         pio_sm_put(wr_pio, wr_sm, step_word((uint8_t)(e >> 8), (uint8_t)e, step));
-        if (++step < 6) continue;
+        if (++step < 8) continue;
         step = 0;
         q_tail = (q_tail + 1) & (CHIP_Q_SIZE - 1);
         chip_stat.chip_wr += 2;                                 // циклы: адрес и данные
@@ -111,7 +115,9 @@ static void sio_cycle(bool a0, uint8_t v) {
     wait_cyc(c_setup);
     gpio_put_masked64(1ull << PIN_CHIP_WR, 0);                  // /WR вниз
     wait_cyc(c_pulse);
-    gpio_put_masked64((1ull << PIN_CHIP_WR) | (1ull << PIN_CHIP_CS), (1ull << PIN_CHIP_WR) | (1ull << PIN_CHIP_CS));
+    gpio_put(PIN_CHIP_WR, 1);                                   // /WR вверх, /CS ещё внизу
+    wait_cyc(c_hold);
+    gpio_put(PIN_CHIP_CS, 1);                                   // /CS вверх
 }
 
 static void write_now(uint8_t reg, uint8_t v) {

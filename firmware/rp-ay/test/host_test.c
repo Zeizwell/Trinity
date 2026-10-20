@@ -1,0 +1,59 @@
+// Проверка прошивки RP-AY на ПК: та же прошивка (main.c, chip.c, card.c, ...) на модели железа (mock/sim.c).
+// Сборка и запуск - test.bat. Каждая проверка - строка OK / FAIL, код выхода = число ошибок.
+#define main fw_main
+#include "../main.c"
+#undef main
+
+static int fails;
+static void check(const char *what, int ok) {
+    printf("%s  %s\n", ok ? "OK  " : "FAIL", what);
+    if (!ok) fails++;
+}
+
+// Дать записям дойти до чипа (ядро 1 в цикле крутит chip_poll), не дольше limit_ms модельного времени
+static bool drain(uint32_t limit_ms) {
+    uint64_t end = sim_now_ns() + (uint64_t)limit_ms * 1000000;
+    while (sim_now_ns() < end) { chip_poll(); if (chip_idle()) return true; }
+    return false;
+}
+
+int main(void) {
+    // 1. Старт целиком: белый -> писк -> тест чипа -> зелёный 5 с -> обычная работа
+    printf("--- старт прошивки (модель, 8 с)\n");
+    sim_run_main(fw_main, 8000);
+    check("старт: ядро 1 дошло до цикла, тест чипа прошёл (boot_result = 0)", boot_result == 0);
+    check("старт: в чипе после теста тишина (R8 = 0; ядро 1 дописало очередь)", drain(100) && sim_ym_regs[8] == 0);
+
+    // 2. Запись в чип: значения доходят, тайминги - по тактам Z80 3.5 МГц
+    printf("--- запись в чип\n");
+    chip_put(0, 0x5A); chip_put(1, 0x0C); chip_put(13, 0x0E);
+    check("очередь дошла до чипа (chip_idle стал true)", drain(100));
+    check("R0 = 5A, R1 = 0C, R13 = 0E", sim_ym_regs[0] == 0x5A && sim_ym_regs[1] == 0x0C && sim_ym_regs[13] == 0x0E);
+    check("chip_idle повторно, когда PIO уже стоит, - сразу true", chip_idle() && chip_idle());
+    printf("  /WR самый короткий %u нс (нужно >= 714), адрес -> данные %u нс (нужно >= 3140)\n",
+           sim_wr_min_ns, sim_gap_addr_min_ns);
+    check("/WR >= 714 нс (2.5 такта Z80)", sim_wr_min_ns >= 714);
+    check("адрес -> данные >= 3140 нс (11 тактов Z80)", sim_gap_addr_min_ns >= 3140);
+
+    // 3. Тест чтения чипа: исправный - 0 ошибок, склеенные D4 / D6 - ловит
+    printf("--- тест чтения чипа\n");
+    chip_test_t r;
+    chip_test(&r);
+    check("исправный чип: 0 ошибок из 70", r.errors == 0 && r.checks == 70);
+    sim_fault_tie = 0x50;
+    chip_test(&r);
+    check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
+    sim_fault_tie = 0;
+    check("после теста ножки снова у PIO: запись идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
+
+    // 4. Спектрум: #FFFD (выбор регистра) и #BFFD (данные) через card.c -> чип и ответ на чтение
+    printf("--- запись Спектрума через card.c\n");
+    card_slot_write(0, 8); card_slot_write(1, 0x0F);
+    card_slot_write(0, 7); card_slot_write(1, 0x3E);
+    check("дошло до чипа", drain(100) && sim_ym_regs[8] == 0x0F && sim_ym_regs[7] == 0x3E);
+    card_slot_write(0, 8);
+    check("ответ на чтение #FFFD = 0F", card_answer() == 0x0F);
+
+    printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
+    return fails;
+}

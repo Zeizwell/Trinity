@@ -106,7 +106,7 @@ int main(void) {
     stdio_init_all();
 
     pio_set_gpio_base(led_pio, 16);                    // pio0 видит GP16..47: светодиод (20) и запись в чип (28..38)
-    led_sm = 0;
+    led_sm = pio_claim_unused_sm(led_pio, true);         // занять: иначе запись в чип (chip.c) получит ту же машину
     uint off = pio_add_program(led_pio, &ws2812_program);
     ws2812_program_init(led_pio, led_sm, off, PIN_RGB, 800000);
     rgb(64, 64, 64);                                   // прошивка жива: яркий белый 0.5 с
