@@ -18,7 +18,7 @@ static uint sm_wr, sm_rd;
 
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
-static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки
+static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, иначе бит s - ошибки в наборе s
 static volatile int  boot_stage;                // шаг старта ядра 1 (светодиод): 0 - не начал, 1 - писк, 2 - тест
 static chip_test_t   test_res;
 
@@ -63,25 +63,24 @@ static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
     boot_stage = 2;
     while (!chip_idle()) chip_poll();
-    // Тест трижды с разными паузами (chip_timing): видно, дело в паузах чипа или в проводах / помехах.
-    // #E0..: ошибок (мл, ст), плохие биты, первая ошибка (регистр, записали, прочитали) - для каждого набора по 6 байт
+    // Тест трижды с разными паузами (chip_timing 0 / 1 / 2): видно, дело в паузах чипа или в проводах / помехах.
+    // #E0..#E5 - самый медленный набор (2), на тех местах, что читает AYTEST: ошибок (мл, ст), плохие биты,
+    // первая ошибка (регистр, записали, прочитали); #E6..#EB - набор 1; #EC, #ED - ошибок набора 0
     uint8_t out[16] = { 0 };
-    int bad0 = 0;
-    for (int s = 0; s < 2; s++) {
+    int bad = 0;
+    static const uint8_t place[3] = { 12, 6, 0 };               // куда в out кладёт свой итог каждый набор
+    for (int s = 0; s < 3; s++) {
         chip_timing(s);
         chip_test(&test_res);
-        uint8_t *o = out + s * 6;
-        o[0] = (uint8_t)test_res.errors, o[1] = (uint8_t)(test_res.errors >> 8), o[2] = test_res.bad_bits;
-        o[3] = test_res.bad_reg, o[4] = test_res.bad_wrote, o[5] = test_res.bad_read;
-        if (s == 0) bad0 = test_res.errors;
+        uint8_t *o = out + place[s];
+        o[0] = (uint8_t)test_res.errors, o[1] = (uint8_t)(test_res.errors >> 8);
+        if (s) o[2] = test_res.bad_bits, o[3] = test_res.bad_reg, o[4] = test_res.bad_wrote, o[5] = test_res.bad_read;
+        if (test_res.errors) bad |= 1 << s;
     }
-    chip_timing(2);                               // третий набор: только число ошибок (#EC, #ED)
-    chip_test(&test_res);
-    out[12] = (uint8_t)test_res.errors, out[13] = (uint8_t)(test_res.errors >> 8);
     chip_timing(CHIP_TIMING_RUN);
     card_test_bytes(out, 16);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
-    boot_result = bad0 ? 1 : 0;
+    boot_result = bad;                            // бит s - в наборе s были ошибки
 }
 
 static void core1_main(void) {
@@ -150,10 +149,13 @@ int main(void) {
         else if (boot_stage == 2) rgb(64, 48, 0);                  //   жёлтый - тест чипа
         sleep_ms(10);                                              //   белый - ядро 1 ещё не начало
     }
-    if (cfg.boot_test) {
-        if (boot_result) rgb(64, 0, 0); else rgb(0, 64, 0);        // красный - ошибки, зелёный - OK
-        sleep_ms(5000);
-    }
+    if (cfg.boot_test)                                             // три набора пауз подряд: Z80, даташит, x4
+        for (int s = 0; s < 3; s++) {                              //   зелёный - 0 ошибок, красный - есть
+            if (boot_result >> s & 1) rgb(64, 0, 0); else rgb(0, 64, 0);
+            sleep_ms(1500);
+            rgb(0, 0, 0);
+            sleep_ms(400);
+        }
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
     while (true) {
