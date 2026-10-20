@@ -2,7 +2,7 @@
 ; 1) Каждый регистр 0..13: пишем через #BFFD 12 значений (00, FF, бегущая единица, 55, AA), читаем через #FFFD,
 ;    печатаем, какие БИТЫ не совпали (одни и те же биты везде - линия данных: провод / пайка).
 ; 2) Нота в канале A (~440 Гц): слышно - путь Спектрум -> RP -> чип работает.
-; Сначала - итог теста чипа, что RP сделала при старте (R15 - ошибок, R14 - плохие биты; 00 00 - чип в порядке).
+; Сначала - итог теста чипа, что RP сделала при старте (#E0 - ошибок, #E1 - плохие биты; 00 00 - чип в порядке).
 ; Порты TS-Config: VCONFIG #00AF, VPAGE #01AF, PAGE1 #11AF.
 
         DEVICE NOSLOT64K
@@ -19,10 +19,10 @@ start:  di
         ld hl,t_head : call print              ; заголовок
         call newline : call newline
 
-        ld hl,t_chip : call print              ; итог теста чипа при старте RP: R15 - ошибок, R14 - плохие биты
-        ld bc,#FFFD : ld a,15 : out (c),a : in a,(c) : call phex
+        ld hl,t_chip : call print              ; итог теста чипа при старте RP: #E0 - ошибок, #E1 - плохие биты
+        ld bc,#FFFD : ld a,#E0 : out (c),a : in a,(c) : call phex
         ld hl,t_bits : call print
-        ld bc,#FFFD : ld a,14 : out (c),a : in a,(c) : call phex
+        ld bc,#FFFD : ld a,#E1 : out (c),a : in a,(c) : call phex
         call newline : call newline
 
         xor a : ld (reg),a

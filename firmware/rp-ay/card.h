@@ -13,5 +13,5 @@ void    card_read_done(void);               // данные прочитали (
 void    card_poll(void);                    // в цикле ядра 1: таймеры эффектов, кадр, таймаут FX
 uint8_t card_sel(void);                     // выбранный регистр текущего чипа (лог)
 void    card_resend(void);                  // тень Спектрума (SSG 0..13) - снова в чип (после теста)
-void    card_test_result(uint8_t errors, uint8_t bad_bits);   // итог теста чипа - в тень R15 (ошибок) и R14
-                                            //   (плохие биты): Спектрум читает обычным #FFFD; сброс не стирает
+void    card_test_result(uint8_t errors, uint8_t bad_bits);   // итог теста чипа - в тень #E0 (ошибок) и #E1
+                                            //   (плохие биты; номера, что никто не пишет): читать #FFFD; сброс не стирает
