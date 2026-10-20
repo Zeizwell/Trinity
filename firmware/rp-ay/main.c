@@ -19,6 +19,7 @@ static uint sm_wr, sm_rd;
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
 static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки
+static volatile int  boot_stage;                // шаг старта ядра 1 (светодиод): 0 - не начал, 1 - писк, 2 - тест
 static chip_test_t   test_res;
 
 static void test_run(void) {                      // ядро 1: дождаться очереди, тест, вернуть тень, режим AY
@@ -47,6 +48,7 @@ static void do_reset(void) {                      // /IC: сбросить вс�
 // Проверка RP -> чип при включении: нота в канале A на cfg.boot_beep_ms, потом тишина (записи слота в это время теряются)
 static void boot_beep(void) {
     if (!cfg.boot_beep_ms) return;
+    boot_stage = 1;
     static const uint8_t on[][2] = { {0, 0xF8}, {1, 0x00}, {7, 0x3E}, {8, 15} };   // период #0F8: ~440 Гц при такте AY 1.75 МГц
     for (unsigned i = 0; i < sizeof on / sizeof on[0]; i++) chip_put(on[i][0], on[i][1]);
     uint32_t t0 = time_us_32();
@@ -59,6 +61,7 @@ static void boot_beep(void) {
 // Тест чипа при старте (cfg.boot_test): записать и прочитать регистры, итог - светодиодом (ядро 0)
 static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
+    boot_stage = 2;
     while (!chip_idle()) chip_poll();
     chip_test(&test_res);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
@@ -126,7 +129,11 @@ int main(void) {
     answer_update();
 
     multicore_launch_core1(core1_main);
-    while (boot_result < 0) sleep_ms(10);                          // итог теста чипа: 5 с
+    while (boot_result < 0) {                                      // шаг старта ядра 1 - цветом (где застрял)
+        if (boot_stage == 1) rgb(0, 0, 64);                        //   синий - писк
+        else if (boot_stage == 2) rgb(64, 48, 0);                  //   жёлтый - тест чипа
+        sleep_ms(10);                                              //   белый - ядро 1 ещё не начало
+    }
     if (cfg.boot_test) {
         if (boot_result) rgb(64, 0, 0); else rgb(0, 64, 0);        // красный - ошибки, зелёный - OK
         sleep_ms(5000);
