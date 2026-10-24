@@ -593,7 +593,7 @@
 			(pintype "passive")
 			(uuid "1a806ae3-a89f-4784-9c93-ef0c60676802")
 		)
-		(pad "11" smd rect
+		(pad "SH" smd rect
 			(at -7.75 -11)
 			(size 1.2 2.2)
 			(layers "F.Cu" "F.Paste" "F.Mask")
@@ -602,7 +602,7 @@
 			(pintype "passive")
 			(uuid "6a6a7bc7-0d17-49e1-b0aa-a0aa88f59b8a")
 		)
-		(pad "11" smd rect
+		(pad "SH" smd rect
 			(at -6.85 -1.4 180)
 			(size 1.6 1.4)
 			(layers "F.Cu" "F.Paste" "F.Mask")
@@ -611,7 +611,7 @@
 			(pintype "passive")
 			(uuid "2d767df0-4dbd-4284-a6f3-272c6bb2d735")
 		)
-		(pad "11" smd rect
+		(pad "SH" smd rect
 			(at 7.75 -10.9)
 			(size 1.2 2.2)
 			(layers "F.Cu" "F.Paste" "F.Mask")
