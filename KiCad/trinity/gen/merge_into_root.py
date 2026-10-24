@@ -93,6 +93,7 @@ def main():
     ap.add_argument("src"), ap.add_argument("root"), ap.add_argument("out")
     ap.add_argument("--dx", type=float, default=0.0), ap.add_argument("--dy", type=float, default=0.0)
     ap.add_argument("--gnda", action="store_true"), ap.add_argument("--paper")
+    ap.add_argument("--skip-ref"), ap.add_argument("--skip-bus", action="store_true")
     a = ap.parse_args()
     src = open(a.src, encoding="utf-8").read()
     root = open(a.root, encoding="utf-8").read()
@@ -117,6 +118,10 @@ def main():
     for head, text in top_items(body):
         if head in ("sheet_instances", "embedded_fonts", "title_block", "paper", "uuid"):
             continue
+        if head == "bus" and a.skip_bus:                 # шина-заглушка: в корне она уже есть
+            continue
+        if head == "symbol" and a.skip_ref and re.search(rf'\(property "Reference" "{a.skip_ref}"', text):
+            continue                                     # временный символ (в корне уже стоит настоящий)
         t = shift(text, a.dx, a.dy)
         if head == "rectangle":                          # рамки нет: у MultiSound синяя линия - настоящая шина с
             continue                                     #   вводами сигналов, её рисуем только там, где она есть
