@@ -58,9 +58,9 @@ static volatile uint32_t irq_max_cyc;           // самый долгий об�
 static void bus_irq(void) {
     uint32_t t0 = cyc_now();
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
-        uint32_t w = pio_sm_get(bus_pio, sm_wr);    // D0..D7, /CS (8), /WR (9), /RD (10), A0 (11)
-        if (w & (1u << 8)) continue;                // /CS = 1 - не наш чип
-        card_slot_write((w >> 11) & 1, (uint8_t)w);
+        uint32_t w = pio_sm_get(bus_pio, sm_wr);    // снимок ножек от PIN_SLOT_D0 (раскладка - config.h)
+        if (w >> (PIN_SLOT_CS - PIN_SLOT_D0) & 1) continue;      // /CS = 1 - не наш чип
+        card_slot_write(w >> (PIN_SLOT_A0 - PIN_SLOT_D0) & 1, (uint8_t)w);
         answer_update();
     }
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
@@ -178,7 +178,7 @@ static void core1_main(void) {
     }
 }
 
-// Такт чипа из слота (φM, GP12): фронты за 1 мс опросом (грубо, но видно: есть / нет / какой), кГц
+// Такт чипа из слота (φM, PIN_SLOT_PHIM): фронты за 1 мс опросом (грубо, но видно: есть / нет / какой), кГц
 static uint32_t phim_khz(void) {
     uint32_t n = 0, t0 = time_us_32();
     bool was = gpio_get(PIN_SLOT_PHIM);
@@ -204,7 +204,7 @@ int main(void) {
     set_sys_clock_khz(cfg.sys_khz, true);
     stdio_init_all();
 
-    pio_set_gpio_base(led_pio, 16);                    // pio0 видит GP16..47 (светодиод - 20)
+    pio_set_gpio_base(led_pio, PIN_RGB >= 32 ? 16 : 0);  // окно PIO - 32 ножки: светодиод (config.h) должен попасть
     led_sm = pio_claim_unused_sm(led_pio, true);         // занять: иначе запись в чип (chip.c) получит ту же машину
     uint off = pio_add_program(led_pio, &ws2812_program);
     ws2812_program_init(led_pio, led_sm, off, PIN_RGB, 800000);
@@ -223,8 +223,8 @@ int main(void) {
 
     sm_wr = pio_claim_unused_sm(bus_pio, true);
     sm_rd = pio_claim_unused_sm(bus_pio, true);
-    bus_wr_init(bus_pio, sm_wr, pio_add_program(bus_pio, &bus_wr_program));
-    bus_rd_init(bus_pio, sm_rd, pio_add_program(bus_pio, &bus_rd_program));
+    bus_wr_init(bus_pio, sm_wr, bus_add_program(bus_pio, &bus_wr_program, PIN_SLOT_WR));   // ножки - config.h
+    bus_rd_init(bus_pio, sm_rd, bus_add_program(bus_pio, &bus_rd_program, PIN_SLOT_RD));
     answer_update();
 
     multicore_launch_core1(core1_main);
@@ -282,7 +282,7 @@ int main(void) {
             printf("  test errors: read 00 %u, not driven %u, old value %u, other reg %u; by reg:", boot_res.got_zero,
                    boot_res.got_float, boot_res.got_old, boot_res.got_other);
             for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
-            printf("\n  phiM GP12 %lu kHz, /IC GP13 %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
+            printf("\n  phiM %lu kHz, /IC %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
                    (unsigned long)phim_khz(), gpio_get(PIN_SLOT_IC), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
             printf("  bus irq max %lu cyc (%lu ns), events lost %lu, packets ROW %lu TABLE %lu RESET %lu\n",
                    (unsigned long)irq_max_cyc, (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)),

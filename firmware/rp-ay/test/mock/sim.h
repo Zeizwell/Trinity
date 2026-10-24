@@ -59,6 +59,7 @@ void ws2812_program_init(PIO pio, uint sm, uint offset, uint pin, float freq);
 void bus_wr_init(PIO pio, uint sm, uint offset);
 void bus_rd_init(PIO pio, uint sm, uint offset);
 void bus_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status);
+uint bus_add_program(PIO pio, const pio_program_t *prog, uint pin);
 
 // --- прерывания (в модели шина не прерывает: тест зовёт card_slot_write сам)
 enum pio_interrupt_source { pis_sm0_rx_fifo_not_empty = 0 };

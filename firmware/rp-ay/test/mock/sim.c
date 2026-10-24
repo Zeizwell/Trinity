@@ -146,6 +146,7 @@ void chip_wr_init(PIO pio, uint sm, uint off, uint base) { (void)sm; (void)off; 
 void ws2812_program_init(PIO pio, uint sm, uint off, uint pin, float f) { (void)pio; (void)sm; (void)off; (void)pin; (void)f; }
 void bus_wr_init(PIO pio, uint sm, uint off) { (void)pio; (void)sm; (void)off; }
 void bus_rd_init(PIO pio, uint sm, uint off) { (void)pio; (void)sm; (void)off; }
+uint bus_add_program(PIO pio, const pio_program_t *prog, uint pin) { (void)pin; return pio_add_program(pio, prog); }
 void bus_rd_set(PIO pio, uint sm, uint8_t d, uint8_t s) { (void)pio; (void)sm; (void)d; (void)s; }
 
 void stdio_init_all(void) {}

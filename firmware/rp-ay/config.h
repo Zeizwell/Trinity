@@ -5,11 +5,12 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      23
+#define FW_VERSION      25
 #include <stdint.h>
 #include <stdbool.h>
 
-// ---- Ножки макета (FT2 doc/zx-trinity.md, п.15). На плате - другие, тоже только здесь.
+// ---- Ножки макета (FT2 doc/zx-trinity.md, п.15). На плате - другие: менять ТОЛЬКО здесь (C и PIO берут отсюда).
+// Требование к разводке: D0..D7 слота подряд, D0..D7 чипа подряд; остальные - любые (слот - в окне 32 ножек PIO).
 #define PIN_SLOT_D0     0   // слот: D0..D7 = GP0..GP7 (RP выдаёт только на чтение своего чипа)
 #define PIN_SLOT_CS     8   // /CS чипа (/YM1_CS)
 #define PIN_SLOT_WR     9   // /WR (/AWR)
