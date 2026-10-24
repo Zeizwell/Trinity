@@ -17,6 +17,7 @@ static volatile uint32_t ev_head, ev_tail;  // head пишет шина, tail - 
 static uint8_t  pk[PK_Q][AYFX_PKT];
 static volatile uint32_t pk_head, pk_tail;  // сколько пакетов положено / разобрано
 volatile uint32_t card_ev_lost;
+volatile uint32_t card_pk[5];
 
 // ---- «Шина»
 static uint8_t    regs[CARD_CHIPS][256];    // тень: что Спектрум записал (ответ на чтение)
@@ -112,6 +113,7 @@ static void ev_do(uint32_t e) {
         ayfx_off(&fx[c]);
         break;
     case AYFX_EV_PACKET:
+        if (pk[v][0] < 5) card_pk[pk[v][0]]++;
         ayfx_packet(&fx[c], pk[v]);
         pk_tail++;                                              // слот свободен
         break;

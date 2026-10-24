@@ -23,3 +23,4 @@ void    card_resend(void);                  // тень Спектрума (SSG 
 void    card_test_bytes(const uint8_t *b, int n);   // итог теста чипа - в тень #E0.. (номера, что никто не пишет):
                                             //   читать #FFFD; сброс не стирает. Раскладка - main.c, boot_check
 extern volatile uint32_t card_ev_lost;      // событий потеряно (очередь была полна)
+extern volatile uint32_t card_pk[5];        // пакетов разобрано по кодам (1 ROW, 2 TABLE, 3 RESET), консоль

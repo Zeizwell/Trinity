@@ -256,8 +256,9 @@ int main(void) {
             for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
             printf("\n  phiM GP12 %lu kHz, /IC GP13 %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
                    (unsigned long)phim_khz(), gpio_get(PIN_SLOT_IC), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
-            printf("  bus irq max %lu cyc (%lu ns), events lost %lu\n", (unsigned long)irq_max_cyc,
-                   (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)), (unsigned long)card_ev_lost);
+            printf("  bus irq max %lu cyc (%lu ns), events lost %lu, packets ROW %lu TABLE %lu RESET %lu\n",
+                   (unsigned long)irq_max_cyc, (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)),
+                   (unsigned long)card_ev_lost, (unsigned long)card_pk[1], (unsigned long)card_pk[2], (unsigned long)card_pk[3]);
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X  reads %lu:"
                    " %02X=%02X %02X=%02X %02X=%02X %02X=%02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,
