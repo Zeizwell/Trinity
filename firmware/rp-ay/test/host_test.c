@@ -13,7 +13,7 @@ static void check(const char *what, int ok) {
 // Дать записям дойти до чипа (ядро 1 в цикле крутит chip_poll), не дольше limit_ms модельного времени
 static bool drain(uint32_t limit_ms) {
     uint64_t end = sim_now_ns() + (uint64_t)limit_ms * 1000000;
-    while (sim_now_ns() < end) { chip_poll(); if (chip_idle()) return true; }
+    while (sim_now_ns() < end) { card_poll(); chip_poll(); if (chip_idle()) return true; }   // «Звук»: события, чип
     return false;
 }
 
@@ -71,9 +71,22 @@ int main(void) {
     card_slot_write(0, 0xC0);
     const char *key = "TRIN";
     for (int i = 0; i < 3; i++) card_slot_write(1, (uint8_t)key[i]);
-    check("после \"TRI\" ответ на чтение #C0 уже 'T' (заранее)", card_answer() == 'T');
-    card_slot_write(1, (uint8_t)key[3]);
-    check("ключ TRIN: режим FX, чтение #C0 = 'T'", mode == MODE_FX && card_answer() == 'T');
+    check("после \"TRI\" поток ещё закрыт: ответ #C0 - тень, не 'T'", card_answer() != 'T');
+    card_slot_write(1, (uint8_t)key[3]);         // шина: та же запись - и режим, и ответ (без фона)
+    check("ключ TRIN: сразу режим FX и чтение #C0 = 'T' (уровень «Шина»)", mode == MODE_FX && card_answer() == 'T');
+
+    // 6. Пакет через очередь: TABLE + ROW (SID канал A) - «Звук» пишет громкость в чип
+    card_slot_write(0, 8); card_slot_write(1, 15);   // громкость A = 15 (поток открыт - регистры как обычно)
+    card_slot_write(0, 0); card_slot_write(1, 100);  // тон A = 100
+    card_slot_write(0, 0xC1);
+    static const uint8_t tab[18] = { 2, 1, 15, 0 };  // TABLE 1: уровни 15, 0
+    for (int i = 0; i < 18; i++) card_slot_write(1, tab[i]);
+    static const uint8_t row[19] = { 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 };  // ROW: SID, табл. 1, 2 шага
+    for (int i = 0; i < 19; i++) card_slot_write(1, row[i]);
+    check("«Звук» разобрал очередь: SID вкл, громкость A в чипе = 15", drain(100) && sim_ym_regs[8] == 15);
+    check("событий не потеряно", card_ev_lost == 0);
+
+    card_slot_write(0, 0xC0);
     card_slot_write(1, 0);                       // закрыть
     check("закрыть (0 в #C0): режим AY", mode == MODE_AY);
 

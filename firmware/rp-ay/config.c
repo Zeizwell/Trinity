@@ -23,8 +23,8 @@ void cfg_defaults(void) {
     cfg.chips            = 1;           // макет: чип TurboSound выбирает CPLD MultiSound, в слот U4 - только его записи
     cfg.ay_clock_hz      = 1750000;     // такт AY Спектрума (YM2203 на макете - проверить делитель SSG)
     cfg.frame_hz         = 50;
-    cfg.sys_khz          = 150000;      // штатные 150 МГц (разгон не нужен: код в ОЗУ)
-    cfg.vreg             = VREG_VOLTAGE_1_10;     // штатное
+    cfg.sys_khz          = 250000;      // 250 МГц: на 150 разбор шины не успевает за пачкой записей (fifo, FT2 не видит карту) - до архитектуры 14б
+    cfg.vreg             = VREG_VOLTAGE_1_15;     // под 250 МГц
     cfg.led_bright       = 16;
     cfg.log_period_ms    = 1000;
 }

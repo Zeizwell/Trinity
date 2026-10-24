@@ -155,3 +155,10 @@ void multicore_launch_core1(void (*fn)(void)) {
     in_core1 = true;
     fn();
 }
+
+void pio_set_irq0_source_enabled(PIO pio, enum pio_interrupt_source s, bool on) { (void)pio; (void)s; (void)on; }
+void irq_set_exclusive_handler(uint n, void (*h)(void)) { (void)n; (void)h; }
+void irq_set_priority(uint n, uint8_t p) { (void)n; (void)p; }
+void irq_set_enabled(uint n, bool on) { (void)n; (void)on; }
+uint32_t save_and_disable_interrupts(void) { return 0; }
+void restore_interrupts(uint32_t s) { (void)s; }

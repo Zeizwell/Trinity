@@ -60,6 +60,16 @@ void bus_wr_init(PIO pio, uint sm, uint offset);
 void bus_rd_init(PIO pio, uint sm, uint offset);
 void bus_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status);
 
+// --- прерывания (в модели шина не прерывает: тест зовёт card_slot_write сам)
+enum pio_interrupt_source { pis_sm0_rx_fifo_not_empty = 0 };
+enum { PIO1_IRQ_0 = 17 };
+void pio_set_irq0_source_enabled(PIO pio, enum pio_interrupt_source s, bool on);
+void irq_set_exclusive_handler(uint n, void (*h)(void));
+void irq_set_priority(uint n, uint8_t p);
+void irq_set_enabled(uint n, bool on);
+uint32_t save_and_disable_interrupts(void);
+void restore_interrupts(uint32_t s);
+
 // --- прочее sdk
 void stdio_init_all(void);
 int  getchar_timeout_us(uint32_t us);

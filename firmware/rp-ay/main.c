@@ -1,6 +1,7 @@
 // RP-AY (FT2 doc/zx-trinity.md, 14а и п.15): режимы AY и FX - записи из слота -> тень -> чип, эффекты AY FX
 // (движок engine/ayfx.c), чтение из слота - ответ RP из тени. Каркас режимов и настроек - под ATARI, обновление.
-// Ядро 1: шина (разбор PIO), карта (card.c), писатель в чип, сброс. Ядро 0: USB-консоль, светодиод.
+// Ядро 1: шина - прерыванием PIO (уровень «Шина», doc 14б), в цикле - «Звук»: события, эффекты, писатель в чип, сброс.
+// Ядро 0: USB-консоль, светодиод.
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -8,6 +9,7 @@
 #include "hardware/gpio.h"
 #include "hardware/vreg.h"
 #include "hardware/clocks.h"
+#include "hardware/sync.h"
 #include "config.h"
 #include "modes.h"
 #include "chip.h"
@@ -42,15 +44,61 @@ static void answer_update(void) {
     bus_rd_set(bus_pio, sm_rd, card_answer(), cfg.status_answer);
 }
 
-static void do_reset(void) {                      // /IC: сбросить всё (doc 14а)
+// ---- Уровень «Шина» (doc 14б): прерывание PIO, высший приоритет, ядро 1. Всё, от чего зависит ответ Спектруму,
+// считается здесь, ответ выставляется сразу после записи, которая его меняет. Нельзя: ждать, USB / printf, флеш.
+// Такты обработчика - счётчиком SysTick (такт RP), самый долгий - в консоль (бюджет: до следующего обращения
+// Спектрума, ~0.85 мкс на 14 МГц)
+#ifndef SIM_HOST
+#include "hardware/irq.h"
+#include "hardware/structs/systick.h"
+static void     cyc_init(void) { systick_hw->rvr = 0xFFFFFF; systick_hw->cvr = 0; systick_hw->csr = 5; }
+static uint32_t cyc_now(void)  { return systick_hw->cvr; }                  // считает ВНИЗ, 24 бита
+#else
+static void     cyc_init(void) {}
+static uint32_t cyc_now(void)  { return 0; }
+#endif
+static volatile uint32_t irq_max_cyc;           // самый долгий обработчик шины, такты RP
+
+static void bus_irq(void) {
+    uint32_t t0 = cyc_now();
+    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
+        uint32_t w = pio_sm_get(bus_pio, sm_wr);    // D0..D7, /CS (8), /WR (9), /RD (10), A0 (11)
+        if (w & (1u << 8)) continue;                // /CS = 1 - не наш чип
+        card_slot_write((w >> 11) & 1, (uint8_t)w);
+        answer_update();
+    }
+    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
+        uint32_t r = pio_sm_get(bus_pio, sm_rd);    // метка = байт, что был на шине
+        if (chip_stat.reads < 4)                    // консоль: первые 4 чтения - регистр и что получил Спектрум
+            chip_stat.rd_sel[chip_stat.reads] = card_sel(), chip_stat.rd_ans[chip_stat.reads] = (uint8_t)r;
+        chip_stat.reads++;
+        card_read_done();
+        answer_update();
+    }
+    uint32_t d = (t0 - cyc_now()) & 0xFFFFFF;
+    if (d > irq_max_cyc) irq_max_cyc = d;
+}
+
+static void bus_irq_on(void) {
+    cyc_init();
+    pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_wr), true);
+    pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_rd), true);
+    irq_set_exclusive_handler(PIO1_IRQ_0, bus_irq);
+    irq_set_priority(PIO1_IRQ_0, 0);                // высший
+    irq_set_enabled(PIO1_IRQ_0, true);              // на ядре 1: обработчик - здесь
+}
+
+static void do_reset(void) {                      // /IC: сбросить всё (doc 14а); шина в это время не отвечает
+    uint32_t s = save_and_disable_interrupts();
     mode_reset();
     card_reset();
     answer_update();
+    restore_interrupts(s);
     chip_stat.resets++;
 }
 
-// ---- Ядро 1: реальное время
-// Проверка RP -> чип при включении: нота в канале A на cfg.boot_beep_ms, потом тишина (записи слота в это время теряются)
+// ---- Ядро 1: «Шина» - прерыванием, «Звук» - здесь, в цикле
+// Проверка RP -> чип при включении: нота в канале A на cfg.boot_beep_ms, потом тишина
 static void boot_beep(void) {
     if (!cfg.boot_beep_ms) return;
     boot_stage = 1;
@@ -63,9 +111,10 @@ static void boot_beep(void) {
     while (!chip_idle()) chip_poll();
 }
 
-// Тест чипа при старте (cfg.boot_test): каждый регистр 0..13 - все значения 0..255 записать и прочитать обратно,
-// паузы - рабочие. Итог - светодиод (ядро 0: зелёный 3 с - OK, красный насовсем - ошибки), консоль, #E0..#E5 тени
-// (ошибок мл / ст, плохие биты, первая ошибка: регистр, записали, прочитали)
+// Тест чипа при старте (cfg.boot_test): 256 случайных строк R0..R13 тем же путём, что музыка, и чтение обратно.
+// Итог - светодиод (ядро 0: зелёный 3 с - OK, красный насовсем - ошибки), консоль, #E0..#E5 тени
+// (ошибок мл / ст, плохие биты, первая ошибка: регистр, записали, прочитали). Шина в это время отвечает (прерывание),
+// её события ждут в очереди
 static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
     boot_stage = 2;
@@ -77,36 +126,16 @@ static void boot_check(void) {
                        boot_res.bad_reg, boot_res.bad_wrote, boot_res.bad_read };
     card_test_bytes(out, 6);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
-    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) pio_sm_get(bus_pio, sm_wr);   // записи слота за время
-    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) pio_sm_get(bus_pio, sm_rd);   //   теста - выбросить
-    chip_stat.fifo_full = 0;                      //   (переполнение за тест - не ошибка работы)
     boot_result = boot_res.errors ? 1 : 0;
 }
 
 static void core1_main(void) {
+    bus_irq_on();
     boot_check();
     boot_beep();
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
-        if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;
-        while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
-            uint32_t w = pio_sm_get(bus_pio, sm_wr);    // D0..D7, /CS (8), /WR (9), /RD (10), A0 (11)
-            if (w & (1u << 8)) continue;                // /CS = 1 - не наш чип
-            bool a0 = (w >> 11) & 1;
-            uint8_t s = card_sel();
-            if (a0 && s != 0xC0 && s != 0xC1)           // данные в обычный регистр: ответ = записанное - СРАЗУ,
-                bus_rd_set(bus_pio, sm_rd, (uint8_t)w, cfg.status_answer);   //   до разбора (чтение сразу за записью)
-            card_slot_write(a0, (uint8_t)w);
-            answer_update();
-        }
-        while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
-            uint32_t r = pio_sm_get(bus_pio, sm_rd);    // метка = байт, что был на шине
-            if (chip_stat.reads < 4)                    // консоль: первые 4 чтения - регистр и что получил Спектрум
-                chip_stat.rd_sel[chip_stat.reads] = card_sel(), chip_stat.rd_ans[chip_stat.reads] = (uint8_t)r;
-            chip_stat.reads++;
-            card_read_done();
-            answer_update();
-        }
+        if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;   // прерывание не успело
         card_poll();
         chip_poll();
         if (test_req) test_run();
@@ -210,6 +239,8 @@ int main(void) {
             for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
             printf("\n  phiM GP12 %lu kHz, /IC GP13 %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
                    (unsigned long)phim_khz(), gpio_get(PIN_SLOT_IC), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
+            printf("  bus irq max %lu cyc (%lu ns), events lost %lu\n", (unsigned long)irq_max_cyc,
+                   (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)), (unsigned long)card_ev_lost);
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X  reads %lu:"
                    " %02X=%02X %02X=%02X %02X=%02X %02X=%02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,

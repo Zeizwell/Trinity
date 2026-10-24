@@ -5,7 +5,7 @@
 #pragma once
 
 // Р’РµСЂСЃРёСЏ РїСЂРѕС€РёРІРєРё: +1 РЅР° РєР°Р¶РґСѓСЋ СЃР±РѕСЂРєСѓ, С‡С‚Рѕ РёРґС‘С‚ РІ RP. build.bat РєР»Р°РґС‘С‚ С„Р°Р№Р» РІ bin/rp_ay_vNN.uf2 Рё СЃС‚Р°СЂС‹Рµ РЅРµ С‚СЂРѕРіР°РµС‚
-#define FW_VERSION      12
+#define FW_VERSION      14
 #include <stdint.h>
 #include <stdbool.h>
 

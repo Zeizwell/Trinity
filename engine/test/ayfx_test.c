@@ -16,17 +16,23 @@ static void check(const char *what, int ok) {
 }
 
 // ---- Спектрум: как его записи приходят в RP (card.c)
-static ayfx_t a;
-static void sel(uint8_t r) { ayfx_select(&a, r); }
-static bool wr(uint8_t r, uint8_t v) {          // true - регистр у эффекта (в чип не пропускать)
+static ayfx_t a;                                // звук
+static ayfx_bus_t b;                            // шина
+static void sel(uint8_t r) { ayfx_bus_select(&b, r); }
+static bool wr(uint8_t r, uint8_t v) {          // true - в чип не пропускать (протокол или регистр у эффекта)
     sel(r);
-    if (ayfx_port_write(&a, r, v)) return true;
-    if (ayfx_reg_write(&a, r, v)) return true;
-    chip[r] = v;                                // не у эффекта - прямо в чип
-    return false;
+    switch (ayfx_bus_write(&b, v)) {            // шина -> событие -> звук (как карта и эмулятор)
+    case AYFX_EV_REG:
+        if (ayfx_reg_write(&a, r, v)) return true;
+        chip[r] = v;                            // не у эффекта - прямо в чип
+        return false;
+    case AYFX_EV_CLOSE:  ayfx_off(&a); break;
+    case AYFX_EV_PACKET: ayfx_packet(&a, b.pkt); break;
+    }
+    return true;
 }
-static void c1(const uint8_t *b, int n) { for (int i = 0; i < n; i++) wr(0xC1, b[i]); }
-static uint8_t rd(uint8_t r) { uint8_t v = 0xEE; sel(r); ayfx_port_read(&a, r, &v); return v; }
+static void c1(const uint8_t *p, int n) { for (int i = 0; i < n; i++) wr(0xC1, p[i]); }
+static uint8_t rd(uint8_t r) { uint8_t v = 0xEE; sel(r); if (ayfx_bus_peek(&b, &v)) ayfx_bus_read_done(&b); return v; }
 
 static void open_stream(void) { wr(0xC0, 'T'); wr(0xC0, 'R'); wr(0xC0, 'I'); wr(0xC0, 'N'); }
 
@@ -43,13 +49,14 @@ static void table(uint8_t n, const uint8_t *steps) {
 
 int main(void) {
     ayfx_init(&a, out, NULL);
+    ayfx_bus_reset(&b);
 
     // 1. Ключ
-    check("закрыт после init", !a.on);
+    check("закрыт после init", !b.on);
     wr(0xC0, 'T'); wr(0xC0, 'X');
-    check("неверный ключ - закрыт", !a.on);
+    check("неверный ключ - закрыт", !b.on);
     open_stream();
-    check("TRIN - открыт", a.on);
+    check("TRIN - открыт", b.on);
 
     // 2. INFO: T R I N версия, потом 0
     { uint8_t p = AYFX_P_INFO; c1(&p, 1); }
@@ -57,7 +64,7 @@ int main(void) {
     for (int i = 0; i < 6; i++) info[i] = rd(0xC1);
     check("INFO = T R I N 2 0", info[0] == 'T' && info[1] == 'R' && info[2] == 'I' && info[3] == 'N' &&
                                 info[4] == AYFX_VER && info[5] == 0);
-    { uint8_t v; check("чтение AY-регистра - не наше", !ayfx_port_peek(&a, 8, &v)); }
+    { uint8_t v; sel(8); check("чтение AY-регистра - не наше", !ayfx_bus_peek(&b, &v)); }
 
     // 3. SID на канале A: таблица 1 = уровни 15, 0; 2 шага; тон 100
     wr(0, 100); wr(1, 0); wr(8, 15);
@@ -93,7 +100,7 @@ int main(void) {
 
     // 6. Закрытие потока: 0 в #C0
     wr(0xC0, 0);
-    check("0 в C0 - закрыт", !a.on);
+    check("0 в C0 - закрыт", !b.on);
     { uint8_t p[2] = { AYFX_P_RESET, 7 }; outs = 0; c1(p, 2); }
     check("закрыт - пакеты не идут", outs == 0);
 
