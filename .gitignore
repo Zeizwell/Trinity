@@ -16,3 +16,8 @@ KiCad/**/.history/
 KiCad/**/~*.lck
 KiCad/**/*-backups/
 KiCad/**/.schgen-backup/
+
+# генератор: проектные файлы его временного проекта
+KiCad/trinity/gen/analog.kicad_pro
+KiCad/trinity/gen/analog.kicad_prl
+KiCad/trinity/gen/__pycache__/
