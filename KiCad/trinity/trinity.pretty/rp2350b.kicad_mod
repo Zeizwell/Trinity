@@ -458,7 +458,7 @@
 		(uuid "a545916f-ab18-476e-a5d6-5de0aefc4077")
 	)
 	(pad "GP26" smd roundrect
-		(at -4.379 16.65 90)
+		(at -4.435 16.65 90)
 		(size 1.6 0.9)
 		(layers "*.Mask" "B.Cu")
 		(roundrect_rratio 0.2833333333)
