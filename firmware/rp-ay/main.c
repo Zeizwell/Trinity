@@ -96,7 +96,9 @@ static void snd_alarm_cb(uint alarm) {
         hardware_alarm_force_irq(alarm);                        // срок уже прошёл - сразу снова
 }
 
-void sound_kick(void) { if (snd_alarm >= 0) hardware_alarm_force_irq((uint)snd_alarm); }
+void sound_kick(void)   { if (snd_alarm >= 0) hardware_alarm_force_irq((uint)snd_alarm); }
+void sound_lock(void)   { if (snd_alarm >= 0) irq_set_enabled(hardware_alarm_get_irq_num((uint)snd_alarm), false); }
+void sound_unlock(void) { if (snd_alarm >= 0) irq_set_enabled(hardware_alarm_get_irq_num((uint)snd_alarm), true); }
 
 static void sound_on(void) {                    // на ядре 1: прерывание будильника - здесь
     snd_alarm = hardware_alarm_claim_unused(true);
@@ -106,6 +108,8 @@ static void sound_on(void) {                    // на ядре 1: прерыв
 }
 #else
 void sound_kick(void) {}
+void sound_lock(void) {}
+void sound_unlock(void) {}
 static void sound_on(void) {}
 #endif
 
@@ -158,6 +162,7 @@ static void core1_main(void) {
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;   // прерывание не успело
+        card_poll();                                    // события шины, планы эффектов, кадр, таймаут
         chip_poll();                                    // писатель в чип: эффекты - первыми, потом очередь
         if (test_req) test_run();
         if (hold_req && chip_idle()) { chip_hold(30000); hold_req = false; }

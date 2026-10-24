@@ -52,9 +52,14 @@ void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение б
 // ---- Звук
 typedef void (*ayfx_out_fn)(void *user, uint8_t reg, uint8_t val);
 
-typedef struct {                // один таймер: Mix (SID / Sync), FM, Env FM
-    uint32_t cnt, dur;          // тактов в текущем шаге, длина шага
-    uint8_t  step;              // шаг таблицы
+typedef struct {                // один таймер: Mix (SID / Sync), FM, Env FM. План считается заранее (ayfx_plan:
+                                // ROW, TABLE, RESET, запись Спектрума в тон / громкость, свип), шаг - только готовое
+    uint32_t cnt, dur;          // тактов в текущем шаге, длина текущего шага
+    uint8_t  step, len;         // шаг таблицы, длина таблицы (1..16)
+    uint8_t  reg, two;          // регистр AY; two - пишем пару (reg - мл., reg + 1 - ст.: FM, Env FM)
+    uint8_t  pwm;               // ШИМ: шаг 0 длится d0, шаг 1 - d1 (иначе все шаги - d0)
+    uint32_t d0, d1;            // длины шагов, такты тона
+    uint16_t val[16];           // готовое значение регистра(ов) на каждый шаг
 } ayfx_tmr_t;
 
 typedef struct {
@@ -77,7 +82,7 @@ void ayfx_reset(ayfx_t *a);                                   // всё выкл
 void ayfx_off(ayfx_t *a);                                     // все эффекты выкл, регистры - как у Спектрума
 void ayfx_packet(ayfx_t *a, const uint8_t *pkt);              // пакет от шины (AYFX_EV_PACKET)
 bool ayfx_reg_write(ayfx_t *a, uint8_t reg, uint8_t val);     // AY 0..15 от Спектрума
-void ayfx_tick(ayfx_t *a, uint32_t n);
+void ayfx_tick(ayfx_t *a, uint32_t n);                         // ЛЁГКАЯ (прерывание): только шаги по готовому плану
 void ayfx_frame(ayfx_t *a);
 bool ayfx_active(const ayfx_t *a);                            // хоть один эффект включён
 uint32_t ayfx_next(const ayfx_t *a);                          // тактов тона до ближайшего шага (UINT32_MAX - нет)

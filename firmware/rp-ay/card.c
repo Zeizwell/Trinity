@@ -44,7 +44,6 @@ static void ev_put(uint8_t type, uint8_t c, uint8_t r, uint8_t v) {
     if (((h + 1) & (EV_Q - 1)) == ev_tail) { card_ev_lost++; return; }
     ev[h] = (uint32_t)type << 24 | (uint32_t)c << 16 | (uint32_t)r << 8 | v;
     ev_head = (h + 1) & (EV_Q - 1);
-    sound_kick();                                               // «Звук» - сразу, не ждать будильника
 }
 
 // Пакет целиком - в слот и событие (слотов нет - потерян)
@@ -96,7 +95,8 @@ void card_read_done(void) { ayfx_bus_read_done(&bus[cur]); }
 
 uint8_t card_sel(void) { return bus[cur].sel; }
 
-// ================= «Звук» - прерывание будильника (main.c): card_sound =================
+// ================= «Звук»: фон (card_poll) - события, планы, кадр, таймаут; прерывание будильника (card_sound) -
+// только шаги эффектов по готовым планам. Фон трогает движок при выключенном прерывании будильника (sound_lock)
 
 // Выход движка: запись эффекта в чип - вне очереди (chip_put_fx). Настоящий чип на макете - только 0
 static void fx_out(void *user, uint8_t reg, uint8_t val) {
@@ -127,14 +127,38 @@ static void fx_timeout(void) {
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
 }
 
-// Всё «звуковое» - здесь, из одного места (движок без гонок): события шины, шаги эффектов точно в срок, свип раз в
-// кадр, таймаут. Время эффектов - такты тона AY (cfg.ay_clock_hz / 8). -> через сколько мкс звать снова: до ближайшего
-// шага эффекта, не реже раза в CARD_SOUND_MAX_US (события, кадр, таймаут)
-uint32_t card_sound(void) {
+// Фон ядра 1: события шины (пакеты -> планы, записи Спектрума), свип раз в кадр, таймаут. Движок - под sound_lock:
+// прерывание будильника в это время не шагает (пересчёт плана - единицы мкс), потом будильник - заново (sound_kick)
+void card_poll(void) {
+    bool touched = false;
     while (ev_tail != ev_head) {                                // события шины - по порядку
+        sound_lock();
         ev_do(ev[ev_tail]);
+        sound_unlock();
         ev_tail = (ev_tail + 1) & (EV_Q - 1);
+        touched = true;
     }
+    uint32_t now = time_us_32();
+    if (mode != MODE_FX) { t_frame = now; return; }
+    // t_act пишет прерывание шины: оно могло прийти после чтения now - разница со знаком
+    if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) {
+        sound_lock();
+        fx_timeout();
+        sound_unlock();
+        touched = true;
+    } else if (cfg.frame_hz && now - t_frame >= 1000000u / cfg.frame_hz) {   // кадр: свип ШИМ (планы ШИМ заново)
+        t_frame += 1000000u / cfg.frame_hz;
+        sound_lock();
+        for (int c = 0; c < chips(); c++) ayfx_frame(&fx[c]);
+        sound_unlock();
+        touched = true;
+    }
+    if (touched) sound_kick();                                  // планы поменялись - будильник на новый ближайший шаг
+}
+
+// Прерывание будильника: прошедшие такты тона -> шаги по готовым планам (только целые числа, без расчётов).
+// -> через сколько мкс звать снова: до ближайшего шага, не реже CARD_SOUND_MAX_US
+uint32_t card_sound(void) {
     uint32_t now = time_us_32(), dt = now - t_last;
     t_last = now;
     if (snd_due && (int32_t)(now - snd_due) >= 0) {             // пришли к сроку шага: насколько позже
@@ -144,12 +168,7 @@ uint32_t card_sound(void) {
         snd_due = 0;
     }
     uint32_t hz = cfg.ay_clock_hz / 8;                          // тактов тона в секунду
-    if (mode != MODE_FX) { tick_acc = 0; t_frame = now; return CARD_SOUND_MAX_US; }   // TEST и др.: эффекты стоят
-    // t_act пишет прерывание шины: оно могло прийти после чтения now - разница со знаком
-    if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) {
-        fx_timeout();
-        return CARD_SOUND_MAX_US;
-    }
+    if (mode != MODE_FX) { tick_acc = 0; return CARD_SOUND_MAX_US; }   // TEST и др.: эффекты стоят
     // такты тона за dt мкс: остаток копится в единицах 1/1e6 такта (dt до ~19 с не переполнит 32 бита)
     tick_acc += dt * hz;
     uint32_t n = tick_acc / 1000000u;
@@ -157,10 +176,6 @@ uint32_t card_sound(void) {
     if (n)
         for (int c = 0; c < chips(); c++)
             if (ayfx_active(&fx[c])) ayfx_tick(&fx[c], n);
-    if (cfg.frame_hz && now - t_frame >= 1000000u / cfg.frame_hz) {   // кадр: свип ШИМ
-        t_frame += 1000000u / cfg.frame_hz;
-        for (int c = 0; c < chips(); c++) ayfx_frame(&fx[c]);
-    }
     uint32_t next = UINT32_MAX;                                 // ближайший шаг эффекта, такты тона
     for (int c = 0; c < chips(); c++) {
         uint32_t k = ayfx_next(&fx[c]);

@@ -13,7 +13,7 @@ static void check(const char *what, int ok) {
 // Дать записям дойти до чипа (ядро 1 в цикле крутит chip_poll), не дольше limit_ms модельного времени
 static bool drain(uint32_t limit_ms) {
     uint64_t end = sim_now_ns() + (uint64_t)limit_ms * 1000000;
-    while (sim_now_ns() < end) { card_sound(); chip_poll(); if (chip_idle()) return true; }   // «Звук»: события, чип
+    while (sim_now_ns() < end) { card_poll(); card_sound(); chip_poll(); if (chip_idle()) return true; }   // «Звук»: события, чип
     return false;
 }
 
