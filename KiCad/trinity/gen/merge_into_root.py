@@ -45,6 +45,23 @@ def shift(text, dx, dy):
     return re.sub(r"\((at|xy|start|end) (-?[\d.]+) (-?[\d.]+)", f, text)
 
 
+def bus_frame(rect):
+    """Прямоугольник блока -> 4 отрезка шины (стиль MultiSound / ZXEVO), углы - на сетку 1.27 наружу."""
+    import math
+    import uuid as _uuid
+    (x1, y1), (x2, y2) = [tuple(map(float, re.search(rf"\({k} ([\d.-]+) ([\d.-]+)\)", rect).groups()))
+                          for k in ("start", "end")]
+    g = 1.27
+    x1, y1 = math.floor(x1 / g) * g, math.floor(y1 / g) * g
+    x2, y2 = math.ceil(x2 / g) * g, math.ceil(y2 / g) * g
+    pts = [(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)]
+    seed = re.search(r'\(uuid "([^"]+)"\)', rect).group(1)
+    return [f"\t(bus\n\t\t(pts\n\t\t\t(xy {round(a[0], 2):g} {round(a[1], 2):g}) (xy {round(b[0], 2):g} {round(b[1], 2):g})\n"
+            f"\t\t)\n\t\t(stroke\n\t\t\t(width 0)\n\t\t\t(type solid)\n\t\t)\n"
+            f'\t\t(uuid "{_uuid.uuid5(_uuid.NAMESPACE_URL, seed + str(i))}")\n\t)'
+            for i, (a, b) in enumerate(zip(pts, pts[1:]))]
+
+
 def lib_names(text):
     i = text.index("(lib_symbols")
     return set(re.findall(r'\n\t\t\(symbol "([^"]+)"', text[i:text.index("\n\t)", i)])), i
@@ -101,6 +118,11 @@ def main():
         if head in ("sheet_instances", "embedded_fonts", "title_block", "paper", "uuid"):
             continue
         t = shift(text, a.dx, a.dy)
+        if head == "rectangle":                          # рамки нет: у MultiSound синяя линия - настоящая шина с
+            continue                                     #   вводами сигналов, её рисуем только там, где она есть
+        if head == "text" and "(bold yes)" in t:         # заголовок блока - как у MultiSound: 2 мм, не жирный
+            t = t.replace("(size 1.6 1.6)", "(size 2.0066 2.0066)").replace("\n\t\t\t\t(bold yes)", "")
+            t = t.replace("(justify left)", "(justify left bottom)")
         if head == "symbol":
             t = re.sub(r'\(project "[^"]*"', f'(project "{project}"', t)
             t = re.sub(r'\(path "[^"]*"', f'(path "/{root_uuid}"', t)

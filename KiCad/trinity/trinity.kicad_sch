@@ -31001,32 +31001,6 @@
 			)
 		)
 	)
-	(rectangle
-		(start 118.613 336.55)
-		(end 214.671 469.71)
-		(stroke
-			(width 0.254)
-			(type dash)
-			(color 132 132 132 1)
-		)
-		(fill
-			(type none)
-		)
-		(uuid "4aa84c60-4301-5250-a622-02c9e5927e83")
-	)
-	(rectangle
-		(start 30.48 336.36)
-		(end 103.754 375.39)
-		(stroke
-			(width 0.254)
-			(type dash)
-			(color 132 132 132 1)
-		)
-		(fill
-			(type none)
-		)
-		(uuid "7a68cc9a-4fc9-5775-8cb7-b2c5607d61db")
-	)
 	(text "-5VA: V- of the mixer op-amp U3 (pin 4); 100n near that pin.\n+5VA_1 / +5VA_2: own filter per YM (pin 21 YM2203, pin 1 YM3014B).\nNo 5 V LDO from the 5 V bus - filters only."
 		(exclude_from_sim no)
 		(at 125.73 461.01 0)
@@ -31054,10 +31028,9 @@
 		(at 118.613 334.52 0)
 		(effects
 			(font
-				(size 1.6 1.6)
-				(bold yes)
+				(size 2.0066 2.0066)
 			)
-			(justify left)
+			(justify left bottom)
 		)
 		(uuid "a043fcfe-4dd6-5055-9371-3413f23f599a")
 	)
@@ -31066,10 +31039,9 @@
 		(at 30.48 334.33 0)
 		(effects
 			(font
-				(size 1.6 1.6)
-				(bold yes)
+				(size 2.0066 2.0066)
 			)
-			(justify left)
+			(justify left bottom)
 		)
 		(uuid "c02eff66-e87c-5e7f-83e4-71d5b7692376")
 	)
