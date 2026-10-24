@@ -20,7 +20,8 @@ FP_R = "Resistor_SMD:R_0603_1608Metric"
 RIGHT = [("GP28", "AY_D0"), ("GP29", "AY_D1"), ("GP30", "AY_D2"), ("GP31", "AY_D3"), ("GP32", "AY_D4"),
          ("GP33", "AY_D5"), ("GP34", "AY_D6"), ("GP35", "AY_D7"), ("GP36", "AY_WR"), ("GP37", "AY_RD"),
          ("GP38", "AY_C0"), ("GP39", "AY_C1"), ("GP40", "AY_RDY"), ("GP41", "AY_RST"),
-         ("GP42", "~{Y1RD}"), ("GP43", "~{Y2RD}"), ("GP44", "GS_RX"), ("GP45", "GS_TX"), ("GP46", "~{RSTOUT}")]
+         ("GP42", "~{Y1RD}"), ("GP43", "~{Y2RD}"), ("GP44", "GS_RX"), ("GP45", "GS_TX"), ("GP46", "~{RSTOUT}"),
+         ("GP47", "AY_GP47")]                                 # GP47 - запасная, на гребёнку J6 (блок GS)
 NETS, NO_CONNECT = {}, []
 
 
@@ -38,7 +39,6 @@ def build_rp(d):
         s.bus_entry(BUS_X - 2.54, py, 2.54, -2.54)
         s.label(n, BUS_X - 2.54, py, angle=180)           # метка у ввода, текст к ножке (как у образца слева)
         net(n, U, p)
-    s.nc(U, "GP47"); NO_CONNECT.append((U, "GP47"))
     for p in ("3V3", "EN", "GP20", "GP26", "GP27"):        # 3V3 модуля и EN - не нужны; светодиод; торец без дыр
         s.nc(U, p); NO_CONNECT.append((U, p))
     # 5V модуля через Шоттки (катод - модуль, анод - +5V платы), земля

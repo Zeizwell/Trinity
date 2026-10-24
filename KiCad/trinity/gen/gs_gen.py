@@ -206,14 +206,15 @@ def build(d):
         net("3V3_GS", c, 1); net("GND", c, 2)
 
     # ---- гребёнка J6: запасные ножки RP-GS
-    s.place("J6", "Connector_Generic:Conn_01x11", "GS SPARE", 271.78, 78.74,
-            props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical"})
+    s.place("J6", "Connector_Generic:Conn_01x12", "SPARE", 271.78, 76.2,
+            props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical"})
     for k2, p in enumerate(spare, 1):
         lab_stub(s, "J6", k2, f"GS_{p}", 5.08)
-    j = s.pin("J6", 11)                                   # земля гребёнки - уголком вниз, мимо меток
+    lab_stub(s, "J6", 11, "AY_GP47", 5.08)               # единственная свободная ножка RP-AY
+    j = s.pin("J6", 12)                                   # земля гребёнки - уголком вниз, мимо меток
     s.wire(j, (j[0] - 2.54, j[1]), (j[0] - 2.54, j[1] + 2.54))
     s.power("GND", j[0] - 2.54, j[1] + 2.54)
-    net("GND", "J6", 11)
+    net("GND", "J6", 12)
 
     # ---- шина вокруг блока и заголовок (как TURBO SOUND FM)
     s.bus((BL, BT), (BR, BT), (BR, BB), (BL, BB), (BL, BT))

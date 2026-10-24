@@ -1524,10 +1524,6 @@
 		(uuid "9f944607-4b55-590f-b83c-1fbcbe091b26")
 	)
 	(no_connect
-		(at 149.86 129.54)
-		(uuid "c3c9d95a-8457-5248-b4a1-7d9cb72ae0bd")
-	)
-	(no_connect
 		(at 132.08 182.88)
 		(uuid "c9334bef-a72d-5302-911a-d55363192b9f")
 	)
@@ -1628,6 +1624,15 @@
 			(type solid)
 		)
 		(uuid "8b2ba845-780a-563c-b173-7f6f38c3e46d")
+	)
+	(bus_entry
+		(at 160.02 129.54)
+		(size 2.54 -2.54)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(uuid "92577a1a-fa5f-5dd7-9ba7-7222c726f34d")
 	)
 	(bus_entry
 		(at 160.02 149.86)
@@ -1892,6 +1897,16 @@
 	)
 	(wire
 		(pts
+			(xy 149.86 129.54) (xy 160.02 129.54)
+		)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(uuid "8f5f5edc-0558-56b5-b810-07c91b3a430d")
+	)
+	(wire
+		(pts
 			(xy 149.86 175.26) (xy 160.02 175.26)
 		)
 		(stroke
@@ -1974,9 +1989,9 @@
 		(at 160.02 162.56 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "183e4d1b-44bf-5b79-9974-c912df7d5c8c")
 	)
@@ -1984,9 +1999,9 @@
 		(at 160.02 177.8 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "212d7747-9ae1-522f-97a5-b9670756a655")
 	)
@@ -1994,19 +2009,29 @@
 		(at 160.02 170.18 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "2582a1a1-1065-54ef-8a2d-873ab21df2da")
+	)
+	(label "AY_GP47"
+		(at 160.02 129.54 180)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "3a83fadb-12bd-58ee-87c9-8434fcc6513f")
 	)
 	(label "AY_D5"
 		(at 160.02 165.1 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "582c1bc7-bb57-59b6-9abe-7fd90747a3b5")
 	)
@@ -2014,9 +2039,9 @@
 		(at 160.02 149.86 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "5b6dcd82-f341-5df7-b9f0-1967f1211a83")
 	)
@@ -2024,9 +2049,9 @@
 		(at 160.02 160.02 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "5d42f654-e7ab-5e30-b070-497ae7c8c432")
 	)
@@ -2034,9 +2059,9 @@
 		(at 160.02 144.78 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "6096ba63-b7a3-559a-96be-c820f962d066")
 	)
@@ -2044,9 +2069,9 @@
 		(at 160.02 134.62 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "71c472ef-50d2-5c07-b210-0c4df0e59c6f")
 	)
@@ -2054,9 +2079,9 @@
 		(at 160.02 132.08 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "75c0251c-c5b0-5ddb-a0e9-2b8158c7ad26")
 	)
@@ -2064,9 +2089,9 @@
 		(at 160.02 157.48 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "7e4ded9c-e96e-56cd-b785-48a200660b53")
 	)
@@ -2074,9 +2099,9 @@
 		(at 160.02 137.16 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "a586ca13-e7d7-516c-a3f3-1e2f63f1fb22")
 	)
@@ -2084,9 +2109,9 @@
 		(at 137.16 187.96 270)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "ac9e399a-28f3-584d-88d7-0deaef17ae03")
 	)
@@ -2094,9 +2119,9 @@
 		(at 160.02 175.26 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "b0aceb6f-7810-5150-bab0-a158fed785bd")
 	)
@@ -2104,9 +2129,9 @@
 		(at 160.02 139.7 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "bbaae016-4258-5fbc-bce5-d2c879f2ec8d")
 	)
@@ -2114,9 +2139,9 @@
 		(at 160.02 172.72 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "c87991f9-911e-5a0a-be0c-91ef7fff06f9")
 	)
@@ -2124,9 +2149,9 @@
 		(at 160.02 147.32 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "e901cad2-adb6-50c6-80f3-c784102b04d8")
 	)
@@ -2134,9 +2159,9 @@
 		(at 160.02 167.64 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "eff840ca-b22f-5e63-a4c8-d07fe2a33af3")
 	)
@@ -2144,9 +2169,9 @@
 		(at 160.02 142.24 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "f89139e7-1564-5cec-8bfb-a6086cb6c200")
 	)
@@ -2154,9 +2179,9 @@
 		(at 160.02 154.94 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "fb1acb1e-4db2-5b25-abb4-2d6949cf65ea")
 	)
@@ -2164,9 +2189,9 @@
 		(at 160.02 152.4 180)
 		(effects
 			(font
-				(size 1.27 1.27)
+				(size 1 1)
 			)
-			(justify right)
+			(justify right bottom)
 		)
 		(uuid "ffc8aafd-fd8d-5936-ad84-bfd9ccda0afc")
 	)
