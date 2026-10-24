@@ -110,6 +110,9 @@ int main(void) {
     check("SID включили, поток закрыли - эффект играет", ayfx_active(&a));
     ayfx_tick(&a, 100);
     check("  ... и таймер идёт: шаг 1, громкость 0", chip[8] == 0);
+    check("ayfx_next: до следующего шага SID - период тона 100", ayfx_next(&a) == 100);
+    ayfx_tick(&a, 30);
+    check("  ... через 30 тактов - 70", ayfx_next(&a) == 70);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;

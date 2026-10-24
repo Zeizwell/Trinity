@@ -28,7 +28,7 @@ static uint8_t    test_res[16];             // итог теста чипа (#E0
 
 // ---- «Звук»
 static ayfx_t   fx[CARD_CHIPS];             // движок эффектов каждого чипа
-static uint32_t t_last, t_frame;            // мкс: прошлый опрос, прошлый кадр
+static uint32_t t_last, t_frame;            // мкс: прошлый вызов card_sound, прошлый кадр
 static uint32_t tick_acc;                   // остаток для пересчёта мкс -> такты тона
 
 // Сколько чипов включено (cfg, не больше CARD_CHIPS)
@@ -42,6 +42,7 @@ static void ev_put(uint8_t type, uint8_t c, uint8_t r, uint8_t v) {
     if (((h + 1) & (EV_Q - 1)) == ev_tail) { card_ev_lost++; return; }
     ev[h] = (uint32_t)type << 24 | (uint32_t)c << 16 | (uint32_t)r << 8 | v;
     ev_head = (h + 1) & (EV_Q - 1);
+    sound_kick();                                               // «Звук» - сразу, не ждать будильника
 }
 
 // Пакет целиком - в слот и событие (слотов нет - потерян)
@@ -93,11 +94,11 @@ void card_read_done(void) { ayfx_bus_read_done(&bus[cur]); }
 
 uint8_t card_sel(void) { return bus[cur].sel; }
 
-// ================= «Звук» =================
+// ================= «Звук» - прерывание будильника (main.c): card_sound =================
 
-// Выход движка: запись в чип. Настоящий чип на макете - только 0, второй "в никуда"
+// Выход движка: запись эффекта в чип - вне очереди (chip_put_fx). Настоящий чип на макете - только 0
 static void fx_out(void *user, uint8_t reg, uint8_t val) {
-    if ((uintptr_t)user == 0) chip_put(reg, val);
+    if ((uintptr_t)user == 0) chip_put_fx(reg, val);
 }
 
 // Событие шины -> движок и чип
@@ -124,19 +125,25 @@ static void fx_timeout(void) {
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
 }
 
-void card_poll(void) {
+// Всё «звуковое» - здесь, из одного места (движок без гонок): события шины, шаги эффектов точно в срок, свип раз в
+// кадр, таймаут. Время эффектов - такты тона AY (cfg.ay_clock_hz / 8). -> через сколько мкс звать снова: до ближайшего
+// шага эффекта, не реже раза в CARD_SOUND_MAX_US (события, кадр, таймаут)
+uint32_t card_sound(void) {
     while (ev_tail != ev_head) {                                // события шины - по порядку
         ev_do(ev[ev_tail]);
         ev_tail = (ev_tail + 1) & (EV_Q - 1);
     }
     uint32_t now = time_us_32(), dt = now - t_last;
-    if (mode != MODE_FX) { t_last = now; tick_acc = 0; t_frame = now; return; }
-    if (dt < 4) return;                         // таймеры - не чаще раза в 4 мкс
     t_last = now;
-    // t_act пишет прерывание: оно могло прийти после чтения now - разница со знаком (иначе ложный таймаут)
-    if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) { fx_timeout(); return; }
-    // такты тона за dt мкс: dt * (такт AY / 8) / 1e6, остаток копится (dt до ~19 с не переполнит 32 бита)
-    tick_acc += dt * (cfg.ay_clock_hz / 8);
+    uint32_t hz = cfg.ay_clock_hz / 8;                          // тактов тона в секунду
+    if (mode != MODE_FX) { tick_acc = 0; t_frame = now; return CARD_SOUND_MAX_US; }   // TEST и др.: эффекты стоят
+    // t_act пишет прерывание шины: оно могло прийти после чтения now - разница со знаком
+    if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) {
+        fx_timeout();
+        return CARD_SOUND_MAX_US;
+    }
+    // такты тона за dt мкс: остаток копится в единицах 1/1e6 такта (dt до ~19 с не переполнит 32 бита)
+    tick_acc += dt * hz;
     uint32_t n = tick_acc / 1000000u;
     tick_acc -= n * 1000000u;
     if (n)
@@ -146,6 +153,15 @@ void card_poll(void) {
         t_frame += 1000000u / cfg.frame_hz;
         for (int c = 0; c < chips(); c++) ayfx_frame(&fx[c]);
     }
+    uint32_t next = UINT32_MAX;                                 // ближайший шаг эффекта, такты тона
+    for (int c = 0; c < chips(); c++) {
+        uint32_t k = ayfx_next(&fx[c]);
+        if (k < next) next = k;
+    }
+    if (next == UINT32_MAX) return CARD_SOUND_MAX_US;
+    // мкс до него: (next * 1e6 - накопленный остаток) / hz, вверх
+    uint64_t us = ((uint64_t)next * 1000000u - tick_acc + hz - 1) / hz;
+    return us < 1 ? 1 : us > CARD_SOUND_MAX_US ? CARD_SOUND_MAX_US : (uint32_t)us;
 }
 
 void card_test_bytes(const uint8_t *b, int n) {

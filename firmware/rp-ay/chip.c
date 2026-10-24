@@ -7,12 +7,17 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/clocks.h"
+#include "hardware/sync.h"
 
 chip_stat_t chip_stat;
 
 static uint16_t q[CHIP_Q_SIZE];           // регистр << 8 | данные
 static volatile uint32_t q_head, q_tail;  // head - писать сюда, tail - брать отсюда
-static uint8_t  step;                     // какое состояние записи q_tail ставим следующим (0..7)
+static uint8_t  step;                     // какое состояние текущей записи ставим следующим (0..7)
+static uint16_t cur_e;                    // текущая запись: регистр << 8 | данные
+static bool     cur_q;                    // она из очереди (иначе - из слотов эффектов)
+static uint8_t  fx_val[16];               // записи эффектов: слот на регистр, последнее значение (вне очереди)
+static volatile uint16_t fx_pend;         // какие слоты ждут записи
 static uint32_t t_start, t_dur;           // SysTick: когда поставлено текущее состояние, сколько тактов держать
 static uint32_t c_setup, c_pulse, c_hold, c_addr, c_ssg, c_fm;   // паузы, такты RP
 
@@ -57,6 +62,7 @@ void chip_init(void) {
 
 void chip_reset_state(void) {
     q_head = q_tail = 0;
+    fx_pend = 0;
     step = 0;
     t_dur = 0;
 }
@@ -84,12 +90,26 @@ void chip_timing_cfg(void) {
     chip_timing_pct(cfg.timing_preset ? cfg.tuned_pct : z80);
 }
 
+// Кладут и прерывания («Звук»), и фон (тест, сброс) - на время записи прерывания выключены (несколько тактов)
 bool chip_put(uint8_t reg, uint8_t v) {
+    uint32_t s = save_and_disable_interrupts();
     uint32_t h = q_head;
-    if (((h + 1) & (CHIP_Q_SIZE - 1)) == q_tail) { chip_stat.q_lost++; return false; }
-    q[h] = (uint16_t)(reg << 8 | v);
-    q_head = (h + 1) & (CHIP_Q_SIZE - 1);
-    return true;
+    bool ok = ((h + 1) & (CHIP_Q_SIZE - 1)) != q_tail;
+    if (ok) {
+        q[h] = (uint16_t)(reg << 8 | v);
+        q_head = (h + 1) & (CHIP_Q_SIZE - 1);
+    } else chip_stat.q_lost++;
+    restore_interrupts(s);
+    return ok;
+}
+
+// Запись эффекта: вне очереди, в слот регистра (не успели записать - остаётся последнее значение)
+void chip_put_fx(uint8_t reg, uint8_t v) {
+    if (reg > 15) return;
+    uint32_t s = save_and_disable_interrupts();
+    fx_val[reg] = v;
+    fx_pend |= (uint16_t)(1u << reg);
+    restore_interrupts(s);
 }
 
 // Восемь состояний на запись, как цикл Z80: регистр (установка, /WR вниз, /WR вверх при /CS внизу, /CS вверх и
@@ -111,20 +131,33 @@ static uint32_t step_set(uint8_t reg, uint8_t v, uint8_t s) {
 void chip_poll(void) {
     if (t_dur && cyc_since(t_start) < t_dur) return;
     t_dur = 0;                                                  // пауза прошла (дальше счётчик может обернуться)
-    if (q_tail == q_head) return;
-    uint16_t e = q[q_tail];
+    if (step == 0) {                                            // новая запись: эффекты - первыми, потом очередь
+        uint16_t p = fx_pend;
+        if (p) {
+            uint8_t r = 0;                                      // младший ждущий регистр
+            while (!(p >> r & 1)) r++;
+            uint32_t s = save_and_disable_interrupts();
+            cur_e = (uint16_t)(r << 8 | fx_val[r]);
+            fx_pend &= (uint16_t)~(1u << r);
+            restore_interrupts(s);
+            cur_q = false;
+        } else if (q_tail != q_head) {
+            cur_e = q[q_tail];
+            cur_q = true;
+        } else return;
+    }
     t_start = cyc_now();
-    t_dur = step_set((uint8_t)(e >> 8), (uint8_t)e, step);
+    t_dur = step_set((uint8_t)(cur_e >> 8), (uint8_t)cur_e, step);
     if (++step < 8) return;
     step = 0;
-    q_tail = (q_tail + 1) & (CHIP_Q_SIZE - 1);
+    if (cur_q) q_tail = (q_tail + 1) & (CHIP_Q_SIZE - 1);
     chip_stat.chip_wr += 2;                                     // циклы: адрес и данные
 }
 
 // Всё записано: очередь пуста и последняя пауза прошла
 bool chip_idle(void) {
     if (t_dur && cyc_since(t_start) >= t_dur) t_dur = 0;
-    return q_tail == q_head && step == 0 && !t_dur;
+    return q_tail == q_head && !fx_pend && step == 0 && !t_dur;
 }
 
 // ---- Тест чтения: пишем и читаем сразу (с ожиданием), паузы - те же из cfg

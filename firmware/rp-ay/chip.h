@@ -22,6 +22,7 @@ extern chip_stat_t chip_stat;
 void chip_init(void);                     // ножки чипа - выходы, /CS и /WR вверх
 void chip_reset_state(void);              // сброс: очередь пуста
 bool chip_put(uint8_t reg, uint8_t v);    // в очередь: регистр + данные; false - очередь полна
+void chip_put_fx(uint8_t reg, uint8_t v); // запись эффекта (0..15): вне очереди, первой на границе записи; слот на регистр
 void chip_poll(void);                     // писатель: следующий цикл, если чип уже готов (ядро 1, в цикле)
 bool chip_idle(void);                     // очередь пуста, запись не начата
 

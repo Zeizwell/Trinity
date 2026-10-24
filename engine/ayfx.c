@@ -244,6 +244,19 @@ void ayfx_frame(ayfx_t *a) {
         if (a->ch[c].row[2]) a->ch[c].sweep = (uint16_t)(a->ch[c].sweep + a->ch[c].row[2] * 256);
 }
 
+// Через сколько тактов тона ближайший шаг среди включённых таймеров (будильник ставится на него)
+uint32_t ayfx_next(const ayfx_t *a) {
+    uint32_t m = UINT32_MAX;
+    for (int c = 0; c < 3; c++)
+        for (int k = 0; k < 3; k++) {
+            const ayfx_tmr_t *t = &a->ch[c].t[k];
+            if (!fx_on(&a->ch[c], k) || !t->dur) continue;
+            uint32_t left = t->cnt < t->dur ? t->dur - t->cnt : 1;
+            if (left < m) m = left;
+        }
+    return m;
+}
+
 bool ayfx_active(const ayfx_t *a) {
     for (int c = 0; c < 3; c++)
         if (a->ch[c].row[0] & (TF_MIX | TF_FM | TF_EFM)) return true;

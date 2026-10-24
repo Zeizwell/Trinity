@@ -80,3 +80,4 @@ bool ayfx_reg_write(ayfx_t *a, uint8_t reg, uint8_t val);     // AY 0..15 от �
 void ayfx_tick(ayfx_t *a, uint32_t n);
 void ayfx_frame(ayfx_t *a);
 bool ayfx_active(const ayfx_t *a);                            // хоть один эффект включён
+uint32_t ayfx_next(const ayfx_t *a);                          // тактов тона до ближайшего шага (UINT32_MAX - нет)

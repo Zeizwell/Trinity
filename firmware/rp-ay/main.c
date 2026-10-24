@@ -84,6 +84,31 @@ static void bus_irq_on(void) {
     irq_set_enabled(PIO1_IRQ_0, true);              // на ядре 1: обработчик - здесь
 }
 
+// ---- Уровень «Звук» (doc 14б): прерывание будильника RP, ниже шины. Будильник - на ближайший шаг эффекта
+// (card_sound говорит, через сколько мкс); шина будит его сразу, когда кладёт событие (sound_kick)
+#ifndef SIM_HOST
+#include "hardware/timer.h"
+static int snd_alarm = -1;
+
+static void snd_alarm_cb(uint alarm) {
+    uint32_t us = card_sound();
+    if (hardware_alarm_set_target(alarm, delayed_by_us(get_absolute_time(), us)))
+        hardware_alarm_force_irq(alarm);                        // срок уже прошёл - сразу снова
+}
+
+void sound_kick(void) { if (snd_alarm >= 0) hardware_alarm_force_irq((uint)snd_alarm); }
+
+static void sound_on(void) {                    // на ядре 1: прерывание будильника - здесь
+    snd_alarm = hardware_alarm_claim_unused(true);
+    hardware_alarm_set_callback((uint)snd_alarm, snd_alarm_cb);
+    irq_set_priority(hardware_alarm_get_irq_num((uint)snd_alarm), 0x40);   // ниже шины (0)
+    hardware_alarm_force_irq((uint)snd_alarm);
+}
+#else
+void sound_kick(void) {}
+static void sound_on(void) {}
+#endif
+
 static void do_reset(void) {                      // /IC: сбросить всё (doc 14а); шина в это время не отвечает
     uint32_t s = save_and_disable_interrupts();
     mode_reset();
@@ -129,19 +154,21 @@ static void core1_main(void) {
     bus_irq_on();
     boot_check();
     boot_beep();
+    sound_on();                                     // после теста: эффекты пишут в чип только теперь
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;   // прерывание не успело
-        card_poll();
-        chip_poll();
+        chip_poll();                                    // писатель в чип: эффекты - первыми, потом очередь
         if (test_req) test_run();
         if (hold_req && chip_idle()) { chip_hold(30000); hold_req = false; }
         if (tune_req && chip_idle()) {                   // тест пауз, потом tuned - в работу (до перезагрузки)
+            mode_set(MODE_TEST);                         //   эффекты стоят, Спектрум в чип не пишет
             chip_tune(&tune_res);
             for (int i = 0; i < CHIP_TM_N; i++) cfg.tuned_pct[i] = tune_res.work_pct[i];
             cfg.timing_preset = 1;
             chip_timing_cfg();
             card_resend();
+            mode_set(MODE_AY);
             tune_req = false, tune_done = true;
         }
         bool ic = gpio_get(PIN_SLOT_IC);
@@ -213,7 +240,7 @@ int main(void) {
     while (true) {
         sleep_ms(100);
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
-        if (key == 'p' && !tune_req) { tune_req = true; printf("pause test: ~1 min...\n"); }
+        if (key == 'p' && !tune_req && mode == MODE_AY) { tune_req = true; printf("pause test: ~1 min...\n"); }
         if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }
         if (key == 't' && !test_req) {
             if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
