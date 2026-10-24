@@ -6,6 +6,8 @@
 #include "pico/multicore.h"
 #include "hardware/pio.h"
 #include "hardware/gpio.h"
+#include "hardware/vreg.h"
+#include "hardware/clocks.h"
 #include "config.h"
 #include "modes.h"
 #include "chip.h"
@@ -92,7 +94,11 @@ static void core1_main(void) {
         while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
             uint32_t w = pio_sm_get(bus_pio, sm_wr);    // D0..D7, /CS (8), /WR (9), /RD (10), A0 (11)
             if (w & (1u << 8)) continue;                // /CS = 1 - не наш чип
-            card_slot_write((w >> 11) & 1, (uint8_t)w);
+            bool a0 = (w >> 11) & 1;
+            uint8_t s = card_sel();
+            if (a0 && s != 0xC0 && s != 0xC1)           // данные в обычный регистр: ответ = записанное - СРАЗУ,
+                bus_rd_set(bus_pio, sm_rd, (uint8_t)w, cfg.status_answer);   //   до разбора (чтение сразу за записью)
+            card_slot_write(a0, (uint8_t)w);
             answer_update();
         }
         while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
@@ -118,6 +124,9 @@ static void rgb(uint8_t r, uint8_t g, uint8_t b) {
 
 int main(void) {
     cfg_defaults();
+    vreg_set_voltage(cfg.vreg);                        // разгон: ответ на чтение сразу за записью (14 МГц) успевает
+    sleep_ms(2);
+    set_sys_clock_khz(cfg.sys_khz, true);
     stdio_init_all();
 
     pio_set_gpio_base(led_pio, 16);                    // pio0 видит GP16..47 (светодиод - 20)

@@ -12,7 +12,7 @@ static uint8_t  sel[CARD_CHIPS];            // выбранный регистр
 static uint8_t  cur;                        // выбранный чип TurboSound
 static ayfx_t   fx[CARD_CHIPS];             // движок эффектов - на каждый чип
 static uint32_t t_last, t_frame, t_act;     // мкс: прошлый опрос, прошлый кадр, последняя запись Спектрума
-static uint64_t tick_acc;                   // остаток для пересчёта мкс -> такты тона
+static uint32_t tick_acc;                   // остаток для пересчёта мкс -> такты тона (32 бита: делить быстро)
 static uint8_t  test_res[16];               // итог теста чипа (#E0..#EF тени)
 
 // Сколько чипов включено (cfg, не больше CARD_CHIPS)
@@ -110,13 +110,14 @@ void card_reset(void) {
 
 void card_poll(void) {
     uint32_t now = time_us_32(), dt = now - t_last;
+    if (mode != MODE_FX) { t_last = now; tick_acc = 0; t_frame = now; return; }
+    if (dt < 4) return;                         // не чаще раза в 4 мкс: цикл ядра 1 быстрее - ответы шины успевают
     t_last = now;
-    if (mode != MODE_FX) { tick_acc = 0; t_frame = now; return; }
     if (cfg.fx_timeout_s && now - t_act >= cfg.fx_timeout_s * 1000000u) { fx_stop(); return; }   // Спектрум молчит
-    // такты тона за dt мкс: dt * (такт AY / 8) / 1e6, остаток копится
-    tick_acc += (uint64_t)dt * (cfg.ay_clock_hz / 8);
-    uint32_t n = (uint32_t)(tick_acc / 1000000u);
-    tick_acc %= 1000000u;
+    // такты тона за dt мкс: dt * (такт AY / 8) / 1e6, остаток копится (dt до ~19 с не переполнит 32 бита)
+    tick_acc += dt * (cfg.ay_clock_hz / 8);
+    uint32_t n = tick_acc / 1000000u;
+    tick_acc -= n * 1000000u;
     if (n)
         for (int c = 0; c < chips(); c++)
             if (ayfx_active(&fx[c])) ayfx_tick(&fx[c], n);

@@ -67,6 +67,14 @@ int main(void) {
     for (int i = 0; i < 6; i++) { card_slot_write(0, (uint8_t)(0xE0 + i)); t[i] = card_answer(); }
     check("итог теста читается после сброса: 23 01 50 04 10 00", t[0] == 0x23 && t[1] == 0x01 && t[2] == 0x50 && t[3] == 4 && t[4] == 0x10 && t[5] == 0);
 
+    // 5. Ключ FX, как FT2 (Fx_Detect): #C0, "TRIN", и сразу чтение - ответ 'T'
+    card_slot_write(0, 0xC0);
+    const char *key = "TRIN";
+    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    check("ключ TRIN: режим FX, чтение #C0 = 'T'", mode == MODE_FX && card_answer() == 'T');
+    card_slot_write(1, 0);                       // закрыть
+    check("закрыть (0 в #C0): режим AY", mode == MODE_AY);
+
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;
 }

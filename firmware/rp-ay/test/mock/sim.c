@@ -90,6 +90,8 @@ void sim_run_main(int (*m)(void), uint32_t ms) {
     stop_cyc = 0;
 }
 uint32_t clock_get_hz(int clk) { (void)clk; return HZ; }
+void vreg_set_voltage(int v) { (void)v; }
+bool set_sys_clock_khz(uint32_t khz, bool r) { (void)khz; (void)r; return true; }   // модель - такт не меняет
 
 void gpio_init(uint p) { is_pio &= ~(1ull << p); sio_oe &= ~(1ull << p); sio_out &= ~(1ull << p); }
 void gpio_set_dir(uint p, bool out) { if (out) sio_oe |= 1ull << p; else sio_oe &= ~(1ull << p); }

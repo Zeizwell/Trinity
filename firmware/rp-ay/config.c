@@ -1,5 +1,6 @@
 // Заводские настройки RP-AY (config.h). Менять числа - только здесь.
 #include "config.h"
+#include "hardware/vreg.h"
 
 cfg_t cfg;
 
@@ -22,6 +23,8 @@ void cfg_defaults(void) {
     cfg.chips            = 1;           // макет: чип TurboSound выбирает CPLD MultiSound, в слот U4 - только его записи
     cfg.ay_clock_hz      = 1750000;     // такт AY Спектрума (YM2203 на макете - проверить делитель SSG)
     cfg.frame_hz         = 50;
+    cfg.sys_khz          = 250000;      // 250 МГц: PiCard3 гоняет RP2350 на 351 (1.6 В), у нас - с запасом
+    cfg.vreg             = VREG_VOLTAGE_1_15;
     cfg.led_bright       = 16;
     cfg.log_period_ms    = 1000;
 }
