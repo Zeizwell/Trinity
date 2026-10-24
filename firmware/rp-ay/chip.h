@@ -13,6 +13,8 @@ typedef struct {                    // счётчики (USB-консоль)
     volatile uint32_t q_lost;       // очередь была полна - запись потеряна
     volatile uint32_t fifo_full;    // FIFO PIO был полон при разборе (могли потерять записи шины)
     volatile uint32_t resets;       // сбросов /IC
+    volatile uint32_t reads;        // чтений данных Спектрумом (метки PIO)
+    volatile uint8_t  rd_sel[4], rd_ans[4]; // первые 4 чтения данных: выбранный регистр, что было на шине
 } chip_stat_t;
 
 extern chip_stat_t chip_stat;

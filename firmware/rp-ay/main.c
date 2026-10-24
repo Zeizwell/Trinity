@@ -102,7 +102,10 @@ static void core1_main(void) {
             answer_update();
         }
         while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
-            pio_sm_get(bus_pio, sm_rd);
+            uint32_t r = pio_sm_get(bus_pio, sm_rd);    // метка = байт, что был на шине
+            if (chip_stat.reads < 4)                    // консоль: первые 4 чтения - регистр и что получил Спектрум
+                chip_stat.rd_sel[chip_stat.reads] = card_sel(), chip_stat.rd_ans[chip_stat.reads] = (uint8_t)r;
+            chip_stat.reads++;
             card_read_done();
             answer_update();
         }
@@ -189,10 +192,13 @@ int main(void) {
         last_wr = wr, last_cw = cw;
         if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
             t_log = 0;
-            printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X\n",
+            printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X  reads %lu:"
+                   " %02X=%02X %02X=%02X %02X=%02X %02X=%02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,
                    (unsigned long)chip_stat.q_lost, (unsigned long)chip_stat.fifo_full,
-                   (unsigned long)chip_stat.resets, card_sel());
+                   (unsigned long)chip_stat.resets, card_sel(), (unsigned long)chip_stat.reads,
+                   chip_stat.rd_sel[0], chip_stat.rd_ans[0], chip_stat.rd_sel[1], chip_stat.rd_ans[1],
+                   chip_stat.rd_sel[2], chip_stat.rd_ans[2], chip_stat.rd_sel[3], chip_stat.rd_ans[3]);
         }
     }
 }
