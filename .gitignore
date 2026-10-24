@@ -7,3 +7,12 @@ build/
 
 # чужие программы и материалы (ref/) - не в git, ссылки в README
 ref/
+
+# прошивки RP-AY по версиям храним (bin/rp_ay_vNN.uf2) - все остальные .uf2 нет
+!firmware/rp-ay/bin/*.uf2
+
+# KiCad: локальные истории, блокировки, резервные копии
+KiCad/**/.history/
+KiCad/**/~*.lck
+KiCad/**/*-backups/
+KiCad/**/.schgen-backup/
