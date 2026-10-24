@@ -20,9 +20,12 @@ static uint sm_wr, sm_rd;
 
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
-static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, иначе бит s - ошибки в наборе s
+static volatile bool hold_req;                  // клавиша h: замер напряжений на ножках чипа (chip_hold)
+static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки (boot_res)
 static volatile int  boot_stage;                // шаг старта ядра 1 (светодиод): 0 - не начал, 1 - писк, 2 - тест
-static chip_test_t   test_res;
+static chip_test_t   test_res, boot_res;
+static uint16_t      boot_pins;                // ножки RP к чипу с замыканием (chip_pins_check)
+static uint8_t       boot_probe[3];            // до теста: R14, R15, статус (chip_probe)
 
 static void test_run(void) {                      // ядро 1: дождаться очереди, тест, вернуть тень, режим AY
     if (!chip_idle()) return;                     //   (пока очередь не пуста - в следующий раз)
@@ -60,34 +63,29 @@ static void boot_beep(void) {
     while (!chip_idle()) chip_poll();
 }
 
-// Тест чипа при старте (cfg.boot_test): записать и прочитать регистры, итог - светодиодом (ядро 0)
+// Тест чипа при старте (cfg.boot_test): каждый регистр 0..13 - все значения 0..255 записать и прочитать обратно,
+// паузы - рабочие. Итог - светодиод (ядро 0: зелёный 3 с - OK, красный насовсем - ошибки), консоль, #E0..#E5 тени
+// (ошибок мл / ст, плохие биты, первая ошибка: регистр, записали, прочитали)
 static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
     boot_stage = 2;
     while (!chip_idle()) chip_poll();
-    // Тест трижды с разными паузами (chip_timing 0 / 1 / 2): видно, дело в паузах чипа или в проводах / помехах.
-    // #E0..#E5 - самый медленный набор (2), на тех местах, что читает AYTEST: ошибок (мл, ст), плохие биты,
-    // первая ошибка (регистр, записали, прочитали); #E6..#EB - набор 1; #EC, #ED - ошибок набора 0
-    uint8_t out[16] = { 0 };
-    int bad = 0;
-    static const uint8_t place[3] = { 12, 6, 0 };               // куда в out кладёт свой итог каждый набор
-    for (int s = 0; s < 3; s++) {
-        chip_timing(s);
-        chip_test(&test_res);
-        uint8_t *o = out + place[s];
-        o[0] = (uint8_t)test_res.errors, o[1] = (uint8_t)(test_res.errors >> 8);
-        if (s) o[2] = test_res.bad_bits, o[3] = test_res.bad_reg, o[4] = test_res.bad_wrote, o[5] = test_res.bad_read;
-        if (test_res.errors) bad |= 1 << s;
-    }
-    chip_timing(CHIP_TIMING_RUN);
-    card_test_bytes(out, 16);
+    boot_pins = chip_pins_check();
+    chip_probe(boot_probe);
+    chip_test(&boot_res);
+    uint8_t out[6] = { (uint8_t)boot_res.errors, (uint8_t)(boot_res.errors >> 8), boot_res.bad_bits,
+                       boot_res.bad_reg, boot_res.bad_wrote, boot_res.bad_read };
+    card_test_bytes(out, 6);
     card_resend();                                // в чип - тень (после старта - нули, тишина)
-    boot_result = bad;                            // бит s - в наборе s были ошибки
+    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) pio_sm_get(bus_pio, sm_wr);   // записи слота за время
+    while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) pio_sm_get(bus_pio, sm_rd);   //   теста - выбросить
+    chip_stat.fifo_full = 0;                      //   (переполнение за тест - не ошибка работы)
+    boot_result = boot_res.errors ? 1 : 0;
 }
 
 static void core1_main(void) {
-    boot_beep();
     boot_check();
+    boot_beep();
     bool ic_was = gpio_get(PIN_SLOT_IC);
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;
@@ -112,10 +110,23 @@ static void core1_main(void) {
         card_poll();
         chip_poll();
         if (test_req) test_run();
+        if (hold_req && chip_idle()) { chip_hold(30000); hold_req = false; }
         bool ic = gpio_get(PIN_SLOT_IC);
         if (!ic && ic_was) do_reset();                  // /IC вниз
         ic_was = ic;
     }
+}
+
+// Такт чипа из слота (φM, GP12): фронты за 1 мс опросом (грубо, но видно: есть / нет / какой), кГц
+static uint32_t phim_khz(void) {
+    uint32_t n = 0, t0 = time_us_32();
+    bool was = gpio_get(PIN_SLOT_PHIM);
+    while (time_us_32() - t0 < 1000) {
+        bool now = gpio_get(PIN_SLOT_PHIM);
+        n += now && !was;
+        was = now;
+    }
+    return n;
 }
 
 // ---- Светодиод: состояние, не вспышки (CHECK.md)
@@ -156,23 +167,20 @@ int main(void) {
     answer_update();
 
     multicore_launch_core1(core1_main);
-    while (boot_result < 0) {                                      // шаг старта ядра 1 - цветом (где застрял)
-        if (boot_stage == 1) rgb(0, 0, 64);                        //   синий - писк
-        else if (boot_stage == 2) rgb(64, 48, 0);                  //   жёлтый - тест чипа
-        sleep_ms(10);                                              //   белый - ядро 1 ещё не начало
+    while (boot_result < 0) {                                      // тест чипа - жёлтый
+        if (boot_stage == 2) rgb(64, 48, 0);                       //   белый - ядро 1 ещё не начало
+        sleep_ms(10);
     }
-    if (cfg.boot_test)                                             // три набора пауз подряд: Z80, даташит, x4
-        for (int s = 0; s < 3; s++) {                              //   зелёный - 0 ошибок, красный - есть
-            if (boot_result >> s & 1) rgb(64, 0, 0); else rgb(0, 64, 0);
-            sleep_ms(1500);
-            rgb(0, 0, 0);
-            sleep_ms(400);
-        }
+    if (boot_result == 0) {                                        // тест OK - зелёный 3 с, дальше обычная работа
+        rgb(0, 64, 0);
+        sleep_ms(3000);
+    }
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
     while (true) {
         sleep_ms(100);
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
+        if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }
         if (key == 't' && !test_req) {
             if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
             else printf("test: нельзя из режима %s\n", mode_name[mode]);
@@ -185,13 +193,23 @@ int main(void) {
         }
         uint32_t wr = chip_stat.slot_wr, cw = chip_stat.chip_wr;
         uint8_t k = cfg.led_bright;
-        if (chip_stat.q_lost || chip_stat.fifo_full) rgb(k, 0, 0);       // красный - теряли записи
+        if (boot_result) rgb(64, 0, 0);                                   // тест при старте не прошёл - красный насовсем
+        else if (chip_stat.q_lost || chip_stat.fifo_full) rgb(k, 0, 0);       // красный - теряли записи
         else if (wr != last_wr && cw != last_cw) rgb(0, k, 0);            // зелёный - записи идут в чип (за эти 100 мс)
         else if (wr != last_wr) rgb(0, 0, k);                             // синий - приходят, в чип не уходят
         else rgb(k / 2, k / 2, k / 2);                                    // белый (слабее цветов) - тишина
         last_wr = wr, last_cw = cw;
         if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
             t_log = 0;
+            if (!boot_result) printf("rp-ay v%02d  chip test OK (%u)\n", FW_VERSION, boot_res.checks);
+            else printf("rp-ay v%02d  chip test FAIL: %u of %u, bad bits %02X, first R%u wrote %02X read %02X\n",
+                        FW_VERSION, boot_res.errors, boot_res.checks, boot_res.bad_bits,
+                        boot_res.bad_reg, boot_res.bad_wrote, boot_res.bad_read);
+            printf("  test errors: read 00 %u, not driven %u, old value %u, other reg %u; by reg:", boot_res.got_zero,
+                   boot_res.got_float, boot_res.got_old, boot_res.got_other);
+            for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
+            printf("\n  phiM GP12 %lu kHz, /IC GP13 %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
+                   (unsigned long)phim_khz(), gpio_get(PIN_SLOT_IC), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X  reads %lu:"
                    " %02X=%02X %02X=%02X %02X=%02X %02X=%02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,

@@ -24,6 +24,7 @@ void busy_wait_us_32(uint32_t us);
 void sleep_ms(uint32_t ms);
 uint32_t clock_get_hz(int clk);
 #define VREG_VOLTAGE_1_15 0
+#define VREG_VOLTAGE_1_10 0
 void vreg_set_voltage(int v);
 bool set_sys_clock_khz(uint32_t khz, bool required);
 
