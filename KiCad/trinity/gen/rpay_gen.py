@@ -36,7 +36,7 @@ def build_rp(d):
         px, py = s.pin(U, p)
         s.wire((px, py), (BUS_X - 2.54, py))
         s.bus_entry(BUS_X - 2.54, py, 2.54, -2.54)
-        s.label(n, px + 1.27, py)
+        s.label(n, BUS_X - 2.54, py, angle=180)           # метка у ввода, текст к ножке (как у образца слева)
         net(n, U, p)
     s.nc(U, "GP47"); NO_CONNECT.append((U, "GP47"))
     for p in ("3V3", "EN", "GP20", "GP26", "GP27"):        # 3V3 модуля и EN - не нужны; светодиод; торец без дыр

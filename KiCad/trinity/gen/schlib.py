@@ -3543,8 +3543,8 @@ def _emit(sheet, project, title_block, root_uuid=None, pwr_counter=None):
         sh = f"\t\t(shape {shape})\n" if shape else ""
         p.append(f'\t({kind} "{q(name)}"\n{sh}'
                  f"\t\t(at {fmt(x)} {fmt(y)} {angle})\n"
-                 "\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1.27 1.27)\n\t\t\t)\n"
-                 f"\t\t\t(justify {justify})\n\t\t)\n"
+                 "\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1 1)\n\t\t\t)\n"      # метки как у образца (MultiSound):
+                 f"\t\t\t(justify {justify} bottom)\n\t\t)\n"                     #   1 мм, текст над проводом
                  f'\t\t(uuid "{sid(fn, kind, name, x, y)}")\n\t)\n')
     for content, x, y, size, justify, bold in sheet.texts:
         b = "\n\t\t\t\t(bold yes)" if bold else ""

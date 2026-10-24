@@ -125,6 +125,9 @@ def main():
         t = shift(text, a.dx, a.dy)
         if head == "rectangle":                          # рамки нет: у MultiSound синяя линия - настоящая шина с
             continue                                     #   вводами сигналов, её рисуем только там, где она есть
+        if head in ("label", "global_label", "hierarchical_label"):   # метки - как у образца (TURBO SOUND FM):
+            t = t.replace("(size 1.27 1.27)", "(size 1 1)")             #   шрифт 1 мм, текст над проводом
+            t = re.sub(r"\(justify (left|right)\)", r"(justify \1 bottom)", t)
         if head == "text" and "(bold yes)" in t:         # заголовок блока - как у MultiSound: 2 мм, не жирный
             t = t.replace("(size 1.6 1.6)", "(size 2.0066 2.0066)").replace("\n\t\t\t\t(bold yes)", "")
             t = t.replace("(justify left)", "(justify left bottom)")

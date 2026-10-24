@@ -1,4 +1,8 @@
 {
   "analog.kicad_sch": "1e64929ab363da8387e09b515e846e643a3b82f14df278fc85bc8dc3f04e222b",
-  "mixer.kicad_sch": "1512bbbc1e22d58d9cc4574304d404da6c6f4e921931a25199af0cda326e6f90"
+  "mixer.kicad_sch": "13933e9a55ed797488065d70e71577ce1ccda747fd165cdf06324190f758dea9",
+  "addon.kicad_sch": "fa0d47be4d6a3f57259649e6cdefe9acc3ddf0422ed0e9467023f1040d6f89ac",
+  "gs.kicad_sch": "5edb7fa74661a69d8daee982deb137358ceddc102c3c2a5f12cd13d28d4ad768",
+  "rpay.kicad_sch": "3e3deed81fdc741c45bb870996fc387fcb4cfdeca0098f97a9b7c81c563fba01",
+  "rpay_pu.kicad_sch": "c0035531d208fb09c06eac6b82998bc49800929d8a24bb62f8e51e058310430a"
 }
