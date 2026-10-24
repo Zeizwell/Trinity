@@ -9,7 +9,7 @@ import uuid
 
 LIB = r"C:\Program Files\KiCad\10.0\share\kicad\symbols\Device.kicad_sym"
 X = 125.73
-FP_L = "Inductor_SMD:L_1210_3225Metric"
+FP_L = "Inductor_SMD:L_Bourns_SRN6045TA"            # 1210 на 27u - 3.1 Ом, 125 мА: мало для YM
 
 
 def item_span(s, pat):
@@ -60,10 +60,10 @@ def main():
     s = s[:a] + s[b:]
     # 5. заголовок и заметка
     s = s.replace('(text "ANALOG POWER (from +5V bus, no 12 V)"',
-                  '(text "ANALOG POWER (+5V bus via LC; option: +12V -> 78M05, JP101 2-3)"')
+                  '(text "ANALOG POWER (+5V bus via LC; option: +12V -> 78M08 -> 78M05, JP101 2-3)"')
     s = s.replace("No 5 V LDO from the 5 V bus - filters only.",
-                  "L101-L103 27u, DCR <= 1 Ohm (LC as NeoGS). JP101 1-2 (default): +5V bus;\\n"
-                  "2-3: U104 78M05 from +12V (DNP, as MultiSound) - only if the bus has +12V.")
+                  "L101-L103 27u shielded 6x6 (SRN6045TA-270M class), DCR <= 0.2 Ohm, >= 0.5 A (LC as NeoGS).\\n"
+                  "JP101 1-2 (default): +5V bus; 2-3: +12V -> U105 78M08 -> U104 78M05 (DNP, as MultiSound Max) - only if the bus has +12V.")
     open(sys.argv[2], "w", encoding="utf-8", newline="").write(s)
     print("ok")
 

@@ -37,16 +37,26 @@ def build(d):
     s.wire(p1, (p1[0] + 5.08, p1[1]))
     s.power("+5V", p1[0] + 5.08, p1[1])
     net("+5V", "JP101", 1); net("AN_IN", "JP101", 2)
-    # U104 78M05 (DNP): вход +12V через 0.33u, выход 0.1u -> вывод 3 перемычки
+    # +12V -> U105 78M08 -> U104 78M05 -> вывод 3 перемычки (DNP), как MultiSound Max: тепло на две ступени
+    # (аналог ~0.3 А: YM2203 IDD 120 мА каждый; 12 -> 5 одной ступенью = 2 Вт в TO-252 - много).
+    # Конденсаторы - типовая схема 78Mxx: 0.33u на входе, 0.1u на выходе.
     s.place("U104", "Regulator_Linear:MC78M05_TO252", "78M05", 105.41, 416.56,
             props={"Footprint": "Package_TO_SOT_SMD:TO-252-2"}, dnp=True)
-    vi, vo, vg = s.pin("U104", 1), s.pin("U104", 3), s.pin("U104", 2)
+    s.place("U105", "Regulator_Linear:MC78M05_TO252", "78M08", 80.01, 416.56,
+            props={"Footprint": "Package_TO_SOT_SMD:TO-252-2"}, dnp=True)
+    vi, vo = s.pin("U104", 1), s.pin("U104", 3)
+    wi, wo = s.pin("U105", 1), s.pin("U105", 3)
     s.wire(vo, p3)
-    s.wire(vi, (vi[0] - 7.62, vi[1]))
-    s.power("+12V", vi[0] - 7.62, vi[1])
-    s.stub("U104", 2, 2.54, power="GND")
-    net("AN_12", "U104", 3); net("AN_12", "JP101", 3); net("+12V", "U104", 1); net("GND", "U104", 2)
-    for c, v, x, n in (("C112", "0.33u", vi[0] - 3.81, "+12V"), ("C113", "0.1u", vo[0] + 3.81, "AN_12")):
+    s.wire(wo, vi)
+    s.wire(wi, (wi[0] - 7.62, wi[1]))
+    s.power("+12V", wi[0] - 7.62, wi[1])
+    for u in ("U104", "U105"):
+        s.stub(u, 2, 2.54, power="GND")
+        net("GND", u, 2)
+    net("AN_12", "U104", 3); net("AN_12", "JP101", 3); net("AN_8", "U104", 1); net("AN_8", "U105", 3)
+    net("+12V", "U105", 1)
+    for c, v, x, n in (("C116", "0.33u", wi[0] - 3.81, "+12V"), ("C112", "0.33u", (wo[0] + vi[0]) / 2, "AN_8"),
+                       ("C113", "0.1u", vo[0] + 3.81, "AN_12")):
         s.place(c, "Device:C", v, x, vi[1] + 3.81, props={"Footprint": FP_C}, dnp=True)
         s.stub(c, 2, 2.54, power="GND")
         net(n, c, 1); net("GND", c, 2)
