@@ -21,3 +21,7 @@ KiCad/**/.schgen-backup/
 KiCad/trinity/gen/analog.kicad_pro
 KiCad/trinity/gen/analog.kicad_prl
 KiCad/trinity/gen/__pycache__/
+KiCad/trinity/gen/test/
+KiCad/trinity/gen/before/
+KiCad/trinity/gen/mixer.kicad_pro
+KiCad/trinity/gen/mixer.kicad_prl
