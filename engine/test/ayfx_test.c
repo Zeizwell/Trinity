@@ -23,11 +23,12 @@ static bool wr(uint8_t r, uint8_t v) {          // true - в чип не про�
     sel(r);
     switch (ayfx_bus_write(&b, v)) {            // шина -> событие -> звук (как карта и эмулятор)
     case AYFX_EV_REG:
-        if (ayfx_reg_write(&a, r, v)) return true;
+        if (ayfx_reg_write(&a, r, v)) { ayfx_tick(&a, 0); return true; }
         chip[r] = v;                            // не у эффекта - прямо в чип
         return false;
     case AYFX_EV_PACKET: ayfx_packet(&a, b.pkt); break;
     }
+    ayfx_tick(&a, 0);                           // шаги: просьбы (restart / kick) - сразу, как сделало бы прерывание
     return true;
 }
 static void c1(const uint8_t *p, int n) { for (int i = 0; i < n; i++) wr(0xC1, p[i]); }
@@ -92,6 +93,7 @@ int main(void) {
 
     // 5. Выключение: регистры - как у Спектрума
     ayfx_off(&a);
+    ayfx_tick(&a, 0);
     check("off: громкость A = 8 (Спектрум)", chip[8] == 8);
     check("off: тон B = 100 (Спектрум)", chip[2] == 100);
     check("off: эффектов нет", !ayfx_active(&a));

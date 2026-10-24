@@ -13,7 +13,9 @@
 //     ayfx_off       - все эффекты выкл (таймаут, сброс);
 //     ayfx_tick (n)  - прошло n тактов тона чипа (такт AY / 8);  ayfx_frame - раз в кадр (50 Гц): свип ШИМ.
 //   Выход - функция out(user, reg, val): записать в чип регистр reg (0..15).
-// Эмулятор зовёт обе части подряд: ayfx_bus_write -> по событию ayfx_reg_write / ayfx_packet. Закрытие потока
+// Шаги (ayfx_tick / ayfx_next / ayfx_active) могут идти в прерывании поверх всего остального: остальное готовит план
+// в запасном буфере и подменяет его, в AY сразу не пишет, а просит шаги (restart / kick).
+// Эмулятор зовёт обе части подряд: ayfx_bus_write -> по событию ayfx_reg_write / ayfx_packet, потом ayfx_tick. Закрытие потока
 // эффекты не выключает; выключить - ROW нулей (плеер на стопе), ayfx_off - таймаут и сброс.
 #pragma once
 #include <stdint.h>
@@ -52,14 +54,21 @@ void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение б
 // ---- Звук
 typedef void (*ayfx_out_fn)(void *user, uint8_t reg, uint8_t val);
 
-typedef struct {                // один таймер: Mix (SID / Sync), FM, Env FM. План считается заранее (ayfx_plan:
-                                // ROW, TABLE, RESET, запись Спектрума в тон / громкость, свип), шаг - только готовое
-    uint32_t cnt, dur;          // тактов в текущем шаге, длина текущего шага
-    uint8_t  step, len;         // шаг таблицы, длина таблицы (1..16)
+typedef struct {                // готовый план таймера: шаг - только из него
+    uint8_t  on;                // таймер включён
+    uint8_t  len;               // длина таблицы (1..16)
     uint8_t  reg, two;          // регистр AY; two - пишем пару (reg - мл., reg + 1 - ст.: FM, Env FM)
     uint8_t  pwm;               // ШИМ: шаг 0 длится d0, шаг 1 - d1 (иначе все шаги - d0)
     uint32_t d0, d1;            // длины шагов, такты тона
     uint16_t val[16];           // готовое значение регистра(ов) на каждый шаг
+} ayfx_plan_t;
+
+typedef struct {                // один таймер: Mix (SID / Sync), FM, Env FM
+    ayfx_plan_t pl[2];          // два плана: шаги идут по pl[cur], новый считается в другом и подменяется одной
+    volatile uint8_t cur;       //   записью cur - шаги (прерывание) никогда не ждут и не видят полплана
+    volatile uint8_t restart, kick;   // просьбы к шагам: restart - с шага 0, kick - текущий шаг заново в AY
+    uint32_t cnt, dur;          // ШАГИ (только ayfx_tick): тактов в текущем шаге, длина текущего шага
+    uint8_t  step;              //   шаг таблицы
 } ayfx_tmr_t;
 
 typedef struct {
@@ -83,6 +92,7 @@ void ayfx_off(ayfx_t *a);                                     // все эффе
 void ayfx_packet(ayfx_t *a, const uint8_t *pkt);              // пакет от шины (AYFX_EV_PACKET)
 bool ayfx_reg_write(ayfx_t *a, uint8_t reg, uint8_t val);     // AY 0..15 от Спектрума
 void ayfx_tick(ayfx_t *a, uint32_t n);                         // ЛЁГКАЯ (прерывание): только шаги по готовому плану
+                                                              //   (n = 0 - только просьбы: restart / kick)
 void ayfx_frame(ayfx_t *a);
 bool ayfx_active(const ayfx_t *a);                            // хоть один эффект включён
 uint32_t ayfx_next(const ayfx_t *a);                          // тактов тона до ближайшего шага (UINT32_MAX - нет)

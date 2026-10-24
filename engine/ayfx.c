@@ -69,65 +69,74 @@ static void restore_env(ayfx_t *a) {
 static bool fx_on(const ayfx_ch_t *ch, int k) { return (ch->row[0] & tf_bit[k]) != 0; }
 
 // План таймера k канала c: длина, регистр, длины шагов и готовое значение на каждый шаг. Тяжёлое (float) - здесь,
-// не в прерывании. Зовётся, когда что-то поменялось: ROW, TABLE, RESET, Спектрум записал тон / громкость / огибающую,
-// свип ШИМ (кадр)
+// не в шагах. Считается в запасной буфер и подменяется одной записью (cur). Зовётся, когда что-то поменялось:
+// ROW, TABLE, RESET, Спектрум записал тон / громкость / огибающую, свип ШИМ (кадр)
 static void plan(ayfx_t *a, int c, int k) {
     ayfx_ch_t *ch = &a->ch[c];
     ayfx_tmr_t *t = &ch->t[k];
+    ayfx_plan_t *P = &t->pl[t->cur ^ 1];
     uint8_t l = len(a, c, k);
     const uint8_t *tab = a->tab[ch->row[5 + 3 * k]];
     uint32_t p = period(a, c, k);
-    t->len = l, t->d0 = t->d1 = p, t->pwm = 0, t->two = (uint8_t)(k != 0);
-    if (t->step >= l) t->step = 0;
+    P->on = fx_on(ch, k), P->len = l, P->d0 = P->d1 = p, P->pwm = 0, P->two = (uint8_t)(k != 0);
     if (k == 0) {
         if ((ch->row[0] & TF_MIX) == TF_SID) {              // SID: громкость = громкость ноты * уровень шага
             uint8_t base = a->regs[8 + c];
-            t->reg = (uint8_t)(8 + c);
+            P->reg = (uint8_t)(8 + c);
             for (int s = 0; s < l; s++) {
                 uint8_t lvl = tab[s] & 15;
-                t->val[s] = (base & 0x10) ? (lvl ? base : 0)     // огибающая: вкл / выкл
+                P->val[s] = (base & 0x10) ? (lvl ? base : 0)     // огибающая: вкл / выкл
                                           : (uint8_t)(((base & 15) * lvl + 7) / 15);
             }
             if (l == 2 && ch->row[1]) {                     // ШИМ: 2 шага делят 2P по скважности
                 float lo = (ch->row[1] & 15) / 30.0f, hi = (ch->row[1] >> 4) / 30.0f, d = hi;
                 if (ch->row[2]) d = lo + (hi - lo) * sweep_pos(a, ch);
                 uint32_t hp = clampf(2.0f * (float)p * d, 2 * p - 1);
-                t->pwm = 1, t->d0 = hp, t->d1 = 2 * p - hp;
+                P->pwm = 1, P->d0 = hp, P->d1 = 2 * p - hp;
             }
         } else {                                            // Sync: перезапуск огибающей, шаг - форма (0 - текущая)
-            t->reg = 13;
-            for (int s = 0; s < l; s++) t->val[s] = (tab[s] & 15) ? (tab[s] & 15) : (a->regs[13] & 15);
+            P->reg = 13;
+            for (int s = 0; s < l; s++) P->val[s] = (tab[s] & 15) ? (tab[s] & 15) : (a->regs[13] & 15);
         }
     } else if (k == 1) {                                    // FM: период тона канала
         uint32_t t0 = tone(a, c);
-        t->reg = (uint8_t)(2 * c);
+        P->reg = (uint8_t)(2 * c);
         for (int s = 0; s < l; s++)
-            t->val[s] = (uint16_t)((ch->row[0] & TF_FMPER) ? clampf((float)t0 + (float)(int8_t)tab[s], 0x0FFF)
+            P->val[s] = (uint16_t)((ch->row[0] & TF_FMPER) ? clampf((float)t0 + (float)(int8_t)tab[s], 0x0FFF)
                                                            : clampf((float)t0 * semi(tab[s]), 0x0FFF));
     } else {                                                // Env FM: период огибающей
         uint32_t e0 = env_per(a);
-        t->reg = 11;
+        P->reg = 11;
         for (int s = 0; s < l; s++)
-            t->val[s] = (uint16_t)((ch->row[0] & TF_EFMPER) ? clampf((float)e0 + (float)(int8_t)tab[s], 0xFFFF)
+            P->val[s] = (uint16_t)((ch->row[0] & TF_EFMPER) ? clampf((float)e0 + (float)(int8_t)tab[s], 0xFFFF)
                                                             : clampf((float)e0 * semi(tab[s]), 0xFFFF));
     }
-    t->dur = (t->pwm && t->step) ? t->d1 : t->d0;
+    t->cur ^= 1;                                            // подмена: шаги берут новый план
 }
 
-// Текущий шаг - в AY (готовое значение) и длина этого шага. Лёгкое: только из плана
+// Выключить таймер: план «выкл» - подменой (шаги перестают писать раньше, чем регистр вернут Спектруму)
+static void plan_off(ayfx_tmr_t *t) {
+    t->pl[t->cur ^ 1].on = 0;
+    t->cur ^= 1;
+}
+
+// ШАГИ: текущий шаг - в AY (готовое значение) и длина этого шага. Только из плана
 static void out_step(ayfx_t *a, ayfx_tmr_t *t) {
-    uint16_t v = t->val[t->step];
-    a->out(a->user, t->reg, (uint8_t)v);
-    if (t->two) a->out(a->user, (uint8_t)(t->reg + 1), (uint8_t)(v >> 8));
-    t->dur = (t->pwm && t->step) ? t->d1 : t->d0;
+    const ayfx_plan_t *P = &t->pl[t->cur];
+    if (t->step >= P->len) t->step = 0;
+    uint16_t v = P->val[t->step];
+    a->out(a->user, P->reg, (uint8_t)v);
+    if (P->two) a->out(a->user, (uint8_t)(P->reg + 1), (uint8_t)(v >> 8));
+    t->dur = (P->pwm && t->step) ? P->d1 : P->d0;
 }
 
-// Перепланировать включённые таймеры канала c (маска k: бит 0 - Mix, 1 - FM, 2 - Env FM); now - и сразу в AY
+// Перепланировать включённые таймеры канала c (маска: бит 0 - Mix, 1 - FM, 2 - Env FM); now - текущий шаг сразу в AY
+// (просьба к шагам)
 static void replan(ayfx_t *a, int c, int mask, bool now) {
     for (int k = 0; k < 3; k++)
         if ((mask >> k & 1) && fx_on(&a->ch[c], k)) {
             plan(a, c, k);
-            if (now) out_step(a, &a->ch[c].t[k]);
+            if (now) a->ch[c].t[k].kick = 1;
         }
 }
 
@@ -138,15 +147,15 @@ static void row_set(ayfx_t *a, int c, const uint8_t *row, uint8_t shape, uint8_t
     memcpy(ch->row, row, AYFX_ROW);
     ch->shape = shape, ch->start = start, ch->keep = keep & 1;
     uint8_t now = ch->row[0];
+    for (int k = 0; k < 3; k++)                             // выключенные - сначала стоп шагам, потом регистры
+        if ((was & tf_bit[k]) && !(now & tf_bit[k])) plan_off(&ch->t[k]);
     if ((was & TF_FM) && !(now & TF_FM)) restore_tone(a, c);
     if ((was & TF_EFM) && !(now & TF_EFM)) restore_env(a);
     if ((was & TF_MIX) == TF_SID && (now & TF_MIX) != TF_SID) restore_vol(a, c);
     for (int k = 0; k < 3; k++) {
         if (!(now & tf_bit[k])) continue;
-        bool start_now = !(was & tf_bit[k]);                // только что включился - с первого шага и сразу в AY
-        if (start_now) ch->t[k].step = 0, ch->t[k].cnt = 0;
         plan(a, c, k);
-        if (start_now) out_step(a, &ch->t[k]);
+        if (!(was & tf_bit[k])) ch->t[k].restart = 1;       // только что включился - с первого шага и сразу в AY
     }
 }
 
@@ -216,8 +225,8 @@ void ayfx_packet(ayfx_t *a, const uint8_t *b) {
             if (!(b[1] & (1 << c))) continue;
             ayfx_ch_t *ch = &a->ch[c];
             if (!ch->keep) ch->sweep = (uint16_t)(ch->start << 8);
-            for (int k = 0; k < 3; k++) ch->t[k].step = 0, ch->t[k].cnt = 0;
-            replan(a, c, 7, true);
+            replan(a, c, 7, false);
+            for (int k = 0; k < 3; k++) if (fx_on(ch, k)) ch->t[k].restart = 1;
         }
         break;
     }
@@ -253,15 +262,19 @@ bool ayfx_reg_write(ayfx_t *a, uint8_t reg, uint8_t val) {
 
 void ayfx_tick(ayfx_t *a, uint32_t n) {
     for (int c = 0; c < 3; c++) {
-        ayfx_ch_t *ch = &a->ch[c];
-        if (!(ch->row[0] & (TF_MIX | TF_FM | TF_EFM))) continue;
         for (int k = 0; k < 3; k++) {
-            if (!fx_on(ch, k)) continue;
-            ayfx_tmr_t *t = &ch->t[k];
+            ayfx_tmr_t *t = &a->ch[c].t[k];
+            if (!t->pl[t->cur].on) continue;
+            if (t->restart) {                               // просьба: с первого шага (новая нота, включение)
+                t->restart = 0, t->kick = 0, t->step = 0, t->cnt = 0;
+                out_step(a, t);
+                continue;
+            }
+            if (t->kick) { t->kick = 0; out_step(a, t); }   // просьба: текущий шаг заново (план поменялся)
             t->cnt += n;
             while (t->dur && t->cnt >= t->dur) {            // шаги, что прошли за n тактов: только готовое
                 t->cnt -= t->dur;
-                if (++t->step >= t->len) t->step = 0;
+                if (++t->step >= t->pl[t->cur].len) t->step = 0;
                 out_step(a, t);
             }
         }
@@ -272,7 +285,7 @@ void ayfx_frame(ayfx_t *a) {
     for (int c = 0; c < 3; c++)
         if (a->ch[c].row[2]) {
             a->ch[c].sweep = (uint16_t)(a->ch[c].sweep + a->ch[c].row[2] * 256);
-            if (a->ch[c].t[0].pwm) replan(a, c, 1, false);      // скважность сдвинулась - длины шагов заново
+            if (a->ch[c].t[0].pl[a->ch[c].t[0].cur].pwm) replan(a, c, 1, false);      // скважность сдвинулась - длины шагов заново
         }
 }
 
@@ -282,16 +295,19 @@ uint32_t ayfx_next(const ayfx_t *a) {
     for (int c = 0; c < 3; c++)
         for (int k = 0; k < 3; k++) {
             const ayfx_tmr_t *t = &a->ch[c].t[k];
-            if (!fx_on(&a->ch[c], k) || !t->dur) continue;
+            if (!t->pl[t->cur].on) continue;
+            if (t->restart || t->kick) return 0;            // просьба ждёт - шаги сейчас
+            if (!t->dur) continue;
             uint32_t left = t->cnt < t->dur ? t->dur - t->cnt : 1;
             if (left < m) m = left;
         }
     return m;
 }
 
-bool ayfx_active(const ayfx_t *a) {
+bool ayfx_active(const ayfx_t *a) {                         // по планам: можно звать из шагов (прерывания)
     for (int c = 0; c < 3; c++)
-        if (a->ch[c].row[0] & (TF_MIX | TF_FM | TF_EFM)) return true;
+        for (int k = 0; k < 3; k++)
+            if (a->ch[c].t[k].pl[a->ch[c].t[k].cur].on) return true;
     return false;
 }
 

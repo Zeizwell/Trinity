@@ -97,8 +97,6 @@ static void snd_alarm_cb(uint alarm) {
 }
 
 void sound_kick(void)   { if (snd_alarm >= 0) hardware_alarm_force_irq((uint)snd_alarm); }
-void sound_lock(void)   { if (snd_alarm >= 0) irq_set_enabled(hardware_alarm_get_irq_num((uint)snd_alarm), false); }
-void sound_unlock(void) { if (snd_alarm >= 0) irq_set_enabled(hardware_alarm_get_irq_num((uint)snd_alarm), true); }
 
 static void sound_on(void) {                    // на ядре 1: прерывание будильника - здесь
     snd_alarm = hardware_alarm_claim_unused(true);
@@ -108,8 +106,6 @@ static void sound_on(void) {                    // на ядре 1: прерыв
 }
 #else
 void sound_kick(void) {}
-void sound_lock(void) {}
-void sound_unlock(void) {}
 static void sound_on(void) {}
 #endif
 

@@ -96,7 +96,7 @@ void card_read_done(void) { ayfx_bus_read_done(&bus[cur]); }
 uint8_t card_sel(void) { return bus[cur].sel; }
 
 // ================= «Звук»: фон (card_poll) - события, планы, кадр, таймаут; прерывание будильника (card_sound) -
-// только шаги эффектов по готовым планам. Фон трогает движок при выключенном прерывании будильника (sound_lock)
+// только шаги эффектов по готовым планам (двойной буфер планов - прерывание никогда не ждёт фон)
 
 // Выход движка: запись эффекта в чип - вне очереди (chip_put_fx). Настоящий чип на макете - только 0
 static void fx_out(void *user, uint8_t reg, uint8_t val) {
@@ -127,14 +127,12 @@ static void fx_timeout(void) {
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
 }
 
-// Фон ядра 1: события шины (пакеты -> планы, записи Спектрума), свип раз в кадр, таймаут. Движок - под sound_lock:
-// прерывание будильника в это время не шагает (пересчёт плана - единицы мкс), потом будильник - заново (sound_kick)
+// Фон ядра 1: события шины (пакеты -> планы, записи Спектрума), свип раз в кадр, таймаут. Прерывание шагов не
+// выключаем: план считается в запасном буфере и подменяется одной записью (engine/ayfx.h); потом будильник - заново
 void card_poll(void) {
     bool touched = false;
     while (ev_tail != ev_head) {                                // события шины - по порядку
-        sound_lock();
         ev_do(ev[ev_tail]);
-        sound_unlock();
         ev_tail = (ev_tail + 1) & (EV_Q - 1);
         touched = true;
     }
@@ -142,15 +140,11 @@ void card_poll(void) {
     if (mode != MODE_FX) { t_frame = now; return; }
     // t_act пишет прерывание шины: оно могло прийти после чтения now - разница со знаком
     if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) {
-        sound_lock();
         fx_timeout();
-        sound_unlock();
         touched = true;
     } else if (cfg.frame_hz && now - t_frame >= 1000000u / cfg.frame_hz) {   // кадр: свип ШИМ (планы ШИМ заново)
         t_frame += 1000000u / cfg.frame_hz;
-        sound_lock();
         for (int c = 0; c < chips(); c++) ayfx_frame(&fx[c]);
-        sound_unlock();
         touched = true;
     }
     if (touched) sound_kick();                                  // планы поменялись - будильник на новый ближайший шаг
