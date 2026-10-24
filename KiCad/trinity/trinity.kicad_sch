@@ -6075,6 +6075,1090 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "RP2350B-MINI-A_1"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers yes)
+			(property "Reference" "RP2350B-MINI-A"
+				(at 14.986 6.604 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.143 1.143)
+					)
+				)
+			)
+			(property "Value" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "trinity:rp2350b"
+				(at 9.144 -14.732 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 0.635 0.635)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "RP2350B-MINI-A_1_0_1"
+				(rectangle
+					(start -5.08 5.08)
+					(end 22.86 -60.96)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "RP2350B-MINI-A_1_1_1"
+				(pin power_in line
+					(at 25.4 -2.54 180)
+					(length 2.54)
+					(name "3V3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3V3"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 25.4 2.54 180)
+					(length 2.54)
+					(name "5V"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5V"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -5.08 180)
+					(length 2.54)
+					(name "EN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "EN"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 10.16 -63.5 90)
+					(length 2.54)
+					(name "G"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "G1"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 15.24 -63.5 90)
+					(length 2.54)
+					(name "G"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "G2"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 25.4 0 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GND"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 25.4 -7.62 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GND"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 2.54 0)
+					(length 2.54)
+					(name "GP0"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP0"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 0 0)
+					(length 2.54)
+					(name "GP1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP1"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -2.54 0)
+					(length 2.54)
+					(name "GP2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP2"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -5.08 0)
+					(length 2.54)
+					(name "GP3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP3"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -7.62 0)
+					(length 2.54)
+					(name "GP4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP4"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -10.16 0)
+					(length 2.54)
+					(name "GP5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP5"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -12.7 0)
+					(length 2.54)
+					(name "GP6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP6"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -15.24 0)
+					(length 2.54)
+					(name "GP7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP7"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -17.78 0)
+					(length 2.54)
+					(name "GP8"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP8"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -20.32 0)
+					(length 2.54)
+					(name "GP9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP9"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -22.86 0)
+					(length 2.54)
+					(name "GP10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP10"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -25.4 0)
+					(length 2.54)
+					(name "GP11"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP11"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -27.94 0)
+					(length 2.54)
+					(name "GP12"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP12"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -30.48 0)
+					(length 2.54)
+					(name "GP13"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP13"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -33.02 0)
+					(length 2.54)
+					(name "GP14"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP14"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -35.56 0)
+					(length 2.54)
+					(name "GP15"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP15"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -38.1 0)
+					(length 2.54)
+					(name "GP16"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP16"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -40.64 0)
+					(length 2.54)
+					(name "GP17"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP17"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -43.18 0)
+					(length 2.54)
+					(name "GP18"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP18"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -45.72 0)
+					(length 2.54)
+					(name "GP19"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP19"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 2.54 -63.5 90)
+					(length 2.54)
+					(name "GP20"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP20"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -48.26 0)
+					(length 2.54)
+					(name "GP21"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP21"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -50.8 0)
+					(length 2.54)
+					(name "GP22"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP22"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -53.34 0)
+					(length 2.54)
+					(name "GP23"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP23"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -55.88 0)
+					(length 2.54)
+					(name "GP24"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP24"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -7.62 -58.42 0)
+					(length 2.54)
+					(name "GP25"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP25"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 5.08 -63.5 90)
+					(length 2.54)
+					(name "GP26"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP26"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 7.62 -63.5 90)
+					(length 2.54)
+					(name "GP27"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP27"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -58.42 180)
+					(length 2.54)
+					(name "GP28"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP28"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -55.88 180)
+					(length 2.54)
+					(name "GP29"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP29"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -53.34 180)
+					(length 2.54)
+					(name "GP30"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP30"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -50.8 180)
+					(length 2.54)
+					(name "GP31"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP31"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -48.26 180)
+					(length 2.54)
+					(name "GP32"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP32"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -45.72 180)
+					(length 2.54)
+					(name "GP33"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP33"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -43.18 180)
+					(length 2.54)
+					(name "GP34"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP34"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -40.64 180)
+					(length 2.54)
+					(name "GP35"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP35"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -38.1 180)
+					(length 2.54)
+					(name "GP36"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP36"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -35.56 180)
+					(length 2.54)
+					(name "GP37"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP37"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -33.02 180)
+					(length 2.54)
+					(name "GP38"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP38"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -30.48 180)
+					(length 2.54)
+					(name "GP39"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP39"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -27.94 180)
+					(length 2.54)
+					(name "GP40"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP40"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -25.4 180)
+					(length 2.54)
+					(name "GP41"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP41"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -22.86 180)
+					(length 2.54)
+					(name "GP42"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP42"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -20.32 180)
+					(length 2.54)
+					(name "GP43"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP43"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -17.78 180)
+					(length 2.54)
+					(name "GP44"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP44"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -15.24 180)
+					(length 2.54)
+					(name "GP45"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP45"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -12.7 180)
+					(length 2.54)
+					(name "GP46"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP46"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 25.4 -10.16 180)
+					(length 2.54)
+					(name "GP47"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "GP47"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 12.7 -63.5 90)
+					(length 2.54)
+					(name "R"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "R"
+						(effects
+							(font
+								(size 0.635 0.635)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Trinity:PCM5102"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -25978,7 +27062,7 @@
 	)
 	(symbol
 		(lib_id "Trinity:PCM5102")
-		(at 388.62 170.18 0)
+		(at 185.42 241.3 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -25988,7 +27072,7 @@
 		(dnp no)
 		(uuid "c2762678-063c-4972-ab15-b2c36798e45e")
 		(property "Reference" "PCM5102"
-			(at 388.62 160.02 0)
+			(at 185.42 231.14 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -25998,7 +27082,7 @@
 			)
 		)
 		(property "Value" ""
-			(at 388.62 170.18 0)
+			(at 185.42 241.3 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -26008,7 +27092,7 @@
 			)
 		)
 		(property "Footprint" "trinity:PCM5102"
-			(at 388.62 170.18 0)
+			(at 185.42 241.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26019,7 +27103,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 388.62 170.18 0)
+			(at 185.42 241.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26030,7 +27114,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 388.62 170.18 0)
+			(at 185.42 241.3 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26876,6 +27960,249 @@
 			(project "trinity"
 				(path "/5b081740-a53d-4cf0-be1a-eddbd1784800"
 					(reference "R6")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_name "RP2350B-MINI-A_1")
+		(lib_id "Trinity:RP2350B-MINI-A")
+		(at 127 231.14 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "d4c53193-4f43-489d-9c89-9e728e9b9184")
+		(property "Reference" "RP2350B-MINI-A2"
+			(at 135.89 223.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.143 1.143)
+				)
+			)
+		)
+		(property "Value" ""
+			(at 127 231.14 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "trinity:rp2350b"
+			(at 136.144 245.872 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 0.635 0.635)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 127 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 127 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "GP2"
+			(uuid "339dca74-1fd8-48ef-838e-8ec760c7244f")
+		)
+		(pin "GND"
+			(uuid "c89fdf25-2c1f-4be0-8c73-2614e37fd3cf")
+		)
+		(pin "GP3"
+			(uuid "18f0ba70-ccf3-4905-8607-3131ac0f1ce7")
+		)
+		(pin "GP1"
+			(uuid "064ccd70-9384-4947-9cae-cc4ba5fed739")
+		)
+		(pin "GP0"
+			(uuid "7e7b5042-cac0-413a-9a53-008ce9f757c3")
+		)
+		(pin "GND"
+			(uuid "0bc7dacd-6063-4092-81f9-672c297c79e9")
+		)
+		(pin "GP5"
+			(uuid "51323e63-fcdd-4f16-8469-678e4f49df35")
+		)
+		(pin "GP10"
+			(uuid "a191cc5d-6fb8-4b96-9e85-b496b794eba6")
+		)
+		(pin "GP8"
+			(uuid "ff9b8614-68bc-420e-9eff-85d28286316e")
+		)
+		(pin "GP6"
+			(uuid "410ebbd7-efdd-4baa-85cc-9ecc8f4baa6b")
+		)
+		(pin "GP25"
+			(uuid "a12431e3-521c-418c-aabc-fdd8329c478a")
+		)
+		(pin "GP16"
+			(uuid "8474ec08-c440-4e9c-b8be-4be07b20aaac")
+		)
+		(pin "GP7"
+			(uuid "907e6a34-f6a2-4c39-a707-8e433bc61174")
+		)
+		(pin "GP20"
+			(uuid "704bc134-67fe-4bf3-a7d1-ec85210f258f")
+		)
+		(pin "GP11"
+			(uuid "878c8afa-ac2a-4888-a5a0-9dbe1b810cef")
+		)
+		(pin "GP14"
+			(uuid "9dcf940b-ed75-425a-92fb-9d56b88a8c17")
+		)
+		(pin "GP9"
+			(uuid "446bc591-33f8-447a-a8d5-b972e936e31f")
+		)
+		(pin "GP18"
+			(uuid "fbf08feb-7277-42ff-8485-8eaa51006106")
+		)
+		(pin "GP19"
+			(uuid "56b86f61-e6cc-4872-9462-c898a8113d06")
+		)
+		(pin "GP4"
+			(uuid "6d9a5b44-11da-4eb3-a067-76492ed8f9cf")
+		)
+		(pin "GP27"
+			(uuid "f2170f5c-6c58-4a3c-8000-983b2bd03d29")
+		)
+		(pin "GP23"
+			(uuid "a4e12651-4bc6-4d0b-8a6d-dd1410d28ffb")
+		)
+		(pin "GP12"
+			(uuid "90106e7c-8571-48e2-9f71-af12bc86c739")
+		)
+		(pin "GP15"
+			(uuid "b52e7e13-da56-4c1f-b5f4-aa5489080033")
+		)
+		(pin "GP17"
+			(uuid "d0e12012-e045-4bf4-9e43-d8c5c4d80cfc")
+		)
+		(pin "GP13"
+			(uuid "ff2e0b60-d48d-4f81-8cce-11bee3d339de")
+		)
+		(pin "GP21"
+			(uuid "f949390c-0512-4f99-8093-efe09783fdc9")
+		)
+		(pin "GP24"
+			(uuid "3619b72e-d87c-4a17-8967-efc87ef0b05a")
+		)
+		(pin "GP26"
+			(uuid "fd84ee09-61b5-4d5d-86a2-9075e4a82616")
+		)
+		(pin "GP22"
+			(uuid "5007ff01-9bf6-4c36-9b1b-0b83ff06f59b")
+		)
+		(pin "EN"
+			(uuid "5ab66a52-b96b-4716-81be-0028c828151d")
+		)
+		(pin "5V"
+			(uuid "989d69f3-27f3-4da5-85ec-e93250a4984d")
+		)
+		(pin "3V3"
+			(uuid "40620732-ca03-4c59-b668-6d355e43c958")
+		)
+		(pin "G1"
+			(uuid "936cbfbd-96d6-4284-a43a-6318f3d4b8d8")
+		)
+		(pin "G2"
+			(uuid "5ea4d24c-e527-49af-a29c-7636419f434c")
+		)
+		(pin "GP35"
+			(uuid "7f110c39-76b0-4d35-8bf1-8ed0f802e5ed")
+		)
+		(pin "GP37"
+			(uuid "4d80f024-530a-419f-b02a-3697c2749d9f")
+		)
+		(pin "GP36"
+			(uuid "c1e16214-8a37-4b49-a764-ae901e8336e2")
+		)
+		(pin "GP40"
+			(uuid "e0be53fc-876f-42d2-ad7b-427ab1f0f143")
+		)
+		(pin "GP38"
+			(uuid "ad5dc5ce-5f35-4189-b702-56dde7cbc60a")
+		)
+		(pin "GP39"
+			(uuid "510fc2d7-d8d9-406a-9ebb-4223cf7c6fc8")
+		)
+		(pin "GP42"
+			(uuid "0353c1d0-6a75-4b82-8550-910a3e760247")
+		)
+		(pin "GP41"
+			(uuid "247061c6-dd78-4f83-b14d-fd0f6c5ff09b")
+		)
+		(pin "GP45"
+			(uuid "6d334adf-fb8a-4815-9d00-398893dbaf16")
+		)
+		(pin "GP44"
+			(uuid "07f54f6b-7fcb-4558-b3fd-cc5ab125874b")
+		)
+		(pin "GP43"
+			(uuid "860cf91c-b328-43af-878a-897d4c6579d3")
+		)
+		(pin "GP46"
+			(uuid "02375239-88dd-4052-b0ae-ca6e2e2f186c")
+		)
+		(pin "GP47"
+			(uuid "e17fbb70-08f9-4536-a186-8994b9170504")
+		)
+		(pin "R"
+			(uuid "cf8ca2af-c617-47c4-aede-1a19aa23fa53")
+		)
+		(pin "GP29"
+			(uuid "bb0ac50f-3ca7-48c0-8a1c-ab8538e6b7d7")
+		)
+		(pin "GP31"
+			(uuid "8f22b1fe-e0a1-45ec-9be4-7605d8f9bd4c")
+		)
+		(pin "GP30"
+			(uuid "acb7d9f4-1b9b-4113-87e0-e75ef2858dc2")
+		)
+		(pin "GP28"
+			(uuid "a837bced-6ce4-4f02-8702-52530fd6db78")
+		)
+		(pin "GP34"
+			(uuid "239eadbc-0f20-4178-a61a-9efcb07c101b")
+		)
+		(pin "GP32"
+			(uuid "b067f217-fa1d-4404-8f4b-96cbc0f49653")
+		)
+		(pin "GP33"
+			(uuid "a7d2e49e-ba74-43e1-97d8-1fade7baf6be")
+		)
+		(instances
+			(project "trinity"
+				(path "/5b081740-a53d-4cf0-be1a-eddbd1784800"
+					(reference "RP2350B-MINI-A2")
 					(unit 1)
 				)
 			)
