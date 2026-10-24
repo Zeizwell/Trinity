@@ -5,7 +5,7 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      17
+#define FW_VERSION      18
 #include <stdint.h>
 #include <stdbool.h>
 

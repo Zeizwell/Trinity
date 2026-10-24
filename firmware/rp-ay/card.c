@@ -133,7 +133,8 @@ void card_poll(void) {
     if (mode != MODE_FX) { t_last = now; tick_acc = 0; t_frame = now; return; }
     if (dt < 4) return;                         // таймеры - не чаще раза в 4 мкс
     t_last = now;
-    if (cfg.fx_timeout_s && now - t_act >= cfg.fx_timeout_s * 1000000u) { fx_timeout(); return; }
+    // t_act пишет прерывание: оно могло прийти после чтения now - разница со знаком (иначе ложный таймаут)
+    if (cfg.fx_timeout_s && (int32_t)(now - t_act) >= (int32_t)(cfg.fx_timeout_s * 1000000u)) { fx_timeout(); return; }
     // такты тона за dt мкс: dt * (такт AY / 8) / 1e6, остаток копится (dt до ~19 с не переполнит 32 бита)
     tick_acc += dt * (cfg.ay_clock_hz / 8);
     uint32_t n = tick_acc / 1000000u;
