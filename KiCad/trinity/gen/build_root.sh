@@ -14,3 +14,6 @@ python gen/merge_into_root.py gen/rpay_pu.kicad_sch $T/p3.kicad_sch $T/p4.kicad_
 python gen/norm_labels.py $T/p4.kicad_sch $T/p5.kicad_sch
 python gen/merge_into_root.py gen/a12v.kicad_sch $T/p5.kicad_sch $T/p6.kicad_sch
 python gen/patch_a12v.py $T/p6.kicad_sch $T/root.kicad_sch
+cp $T/root.kicad_sch $T/p7.kicad_sch
+python gen/delete_parts.py $T/p7.kicad_sch C3 R6 C17 R30 | tail -1
+python gen/patch_out.py $T/p7.kicad_sch $T/root.kicad_sch

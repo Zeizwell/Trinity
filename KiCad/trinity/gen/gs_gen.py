@@ -150,7 +150,7 @@ def build(d):
     s.wire((gx, g18[1]), (gx, YP + 25.4))
     s.power("GND", gx, YP + 25.4)
     net("GND", "U8", 16); net("GND", "U8", 18)
-    to_right_bus(s, "U8", 19, "GS_L")
+    to_right_bus(s, "U8", 19, "GS_L")                    # L / R гнезда модуля: выход карты (и гребёнка J2)
     to_right_bus(s, "U8", 17, "GS_R")
     xs = s.pin("U8", 13)                                  # XSMT: ножка -> 1к -> метка GS_XSMT (ножка RP)
     r = ref("R")
@@ -216,6 +216,18 @@ def build(d):
     s.power("GND", j[0] - 2.54, j[1] + 2.54)
     net("GND", "J6", 12)
 
+    # AY + FM с микшера (SND_L / SND_R) -> 1к -> гнездо модуля: там уже GS (ЦАП через 470 Ом модуля);
+    # нагрузка ЦАП 470 + 1к = 1.47 кОм (даташит PCM5102A: не меньше 1 кОм)
+    for r, pp, n, dy in (("R210", 19, "SND_L", 1), ("R211", 17, "SND_R", -1)):   # номера - после старых R201..R209
+        x = 271.78
+        y = s.pin("U8", pp)[1]
+        s.place(r, "Device:R", "1k", x, y + dy * 3.81, props={"Footprint": FP_R})
+        far = s.pin(r, 2) if dy > 0 else s.pin(r, 1)
+        s.wire(far, (BR - 2.54, far[1]))
+        s.bus_entry(BR - 2.54, far[1], 2.54, -2.54)
+        s.label(n, BR - 2.54, far[1], angle=180)
+        g_ = "GS_L" if pp == 19 else "GS_R"
+        net(g_, r, 1 if dy > 0 else 2); net(n, r, 2 if dy > 0 else 1)
     # ---- шина вокруг блока и заголовок (как TURBO SOUND FM)
     s.bus((BL, BT), (BR, BT), (BR, BB), (BL, BB), (BL, BT))
     s.texts.append(("GS", BL + 1.27, BT - 0.635, 2.0066, "left bottom", False))
