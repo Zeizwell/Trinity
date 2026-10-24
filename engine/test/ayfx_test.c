@@ -26,7 +26,6 @@ static bool wr(uint8_t r, uint8_t v) {          // true - в чип не про�
         if (ayfx_reg_write(&a, r, v)) return true;
         chip[r] = v;                            // не у эффекта - прямо в чип
         return false;
-    case AYFX_EV_CLOSE:  ayfx_off(&a); break;
     case AYFX_EV_PACKET: ayfx_packet(&a, b.pkt); break;
     }
     return true;
@@ -103,6 +102,14 @@ int main(void) {
     check("0 в C0 - закрыт", !b.on);
     { uint8_t p[2] = { AYFX_P_RESET, 7 }; outs = 0; c1(p, 2); }
     check("закрыт - пакеты не идут", outs == 0);
+
+    // 7. Закрытие эффекты не выключает (плеер закрывает поток каждый кадр)
+    open_stream();
+    row(0, 1 /*SID*/, 1, 0, 1);
+    wr(0xC0, 0);
+    check("SID включили, поток закрыли - эффект играет", ayfx_active(&a));
+    ayfx_tick(&a, 100);
+    check("  ... и таймер идёт: шаг 1, громкость 0", chip[8] == 0);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;

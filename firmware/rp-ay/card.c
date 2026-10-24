@@ -53,11 +53,10 @@ static void pk_put(uint8_t c, const uint8_t *p) {
     ev_put(AYFX_EV_PACKET, c, 0, (uint8_t)s);
 }
 
-// Поток открыт хоть у одного чипа - режим FX, закрыт у всех - AY
-static void bus_mode(void) {
-    for (int c = 0; c < chips(); c++)
-        if (bus[c].on) { if (mode == MODE_AY) mode_set(MODE_FX); return; }
-    if (mode == MODE_FX) mode_set(MODE_AY);
+// Ключ: режим FX. Закрытие потока режим не меняет (ay-ports-map.md п.4: «закрыто» - закрыт доступ к регистрам, а не
+// выключены эффекты; плеер закрывает поток каждый кадр). Назад в AY - только таймаут или сброс
+static void bus_open(void) {
+    if (mode == MODE_AY) mode_set(MODE_FX);
 }
 
 // Адрес (#FFFD): выбор чипа TurboSound или регистра
@@ -73,8 +72,7 @@ static void data_write(uint8_t v) {
     if (!mode_chip_from_slot()) return;                         // ATARI / UPDATE / TEST: только тень
     switch (ayfx_bus_write(b, v)) {
     case AYFX_EV_REG:    if (b->sel < 16) ev_put(AYFX_EV_REG, cur, b->sel, v); break;
-    case AYFX_EV_OPEN:   bus_mode(); break;
-    case AYFX_EV_CLOSE:  ev_put(AYFX_EV_CLOSE, cur, 0, 0); bus_mode(); break;
+    case AYFX_EV_OPEN:   bus_open(); break;              // закрытие (AYFX_EV_CLOSE) - только шина, эффекты играют
     case AYFX_EV_PACKET: pk_put(cur, b->pkt); break;
     }
 }
@@ -109,9 +107,6 @@ static void ev_do(uint32_t e) {
     case AYFX_EV_REG:                                           // регистр у эффекта - движок записал с поправкой
         if (!ayfx_reg_write(&fx[c], r, v) && c == 0) chip_put(r, v);
         break;
-    case AYFX_EV_CLOSE:
-        ayfx_off(&fx[c]);
-        break;
     case AYFX_EV_PACKET:
         if (pk[v][0] < 5) card_pk[pk[v][0]]++;
         ayfx_packet(&fx[c], pk[v]);
@@ -124,7 +119,7 @@ static void ev_do(uint32_t e) {
 static void fx_timeout(void) {
     uint32_t s = save_and_disable_interrupts();
     for (int c = 0; c < CARD_CHIPS; c++) bus[c].on = 0, bus[c].info = 0;
-    bus_mode();
+    if (mode == MODE_FX) mode_set(MODE_AY);
     restore_interrupts(s);
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
 }

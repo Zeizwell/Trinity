@@ -88,7 +88,7 @@ int main(void) {
 
     card_slot_write(0, 0xC0);
     card_slot_write(1, 0);                       // закрыть
-    check("закрыть (0 в #C0): режим AY", mode == MODE_AY);
+    check("закрыть (0 в #C0): режим FX остаётся, SID играет (закрыт доступ, не эффекты)", mode == MODE_FX && drain(100) && sim_ym_regs[8] == 15);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;
