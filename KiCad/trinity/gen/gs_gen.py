@@ -208,7 +208,9 @@ def build(d):
     # ---- гребёнка J6: запасные ножки RP-GS
     s.place("J6", "Connector_Generic:Conn_01x12", "SPARE", 271.78, 76.2,
             props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical"})
-    for k2, p in enumerate(spare, 1):
+    # порядок контактов - как ножки идут по правому краю модуля сверху вниз (линии на плате не перекрещиваются),
+    # GP25 - с нижнего угла левого края
+    for k2, p in enumerate(["GP47", "GP46", "GP45", "GP44", "GP39", "GP38", "GP35", "GP34", "GP29", "GP25"], 1):
         lab_stub(s, "J6", k2, f"GS_{p}", 5.08)
     lab_stub(s, "J6", 11, "AY_GP47", 5.08)               # единственная свободная ножка RP-AY
     j = s.pin("J6", 12)                                   # земля гребёнки - уголком вниз, мимо меток
