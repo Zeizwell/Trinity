@@ -15,6 +15,7 @@ typedef struct {                    // счётчики (USB-консоль)
     volatile uint32_t resets;       // сбросов /IC
     volatile uint32_t reads;        // чтений данных Спектрумом (метки PIO)
     volatile uint8_t  rd_sel[4], rd_ans[4]; // первые 4 чтения данных: выбранный регистр, что было на шине
+    volatile uint32_t fx_over;      // запись эффекта перезаписала ещё не ушедшую (чип не успевает за эффектом)
 } chip_stat_t;
 
 extern chip_stat_t chip_stat;

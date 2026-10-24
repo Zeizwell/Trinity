@@ -107,6 +107,7 @@ bool chip_put(uint8_t reg, uint8_t v) {
 void chip_put_fx(uint8_t reg, uint8_t v) {
     if (reg > 15) return;
     uint32_t s = save_and_disable_interrupts();
+    if (fx_pend & (1u << reg)) chip_stat.fx_over++;
     fx_val[reg] = v;
     fx_pend |= (uint16_t)(1u << reg);
     restore_interrupts(s);

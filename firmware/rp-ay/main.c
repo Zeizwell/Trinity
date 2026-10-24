@@ -286,6 +286,9 @@ int main(void) {
             printf("  bus irq max %lu cyc (%lu ns), events lost %lu, packets ROW %lu TABLE %lu RESET %lu\n",
                    (unsigned long)irq_max_cyc, (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)),
                    (unsigned long)card_ev_lost, (unsigned long)card_pk[1], (unsigned long)card_pk[2], (unsigned long)card_pk[3]);
+            printf("  fx steps %lu: late max %lu us, avg %lu us; fx writes overwritten (chip too slow) %lu\n",
+                   (unsigned long)card_late_n, (unsigned long)card_late_max,
+                   (unsigned long)(card_late_n ? card_late_sum / card_late_n : 0), (unsigned long)chip_stat.fx_over);
             printf("rp-ay %s: slot %lu  chip %lu  lost %lu  fifo %lu  resets %lu  sel %02X  reads %lu:"
                    " %02X=%02X %02X=%02X %02X=%02X %02X=%02X\n",
                    mode_name[mode], (unsigned long)chip_stat.slot_wr, (unsigned long)chip_stat.chip_wr,

@@ -18,6 +18,8 @@ static uint8_t  pk[PK_Q][AYFX_PKT];
 static volatile uint32_t pk_head, pk_tail;  // сколько пакетов положено / разобрано
 volatile uint32_t card_ev_lost;
 volatile uint32_t card_pk[5];
+volatile uint32_t card_late_max, card_late_sum, card_late_n;
+static uint32_t  snd_due;                   // мкс: срок ближайшего шага эффекта (0 - нет)
 
 // ---- «Шина»
 static uint8_t    regs[CARD_CHIPS][256];    // тень: что Спектрум записал (ответ на чтение)
@@ -135,6 +137,12 @@ uint32_t card_sound(void) {
     }
     uint32_t now = time_us_32(), dt = now - t_last;
     t_last = now;
+    if (snd_due && (int32_t)(now - snd_due) >= 0) {             // пришли к сроку шага: насколько позже
+        uint32_t late = now - snd_due;
+        if (late > card_late_max) card_late_max = late;
+        card_late_sum += late, card_late_n++;
+        snd_due = 0;
+    }
     uint32_t hz = cfg.ay_clock_hz / 8;                          // тактов тона в секунду
     if (mode != MODE_FX) { tick_acc = 0; t_frame = now; return CARD_SOUND_MAX_US; }   // TEST и др.: эффекты стоят
     // t_act пишет прерывание шины: оно могло прийти после чтения now - разница со знаком
@@ -161,7 +169,10 @@ uint32_t card_sound(void) {
     if (next == UINT32_MAX) return CARD_SOUND_MAX_US;
     // мкс до него: (next * 1e6 - накопленный остаток) / hz, вверх
     uint64_t us = ((uint64_t)next * 1000000u - tick_acc + hz - 1) / hz;
-    return us < 1 ? 1 : us > CARD_SOUND_MAX_US ? CARD_SOUND_MAX_US : (uint32_t)us;
+    if (us < 1) us = 1;
+    if (us > CARD_SOUND_MAX_US) return CARD_SOUND_MAX_US;
+    snd_due = now + (uint32_t)us;                               // срок шага - для замера опоздания
+    return (uint32_t)us;
 }
 
 void card_test_bytes(const uint8_t *b, int n) {
