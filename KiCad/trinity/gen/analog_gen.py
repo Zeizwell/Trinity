@@ -225,7 +225,7 @@ def build(d):
     s.block_end()
 
     # ---- Питание аналога
-    s.block_start("ANALOG POWER (from +5V bus, no 12 V)")
+    s.block_start("ANALOG POWER (from +5V bus, no 12 V) + OP-AMP SUPPLY")
     rail(s, 381.0, 30.48, "+5V", "600R@100MHz", "+5VA",
          [("Device:C_Polarized", "47u", FP_CP), ("Device:C", "100n", FP_C)], flag=True)
     rail(s, 381.0, 55.88, "+5V", "600R@100MHz", "+5VA_1",
@@ -277,21 +277,18 @@ def build(d):
     net("NEG_RAW", rr, 1); net("-5VA", rr, 2); net("-5VA", c2, 1); net("GND", c2, 2)
     s.note("+5VA_1 / +5VA_2: own filter per YM (pin 21 YM2203, pin 1 YM3014B).\n"
            "No 5 V LDO possible from the 5 V bus - filters only; spare pads for a 2nd RC stage.", 381.0, 142.24, 1.0)
-    s.block_end()
-
-    # ---- Питание ОУ
-    s.block_start("OP-AMP POWER + DECOUPLING (100n at each pin)")
-    s.place("U101", "Amplifier_Operational:NJM4580", "NJM4580", 393.7, 203.2, unit=3, props={"Footprint": FP_OA})
+    # ---- Питание ОУ (тот же блок): 100n у каждой ножки
+    s.place("U101", "Amplifier_Operational:NJM4580", "NJM4580", 393.7, 165.1, unit=3, props={"Footprint": FP_OA})
     s.stub("U101", 8, 2.54, power="+5VA", unit=3)
     s.stub("U101", 4, 2.54, power="-5VA", unit=3)
     net("+5VA", "U101", 8); net("-5VA", "U101", 4)
     for k, (top, bot) in enumerate((("+5VA", "GND"), ("GND", "-5VA"))):
         r = ref("C")
-        vpart(s, r, "Device:C", "100n", 408.94 + k * 10.16, 198.12, FP_C)
+        vpart(s, r, "Device:C", "100n", 408.94 + k * 10.16, 160.02, FP_C)
         s.stub(r, 1, 2.54, power=top)
         s.stub(r, 2, 2.54, power=bot)
         net(top, r, 1); net(bot, r, 2)
-    s.note("NJM4580 (or NE5532, same pinout), +-5 V.", 381.0, 218.44, 1.0)
+    s.note("Op-amp NJM4580 (or NE5532, same pinout) on +-5 V, 100n at V+ and V-.", 381.0, 180.34, 1.0)
     s.block_end()
 
     s.arrange(relieve=False)                          # координаты - как нарисованы (relief двигал строки)
