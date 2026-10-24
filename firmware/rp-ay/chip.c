@@ -1,6 +1,7 @@
 // Чип: очередь записей "регистр + данные" и писатель (chip.h). Пишет ядро ножками напрямую (SIO) - тем же способом,
 // что тест чтения (на железе проверен), но шагами по времени: каждое состояние ножек держится до своей отметки,
-// между шагами ядро свободно (ответы на чтение слота успевают). PIO для записи не используем: на макете молчал.
+// между шагами ядро свободно (прерывание шины обслуживается). Время - счётчик тактов RP (SysTick ядра 1), паузы
+// точные до такта. PIO для записи не используем: на макете молчал.
 #include "chip.h"
 #include "config.h"
 #include "pico/stdlib.h"
@@ -12,11 +13,21 @@ chip_stat_t chip_stat;
 static uint16_t q[CHIP_Q_SIZE];           // регистр << 8 | данные
 static volatile uint32_t q_head, q_tail;  // head - писать сюда, tail - брать отсюда
 static uint8_t  step;                     // какое состояние записи q_tail ставим следующим (0..7)
-static uint32_t due;                      // time_us_32, когда можно ставить следующее состояние
-static uint32_t c_setup, c_pulse, c_hold, c_addr, c_ssg, c_fm;   // длительности из cfg, такты RP (тест чтения)
-static uint32_t u_setup, u_pulse, u_hold, u_addr, u_ssg, u_fm;   // они же в мкс для записи шагами (с запасом)
+static uint32_t t_start, t_dur;           // SysTick: когда поставлено текущее состояние, сколько тактов держать
+static uint32_t c_setup, c_pulse, c_hold, c_addr, c_ssg, c_fm;   // паузы, такты RP
 
 #define CHIP_PINS_MASK  ((0xFFull << PIN_CHIP_D0) | (1ull << PIN_CHIP_CS) | (1ull << PIN_CHIP_WR) | (1ull << PIN_CHIP_A0))
+
+// ---- Счётчик тактов RP: SysTick, 24 бита, считает ВНИЗ; разница - не больше 67 мс на 250 МГц
+#ifndef SIM_HOST
+#include "hardware/structs/systick.h"
+void     cyc_init(void) { systick_hw->rvr = 0xFFFFFF; systick_hw->cvr = 0; systick_hw->csr = 5; }
+uint32_t cyc_now(void)  { return systick_hw->cvr; }
+#else
+void     cyc_init(void) {}
+uint32_t cyc_now(void)  { time_us_32(); return (uint32_t)(0xFFFFFF - sim_now_ns() * 150 / 1000) & 0xFFFFFF; }
+#endif
+static uint32_t cyc_since(uint32_t t0) { return (t0 - cyc_now()) & 0xFFFFFF; }
 
 static uint32_t ns_to_cyc(uint32_t ns) {
     return (uint32_t)((uint64_t)clock_get_hz(clk_sys) * ns / 1000000000u) + 1;
@@ -26,11 +37,6 @@ static uint32_t ht_to_cyc(uint32_t half_t) {          // полутакты Z80 
 }
 static uint32_t clk_to_cyc(uint32_t chip_clk) {      // такты чипа -> такты RP (вверх)
     return (uint32_t)(((uint64_t)chip_clk * clock_get_hz(clk_sys) + cfg.phim_hz - 1) / cfg.phim_hz);
-}
-// Такты RP -> мкс для отметок: вверх и +1 (таймер мкс тикает в любой момент - иначе можно выйти раньше)
-static uint32_t cyc_to_us(uint32_t cyc) {
-    uint32_t mhz = clock_get_hz(clk_sys) / 1000000u;
-    return (cyc + mhz - 1) / mhz + 1;
 }
 
 // Состояние ножек чипа: данные, A0, /CS, /WR
@@ -45,32 +51,37 @@ void chip_init(void) {
     gpio_set_dir(PIN_CHIP_RD, GPIO_OUT);
     gpio_put_masked64(CHIP_PINS_MASK, pins(0, false, true, true));   // покой: /CS и /WR вверх
     gpio_set_dir_masked64(CHIP_PINS_MASK, CHIP_PINS_MASK);
-    chip_timing(CHIP_TIMING_RUN);
+    chip_timing_cfg();
     chip_reset_state();
 }
 
 void chip_reset_state(void) {
     q_head = q_tail = 0;
     step = 0;
-    due = time_us_32();
+    t_dur = 0;
 }
 
-void chip_timing(int set) {
-    c_setup = ht_to_cyc(cfg.setup_ht);
-    c_pulse = ht_to_cyc(cfg.pulse_ht);
-    c_hold  = ht_to_cyc(cfg.hold_ht);
-    c_addr  = ht_to_cyc(cfg.gap_addr_ht);
-    c_ssg   = ht_to_cyc(cfg.gap_ssg_ht);
-    c_fm    = clk_to_cyc(cfg.wait_fm_clk);
-    if (set == 1) {                                             // даташит YM2203: 17 тактов чипа (3.5 МГц: 4.86 мкс)
-        c_addr = clk_to_cyc(17);
-        c_ssg  = clk_to_cyc(17);
+// ---- Паузы: ритм Z80 (cfg, полутакты) * % набора
+const char *const chip_tm_name[CHIP_TM_N] = { "setup", "/WR", "hold", "addr gap", "data gap" };
+static const uint8_t *tm_ht(int i) {
+    const uint8_t *h[CHIP_TM_N] = { &cfg.setup_ht, &cfg.pulse_ht, &cfg.hold_ht, &cfg.gap_addr_ht, &cfg.gap_ssg_ht };
+    return h[i];
+}
+uint32_t chip_tm_base_ns(int i) { return (uint32_t)((uint64_t)*tm_ht(i) * 500000000u / cfg.z80_hz); }
+
+void chip_timing_pct(const uint16_t pct[CHIP_TM_N]) {
+    uint32_t c[CHIP_TM_N];
+    for (int i = 0; i < CHIP_TM_N; i++) {
+        c[i] = (uint32_t)((uint64_t)ht_to_cyc(*tm_ht(i)) * pct[i] / 100);
+        if (!c[i]) c[i] = 1;
     }
-    if (set == 2) {                                             // всё в 4 раза медленнее
-        c_setup *= 4, c_pulse *= 4, c_hold *= 4, c_addr *= 4, c_ssg *= 4;
-    }
-    u_setup = cyc_to_us(c_setup), u_pulse = cyc_to_us(c_pulse), u_hold = cyc_to_us(c_hold);
-    u_addr = cyc_to_us(c_addr), u_ssg = cyc_to_us(c_ssg), u_fm = cyc_to_us(c_fm);
+    c_setup = c[0], c_pulse = c[1], c_hold = c[2], c_addr = c[3], c_ssg = c[4];
+    c_fm = clk_to_cyc(cfg.wait_fm_clk);
+}
+
+void chip_timing_cfg(void) {
+    static const uint16_t z80[CHIP_TM_N] = { 100, 100, 100, 100, 100 };
+    chip_timing_pct(cfg.timing_preset ? cfg.tuned_pct : z80);
 }
 
 bool chip_put(uint8_t reg, uint8_t v) {
@@ -83,26 +94,27 @@ bool chip_put(uint8_t reg, uint8_t v) {
 
 // Восемь состояний на запись, как цикл Z80: регистр (установка, /WR вниз, /WR вверх при /CS внизу, /CS вверх и
 // пауза адреса), данные (то же, в конце - пауза занятости). Чип защёлкивает по подъёму /WR, /CS должен быть ещё внизу.
-// Ставит состояние s, возвращает, сколько мкс его держать
+// Ставит состояние s, возвращает, сколько тактов RP его держать
 static uint32_t step_set(uint8_t reg, uint8_t v, uint8_t s) {
     bool data = s >= 4;
     uint8_t d = data ? v : reg;
     switch (s & 3) {
-    case 0:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, true));  return u_setup;   // данные, A0, /CS вниз
-    case 1:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, false)); return u_pulse;   // /WR вниз
-    case 2:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, true));  return u_hold;    // /WR вверх, /CS ещё внизу
+    case 0:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, true));  return c_setup;   // данные, A0, /CS вниз
+    case 1:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, false)); return c_pulse;   // /WR вниз
+    case 2:  gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, false, true));  return c_hold;    // /WR вверх, /CS ещё внизу
     default: gpio_put_masked64(CHIP_PINS_MASK, pins(d, data, true, true));                     // /CS вверх, пауза
-             return !data ? u_addr : (reg < 16 ? u_ssg : u_fm);
+             return !data ? c_addr : (reg < 16 ? c_ssg : c_fm);
     }
 }
 
-// Следующий шаг записи, если его отметка наступила (ядро не ждёт)
+// Следующий шаг записи, если пауза прошлого состояния кончилась (ядро не ждёт)
 void chip_poll(void) {
+    if (t_dur && cyc_since(t_start) < t_dur) return;
+    t_dur = 0;                                                  // пауза прошла (дальше счётчик может обернуться)
     if (q_tail == q_head) return;
-    uint32_t now = time_us_32();
-    if ((int32_t)(now - due) < 0) return;
     uint16_t e = q[q_tail];
-    due = now + step_set((uint8_t)(e >> 8), (uint8_t)e, step);
+    t_start = cyc_now();
+    t_dur = step_set((uint8_t)(e >> 8), (uint8_t)e, step);
     if (++step < 8) return;
     step = 0;
     q_tail = (q_tail + 1) & (CHIP_Q_SIZE - 1);
@@ -111,7 +123,8 @@ void chip_poll(void) {
 
 // Всё записано: очередь пуста и последняя пауза прошла
 bool chip_idle(void) {
-    return q_tail == q_head && step == 0 && (int32_t)(time_us_32() - due) >= 0;
+    if (t_dur && cyc_since(t_start) >= t_dur) t_dur = 0;
+    return q_tail == q_head && step == 0 && !t_dur;
 }
 
 // ---- Тест чтения: пишем и читаем сразу (с ожиданием), паузы - те же из cfg
@@ -222,4 +235,25 @@ void chip_test(chip_test_t *r) {
             cmp(r, (uint8_t)reg, row[reg], read_now((uint8_t)reg, row[reg]), old[reg], row);
         for (int reg = 0; reg < 14; reg++) old[reg] = row[reg];
     }
+}
+
+// Тест пауз: каждую по очереди уменьшаем (остальные - 400 %, с запасом), на каждом шаге - chip_test; минимум без
+// ошибок, рабочее = минимум + cfg.timing_margin_pct. Только когда chip_idle(); после - набор из cfg (chip_timing_cfg)
+void chip_tune(chip_tune_t *t) {
+    static const uint16_t steps[] = { 200, 150, 120, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5 };
+    chip_test_t r;
+    for (int i = 0; i < CHIP_TM_N; i++) {
+        uint16_t pct[CHIP_TM_N] = { 400, 400, 400, 400, 400 };
+        uint16_t ok = 400;                                      // 400 % считаем проходным (как тест при старте)
+        for (unsigned s = 0; s < sizeof steps / sizeof steps[0]; s++) {
+            pct[i] = steps[s];
+            chip_timing_pct(pct);
+            chip_test(&r);
+            if (r.errors) break;
+            ok = steps[s];
+        }
+        t->min_pct[i] = ok;
+        t->work_pct[i] = (uint16_t)((ok * (100u + cfg.timing_margin_pct) + 99) / 100);
+    }
+    chip_timing_cfg();
 }

@@ -22,7 +22,9 @@ static uint sm_wr, sm_rd;
 
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
-static volatile bool hold_req;                  // клавиша h: замер напряжений на ножках чипа (chip_hold)
+static volatile bool hold_req;
+static volatile bool tune_req, tune_done;      // клавиша p: тест пауз (chip_tune)
+static chip_tune_t   tune_res;                  // клавиша h: замер напряжений на ножках чипа (chip_hold)
 static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки (boot_res)
 static volatile int  boot_stage;                // шаг старта ядра 1 (светодиод): 0 - не начал, 1 - писк, 2 - тест
 static chip_test_t   test_res, boot_res;
@@ -50,12 +52,6 @@ static void answer_update(void) {
 // Спектрума, ~0.85 мкс на 14 МГц)
 #ifndef SIM_HOST
 #include "hardware/irq.h"
-#include "hardware/structs/systick.h"
-static void     cyc_init(void) { systick_hw->rvr = 0xFFFFFF; systick_hw->cvr = 0; systick_hw->csr = 5; }
-static uint32_t cyc_now(void)  { return systick_hw->cvr; }                  // считает ВНИЗ, 24 бита
-#else
-static void     cyc_init(void) {}
-static uint32_t cyc_now(void)  { return 0; }
 #endif
 static volatile uint32_t irq_max_cyc;           // самый долгий обработчик шины, такты RP
 
@@ -80,7 +76,7 @@ static void bus_irq(void) {
 }
 
 static void bus_irq_on(void) {
-    cyc_init();
+    cyc_init();                                     // счётчик тактов: писатель в чип и замер обработчика
     pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_wr), true);
     pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_rd), true);
     irq_set_exclusive_handler(PIO1_IRQ_0, bus_irq);
@@ -140,6 +136,14 @@ static void core1_main(void) {
         chip_poll();
         if (test_req) test_run();
         if (hold_req && chip_idle()) { chip_hold(30000); hold_req = false; }
+        if (tune_req && chip_idle()) {                   // тест пауз, потом tuned - в работу (до перезагрузки)
+            chip_tune(&tune_res);
+            for (int i = 0; i < CHIP_TM_N; i++) cfg.tuned_pct[i] = tune_res.work_pct[i];
+            cfg.timing_preset = 1;
+            chip_timing_cfg();
+            card_resend();
+            tune_req = false, tune_done = true;
+        }
         bool ic = gpio_get(PIN_SLOT_IC);
         if (!ic && ic_was) do_reset();                  // /IC вниз
         ic_was = ic;
@@ -209,10 +213,23 @@ int main(void) {
     while (true) {
         sleep_ms(100);
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
+        if (key == 'p' && !tune_req) { tune_req = true; printf("pause test: ~1 min...\n"); }
         if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }
         if (key == 't' && !test_req) {
             if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
             else printf("test: нельзя из режима %s\n", mode_name[mode]);
+        }
+        if (tune_done) {                                              // табличка теста пауз
+            tune_done = false;
+            printf("pause      Z80 ns  min %%  min ns  work %%  work ns   (margin %u%%)\n", cfg.timing_margin_pct);
+            for (int i = 0; i < CHIP_TM_N; i++) {
+                uint32_t b = chip_tm_base_ns(i);
+                printf("%-9s  %6lu  %5u  %6lu  %6u  %7lu\n", chip_tm_name[i], (unsigned long)b, tune_res.min_pct[i],
+                       (unsigned long)(b * tune_res.min_pct[i] / 100), tune_res.work_pct[i],
+                       (unsigned long)(b * tune_res.work_pct[i] / 100));
+            }
+            printf("tuned now on. config.c: cfg.timing_preset = 1; tuned_pct = { %u, %u, %u, %u, %u }\n",
+                   tune_res.work_pct[0], tune_res.work_pct[1], tune_res.work_pct[2], tune_res.work_pct[3], tune_res.work_pct[4]);
         }
         if (test_done) {
             test_done = false;

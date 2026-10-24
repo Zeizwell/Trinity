@@ -34,10 +34,19 @@ typedef struct {
                                           //   ожидаемому (чип не выдал данные), прошлое значение (запись не прошла), значение другого регистра
     uint16_t reg_err[14];                 // ошибок по регистрам
 } chip_test_t;
-void chip_test(chip_test_t *r);
+void chip_test(chip_test_t *r);          // только когда chip_idle(); после теста в чипе мусор - вернуть тень
 void chip_hold(uint32_t ms);              // замер тестером: A0 = 1, /WR = 0, /CS = 1 держать ms, потом покой
 uint16_t chip_pins_check(void);         // ножки RP к чипу: замыкания (маска: D0..D7, /CS, /WR, A0, /RD)
-void chip_probe(uint8_t out[3]);         // чтение R14, R15 (порты) и статуса - без записи: какая линия           // только когда chip_idle(); после теста в чипе мусор - вернуть тень
-#define CHIP_TIMING_RUN 2                 // макет: в работе - самые длинные паузы (x4), подобрать потом тестом
-void chip_timing(int set);                // паузы записи: 0 - cfg (ритм Z80), 1 - даташит YM2203 (17 тактов чипа
-                                          //   после адреса и данных), 2 - набор 0 в 4 раза медленнее (тест)
+void chip_probe(uint8_t out[3]);         // чтение R14, R15 (порты) и статуса - без записи: какая линия
+
+// Паузы записи: ритм Z80 на 3.5 МГц (cfg, полутакты) * % набора. Наборы: default - 100 %, tuned - из теста пауз
+#define CHIP_TM_N 5                       // установка, /WR, удержание, после адреса, после данных
+extern const char *const chip_tm_name[CHIP_TM_N];
+uint32_t chip_tm_base_ns(int i);          // пауза i при 100 % (ритм Z80), нс
+void chip_timing_pct(const uint16_t pct[CHIP_TM_N]);
+void chip_timing_cfg(void);               // набор из cfg: timing_preset 0 - default, 1 - tuned_pct
+typedef struct { uint16_t min_pct[CHIP_TM_N], work_pct[CHIP_TM_N]; } chip_tune_t;
+void chip_tune(chip_tune_t *t);           // тест пауз (только когда chip_idle): минимум без ошибок, рабочее = + запас
+
+void     cyc_init(void);                  // счётчик тактов RP (SysTick) - на ядре писателя, до первой записи
+uint32_t cyc_now(void);                   //   считает вниз, 24 бита

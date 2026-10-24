@@ -14,6 +14,9 @@ void cfg_defaults(void) {
     cfg.phim_hz          = 3500000;     // макет: такт YM2203 из слота MultiSound (уточнить замером φM)
     cfg.wait_fm_clk      = 83;          // YM2203 FM
     cfg.rd_pulse_ns      = 500;         // тест чтения: с запасом
+    cfg.timing_preset    = 0;           // default: ритм Z80 (tuned - после теста пауз, клавиша p)
+    for (int i = 0; i < 5; i++) cfg.tuned_pct[i] = 100;
+    cfg.timing_margin_pct = 50;
     cfg.status_answer    = 0x00;        // никогда не занят: очередь в RP сама держит паузы чипа
     cfg.mode_after_reset = MODE_AY;
     cfg.silence_on_reset = true;
