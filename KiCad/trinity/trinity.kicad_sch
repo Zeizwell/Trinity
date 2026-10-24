@@ -3297,7 +3297,7 @@
 					(justify left bottom)
 				)
 			)
-			(property "Footprint" "EPM3128ATC100-10N:QFP50P1600X1600X120-100N"
+			(property "Footprint" "trinity:QFP50P1600X1600X120-100N"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -21607,7 +21607,7 @@
 				)
 			)
 		)
-		(property "Footprint" "my:ZX_NEMO_60_EDGE"
+		(property "Footprint" "trinity:ZX_NEMO_60_EDGE"
 			(at 548.64 281.94 0)
 			(hide yes)
 			(show_name no)
@@ -21861,7 +21861,7 @@
 				)
 			)
 		)
-		(property "Footprint" "EPM3128ATC100-10N:QFP50P1600X1600X120-100N"
+		(property "Footprint" "trinity:QFP50P1600X1600X120-100N"
 			(at 71.12 106.68 0)
 			(hide yes)
 			(show_name no)
