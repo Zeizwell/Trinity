@@ -21,3 +21,5 @@ cp $T/root.kicad_sch $T/p8.kicad_sch
 python gen/merge_into_root.py gen/bulk.kicad_sch $T/p8.kicad_sch $T/root.kicad_sch
 cp $T/root.kicad_sch $T/p9.kicad_sch
 python gen/merge_into_root.py gen/dec.kicad_sch $T/p9.kicad_sch $T/root.kicad_sch
+cp $T/root.kicad_sch $T/p10.kicad_sch
+python gen/patch_fp.py $T/p10.kicad_sch $T/root.kicad_sch

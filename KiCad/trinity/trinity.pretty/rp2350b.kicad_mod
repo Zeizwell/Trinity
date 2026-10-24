@@ -382752,35 +382752,35 @@
 		(roundrect_rratio 0.15)
 		(uuid "cf5c26f0-9d36-4ee6-b21a-813a06c67760")
 	)
-	(pad "35" smd roundrect
+	(pad "GP35" smd roundrect
 		(at 11.1 6.168717)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
 		(roundrect_rratio 0.15)
 		(uuid "f2e9ab03-b614-4bc2-bf77-e3ac7e83ff4e")
 	)
-	(pad "36" smd roundrect
+	(pad "GP36" smd roundrect
 		(at 11.1 4.899)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
 		(roundrect_rratio 0.15)
 		(uuid "f8f32024-9552-4527-bd2b-9223273d0cb5")
 	)
-	(pad "37" smd roundrect
+	(pad "GP37" smd roundrect
 		(at 11.1 3.629)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
 		(roundrect_rratio 0.15)
 		(uuid "a5fa740f-3977-4bbe-aa45-769b5383c07d")
 	)
-	(pad "38" smd roundrect
+	(pad "GP38" smd roundrect
 		(at 11.1 2.359)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
 		(roundrect_rratio 0.15)
 		(uuid "097e4b37-8039-4c00-a23e-8e0636427f86")
 	)
-	(pad "39" smd roundrect
+	(pad "GP39" smd roundrect
 		(at 11.1 1.089)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
@@ -382794,7 +382794,7 @@
 		(roundrect_rratio 0.15)
 		(uuid "ef70198a-9f25-4336-8e37-357cfa3c0d05")
 	)
-	(pad "G" smd roundrect
+	(pad "GND" smd roundrect
 		(at 11.1 -14.151)
 		(size 1.2 0.7)
 		(layers "*.Mask" "B.Cu")
