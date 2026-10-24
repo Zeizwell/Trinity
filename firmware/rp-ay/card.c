@@ -80,6 +80,8 @@ void card_test_bytes(const uint8_t *b, int n) {
 uint8_t card_answer(void) {
     uint8_t v;
     if (ayfx_port_peek(&fx[cur], sel[cur], &v)) return v;     // #C0 / #C1 при открытом потоке
+    if (sel[cur] == 0xC0 && fx[cur].key == 3) return 'T';      // "TRI" уже пришло: ответ на чтение сразу за "N" -
+                                                               //   заранее (FT2 читает через ~2 мкс, разбор не успевал)
     return regs[cur][sel[cur]];
 }
 

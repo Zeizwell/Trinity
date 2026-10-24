@@ -70,7 +70,9 @@ int main(void) {
     // 5. Ключ FX, как FT2 (Fx_Detect): #C0, "TRIN", и сразу чтение - ответ 'T'
     card_slot_write(0, 0xC0);
     const char *key = "TRIN";
-    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    for (int i = 0; i < 3; i++) card_slot_write(1, (uint8_t)key[i]);
+    check("после \"TRI\" ответ на чтение #C0 уже 'T' (заранее)", card_answer() == 'T');
+    card_slot_write(1, (uint8_t)key[3]);
     check("ключ TRIN: режим FX, чтение #C0 = 'T'", mode == MODE_FX && card_answer() == 'T');
     card_slot_write(1, 0);                       // закрыть
     check("закрыть (0 в #C0): режим AY", mode == MODE_AY);
