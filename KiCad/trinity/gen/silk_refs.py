@@ -50,8 +50,9 @@ def main():
     todo = []
     for f in fps:
         t = f.Reference()
-        if not t.IsVisible() or t.GetLayer() not in (pcbnew.F_SilkS, pcbnew.B_SilkS):
+        if t.GetLayer() not in (pcbnew.F_SilkS, pcbnew.B_SilkS):
             continue
+        t.SetVisible(True)                               # прежде спрятанные - снова в работу
         if f.GetReference() in BIG:
             texts[t.GetLayer() == pcbnew.B_SilkS].append(rect(t.GetBoundingBox()))
         else:
@@ -65,12 +66,7 @@ def main():
             if g.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS):    # надписи и контуры деталей
                 for r in seg_rects(g):
                     texts[g.GetLayer() == pcbnew.B_SilkS].append(r)
-    ym = [rect(f.GetBoundingBox(False, False)) for f in fps if f.GetReference() in ("U4", "U10")]
-    for f in list(todo):                                 # внутри панелек YM - под микросхемой, надпись не видна
-        p = f.GetPosition()
-        if not f.IsFlipped() and any(r[0] < pcbnew.ToMM(p.x) < r[2] and r[1] < pcbnew.ToMM(p.y) < r[3] for r in ym):
-            f.Reference().SetVisible(False)
-            todo.remove(f)
+    # детали внутри панелек YM паяются до панельки - их обозначения нужны (пользователь), ставим как остальные
     todo.sort(key=lambda f: -len(f.Pads()))
     left = []
     for f in todo:
