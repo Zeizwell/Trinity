@@ -44,7 +44,9 @@ def main():
     fb.setupGlyf(glyphs)
     fb.setupHorizontalMetrics({n: (8 * PX, 0) for n in names})
     fb.setupHorizontalHeader(ascent=7 * PX, descent=-PX)
-    fb.setupNameTable({"familyName": name, "styleName": "Regular"})
+    ps = name.replace(" ", "")
+    fb.setupNameTable({"familyName": name, "styleName": "Regular", "fullName": name, "psName": ps,
+                       "uniqueFontIdentifier": ps + "-1.0", "version": "Version 1.0"})
     fb.setupOS2(sTypoAscender=7 * PX, sTypoDescender=-PX, usWinAscent=7 * PX, usWinDescent=PX)
     fb.setupPost()
     fb.save(out)
