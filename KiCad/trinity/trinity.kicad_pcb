@@ -23034,7 +23034,7 @@
 	(footprint "trinity:rp2350b"
 		(layer "F.Cu")
 		(uuid "b41e7974-f243-4f2e-bbb1-76d898c78245")
-		(at 211.9 88.2615)
+		(at 211.9 88.973)
 		(property "Reference" "U5"
 			(at 0.45367 -0.5 0)
 			(unlocked yes)
@@ -23803,7 +23803,7 @@
 	(footprint "trinity:rp2350b"
 		(layer "F.Cu")
 		(uuid "b67c98d1-bd32-4e29-8887-eb8e756d2115")
-		(at 184.4 88.241)
+		(at 184.4 88.972999)
 		(property "Reference" "RP2350B-MINI-A1"
 			(at 0.45367 -0.5 0)
 			(unlocked yes)
