@@ -37,7 +37,7 @@ LCSC = {  # (значение, корпус) -> код
     ("74LVC1G125", "SOT-23-5"): "C23654",
     ("AMS1117-3.3", "SOT-223-3_TabPin2"): "C6186",
     ("TPS60400", "SOT-23-5"): "C9839",
-    ("27u", "L_Bourns_SRN6045TA"): "C7427159",                               # ANR6045T270M, 6x6 как SRN6045TA
+    ("27u", "L_Bourns_SRN6045TA"): "C168081",                                # FNR6045S270MT 133 мОм, 6x6 как SRN6045TA
     ("NARROW", "SW_DIP_SPSTx04_Slide_Omron_A6H-4101_W6.15mm_P1.27mm"): "C397291",
 }
 
