@@ -168,10 +168,28 @@ void ayfx_bus_select(ayfx_bus_t *b, uint8_t reg) {
     b->sel = reg;
 }
 
+// Байт служебного пакета: код, длина 2, данные. Целиком - событие для ядра 0 (или мимо, если sbuf занят / мал)
+static int svc_byte(ayfx_bus_t *b, uint8_t val) {
+    if (b->spos == 0) b->sdrop = b->sbusy, b->sneed = 3;   // код: sbuf ещё у ядра 0 - пакет мимо
+    else if (b->spos == 1) b->slen = val;
+    else if (b->spos == 2) {                                // длина целиком -> сколько всего
+        b->slen |= (uint16_t)val << 8;
+        b->sneed = 3 + b->slen;
+        if (b->sneed > AYFX_SVC_MAX) b->sdrop = 1;
+    }
+    if (!b->sdrop) b->sbuf[b->spos] = val;
+    if (++b->spos < b->sneed) return AYFX_EV_NONE;
+    b->spos = 0;
+    if (b->sdrop) { b->slost++; return AYFX_EV_NONE; }
+    b->rready = 0, b->rpos = 0;                             // старый ответ - больше не читать
+    b->sbusy = 1;
+    return AYFX_EV_SVC;
+}
+
 int ayfx_bus_write(ayfx_bus_t *b, uint8_t val) {
     static const char key[] = "TRIN";
     if (b->sel == 0xC0) {
-        b->pos = 0;                                         // любая запись - разбор потока с начала
+        b->pos = 0, b->spos = 0;                            // любая запись - разбор потока с начала
         if (val == 0 && b->key == 0) { b->on = 0, b->info = 0; return AYFX_EV_CLOSE; }
         if ((char)val == key[b->key]) b->key++;
         else b->key = (char)val == key[0];
@@ -180,6 +198,7 @@ int ayfx_bus_write(ayfx_bus_t *b, uint8_t val) {
     }
     if (b->sel != 0xC1) return AYFX_EV_REG;
     if (!b->on) return AYFX_EV_NONE;                        // поток закрыт - байт мимо
+    if (b->spos || (b->pos == 0 && val >= 0x80)) return svc_byte(b, val);   // служебный пакет
     if (b->pos == 0) {                                      // код пакета -> его длина
         static const uint8_t plen[5] = { 0, 19, 18, 2, 1 };
         if (val == 0 || val > AYFX_P_INFO) return AYFX_EV_NONE;   // неизвестный код - пропустить байт
@@ -192,22 +211,32 @@ int ayfx_bus_write(ayfx_bus_t *b, uint8_t val) {
     return AYFX_EV_PACKET;
 }
 
-// Что ответить на чтение выбранного регистра (не сдвигая INFO). false - не наш (отвечает тень AY)
+// Что ответить на чтение выбранного регистра (не сдвигая ответ). false - не наш (отвечает тень AY)
 bool ayfx_bus_peek(const ayfx_bus_t *b, uint8_t *val) {
-    if (!b->on) return false;
-    if (b->sel == 0xC0) { *val = 'T'; return true; }
-    if (b->sel == 0xC1) {
-        static const uint8_t info[5] = { 'T', 'R', 'I', 'N', AYFX_VER };
-        *val = (b->info >= 1 && b->info <= 5) ? info[b->info - 1] : 0;
+    if (b->sel == 0xC0) {                                   // статус - всегда, без ключа (trinity-api.md п.3)
+        *val = (uint8_t)((b->status & 0x3F) | (b->sbusy ? 0x80 : 0) | (b->rready ? 0x40 : 0));
         return true;
     }
-    return false;
+    if (!b->on || b->sel != 0xC1) return false;
+    if (b->rready) { *val = b->rpos < b->rlen ? b->rbuf[b->rpos] : 0; return true; }   // ответ ядра 0
+    static const uint8_t info[5] = { 'T', 'R', 'I', 'N', AYFX_VER };
+    *val = (b->info >= 1 && b->info <= 5) ? info[b->info - 1] : 0;
+    return true;
 }
 
-// Чтение было: ответ INFO - следующий байт
+// Чтение было: ответ (ядра 0 или INFO) - следующий байт; ответ ядра 0 дочитали - больше не отдаётся
 void ayfx_bus_read_done(ayfx_bus_t *b) {
     if (!b->on || b->sel != 0xC1) return;
+    if (b->rready) { if (++b->rpos >= b->rlen) b->rready = 0; return; }
     if (b->info >= 1 && b->info < 5) b->info++; else b->info = 0;
+}
+
+// Ядро 0: пакет из sbuf разобран, ответ r (n байт вместе с длиной; 0 - ответа нет). Сначала ответ, потом флаги
+void ayfx_bus_reply(ayfx_bus_t *b, const uint8_t *r, uint16_t n) {
+    b->rbuf = r, b->rlen = n, b->rpos = 0;
+    AYFX_FENCE();                                           // ответ в памяти раньше флагов
+    b->rready = n != 0;
+    b->sbusy = 0;
 }
 
 // ---- Звук: пакет от шины

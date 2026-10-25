@@ -5,7 +5,7 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      25
+#define FW_VERSION      27
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -24,6 +24,9 @@
 #define PIN_CHIP_A0     38
 #define PIN_CHIP_RD     39  // /RD чипа - только для теста (режим TEST); на чипе подтяжка 10к к +5 В
 #define PIN_RGB         20  // светодиод WS2812 на Spotpear
+
+// ---- Служебный API (FT2 doc/trinity-api.md): пул временных слотов в ОЗУ
+#define SVC_POOL_KB     128
 
 // ---- Режимы (doc 14а). Порядок - как в таблице переходов modes.c
 typedef enum { MODE_AY, MODE_FX, MODE_ATARI, MODE_UPDATE, MODE_TEST, MODE_COUNT } mode_t;

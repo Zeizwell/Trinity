@@ -11,7 +11,7 @@ project(rp_ay C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 pico_sdk_init()
 
-add_executable(rp_ay main.c config.c modes.c chip.c card.c ../../engine/ayfx.c)   # движок AY FX - общий (engine/)
+add_executable(rp_ay main.c config.c modes.c chip.c card.c ../../engine/ayfx.c ../../engine/svc.c)   # движок AY FX и API - общие (engine/)
 target_include_directories(rp_ay PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../engine)
 pico_generate_pio_header(rp_ay ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 pico_generate_pio_header(rp_ay ${CMAKE_CURRENT_LIST_DIR}/bus.pio)

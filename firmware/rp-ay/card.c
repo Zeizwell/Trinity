@@ -5,6 +5,7 @@
 #include "modes.h"
 #include "chip.h"
 #include "ayfx.h"
+#include "svc.h"
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
 
@@ -27,6 +28,10 @@ static uint8_t    cur;                      // выбранный чип TurboSo
 static ayfx_bus_t bus[CARD_CHIPS];          // протокол AY FX каждого чипа
 static volatile uint32_t t_act;             // мкс: последняя запись Спектрума (таймаут FX)
 static uint8_t    test_res[16];             // итог теста чипа (#E0..#EF тени)
+
+// ---- «Служебное» (ядро 0): API карты. Ответ один на RP (svc.reply): пакеты со второго чипа TurboSound - тоже туда
+static svc_t   svc;
+static uint8_t svc_pool[SVC_POOL_KB * 1024];
 
 // ---- «Звук»
 static ayfx_t   fx[CARD_CHIPS];             // движок эффектов каждого чипа
@@ -182,6 +187,37 @@ uint32_t card_sound(void) {
     if (us > CARD_SOUND_MAX_US) return CARD_SOUND_MAX_US;
     snd_due = now + (uint32_t)us;                               // срок шага - для замера опоздания
     return (uint32_t)us;
+}
+
+// ================= «Служебное» (ядро 0) =================
+
+// MODE AY: самоплеер - стоп (ATARI -> AY); FX и AY - это уже он
+static uint8_t svc_mode_ay(void *user) {
+    if (mode == MODE_ATARI) mode_set(MODE_AY);
+    return 0;
+}
+
+// Состояние карты -> svc (биты статуса): чип, FX, ошибка
+static void svc_state(bool error) {
+    static const uint8_t chip_of[MODE_COUNT] = { SVC_CHIP_AY, SVC_CHIP_AY, SVC_CHIP_PLAY, SVC_CHIP_UPDATE, SVC_CHIP_TEST };
+    svc.chip = chip_of[mode];
+    svc.fx = mode == MODE_FX;
+    svc.error = error;
+}
+
+// Служебные пакеты шины -> ответ, кусок задания, байт статуса в шину. Ответ в PIO освежится на следующем
+// обращении Спектрума (он опрашивает статус в цикле - опоздание на одно чтение)
+void card_svc_poll(bool error) {
+    if (!svc.pool) svc_init(&svc, svc_pool, sizeof svc_pool), svc.mode_ay = svc_mode_ay;
+    for (int c = 0; c < CARD_CHIPS; c++)
+        if (bus[c].sbusy) {
+            uint16_t n = svc_packet(&svc, bus[c].sbuf);
+            ayfx_bus_reply(&bus[c], svc.reply, n);
+        }
+    svc_step(&svc);
+    svc_state(error);
+    uint8_t st = svc_status(&svc);
+    for (int c = 0; c < CARD_CHIPS; c++) bus[c].status = st;
 }
 
 void card_test_bytes(const uint8_t *b, int n) {

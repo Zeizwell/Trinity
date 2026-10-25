@@ -25,7 +25,14 @@
 #define AYFX_TABS   256         // таблиц
 #define AYFX_STEPS  16          // шагов в таблице
 #define AYFX_PKT    19          // самый длинный пакет (ROW)
-#define AYFX_VER    2           // версия протокола (INFO)
+#define AYFX_VER    3           // версия протокола (INFO): 3 - служебные пакеты, статус в #C0
+// Барьер памяти между ядрами (RP: ядро 0 пишет ответ, прерывание на ядре 1 читает). ПК / Unreal - один поток
+#if defined(__GNUC__)
+#define AYFX_FENCE() __atomic_thread_fence(__ATOMIC_SEQ_CST)
+#else
+#define AYFX_FENCE() ((void)0)
+#endif
+#define AYFX_SVC_MAX 520        // служебный пакет целиком: код, длина 2, данные (SLOT_WRITE: слот, смещение 4, 512 байт)
 
 enum { AYFX_P_ROW = 1, AYFX_P_TABLE = 2, AYFX_P_RESET = 3, AYFX_P_INFO = 4 };   // коды пакетов (как в FT2 sdk)
 
@@ -35,6 +42,19 @@ typedef struct {
     uint8_t on, key;            // открыт ли поток; сколько букв ключа "TRIN" пришло
     uint8_t pkt[AYFX_PKT], pos, need;   // кадр пакета
     uint8_t info;               // ответ INFO: какой байт следующий (0 - нет)
+    // служебный пакет (код >= #80, FT2 doc/trinity-api.md): [код][длина 2][данные] - целиком в sbuf, дальше ждёт
+    // ядро 0 (sbusy); пришёл новый, пока sbusy, или длиннее sbuf - принимается мимо (slost)
+    uint8_t  sbuf[AYFX_SVC_MAX];
+    uint16_t spos, sneed, slen; // принято байт / нужно / длина данных
+    uint8_t  sdrop;             // этот пакет - мимо
+    volatile uint8_t sbusy;     // пакет в sbuf, ядро 0 ещё не разобрало
+    uint32_t slost;             // служебных пакетов потеряно
+    // ответ ядра 0 - чтением #C1: [длина 2][данные] (ставит ядро 0, потом rready = 1)
+    const uint8_t *rbuf;
+    volatile uint16_t rlen;     // байт ответа вместе с длиной
+    uint16_t rpos;
+    volatile uint8_t rready;    // ответ лежит, его ещё не дочитали
+    volatile uint8_t status;    // байт статуса без битов 7 / 6 (ставит ядро 0, trinity-api.md п.3)
 } ayfx_bus_t;
 
 enum {                          // событие записи данных - для уровня «Звук»
@@ -43,13 +63,17 @@ enum {                          // событие записи данных - д
     AYFX_EV_OPEN,               // ключ "TRIN": поток открыт
     AYFX_EV_CLOSE,              // 0 в #C0: поток закрыт; эффекты ИГРАЮТ дальше (ay-ports-map.md п.4) - звуку нечего
     AYFX_EV_PACKET,             // пакет целиком в pkt (ROW / TABLE / RESET)
+    AYFX_EV_SVC,                // служебный пакет целиком в sbuf (sbusy = 1) - для ядра 0
 };
 
 void ayfx_bus_reset(ayfx_bus_t *b);
 void ayfx_bus_select(ayfx_bus_t *b, uint8_t reg);             // запись в #FFFD
 int  ayfx_bus_write(ayfx_bus_t *b, uint8_t val);              // запись в #BFFD (в выбранный регистр) -> AYFX_EV_*
-bool ayfx_bus_peek(const ayfx_bus_t *b, uint8_t *val);        // ответ на чтение выбранного: false - не наш (тень AY)
-void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение было - INFO на следующий байт
+bool ayfx_bus_peek(const ayfx_bus_t *b, uint8_t *val);        // ответ на чтение выбранного: false - не наш (тень AY);
+                                                              //   #C0 - статус всегда, #C1 - при открытом потоке
+void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение было - ответ (INFO / ядра 0) на следующий байт
+void ayfx_bus_reply(ayfx_bus_t *b, const uint8_t *r, uint16_t n);   // ЯДРО 0: служебный пакет разобран, ответ r
+                                                              //   (n байт с длиной; 0 - без ответа), sbuf свободен
 
 // ---- Звук
 typedef void (*ayfx_out_fn)(void *user, uint8_t reg, uint8_t val);

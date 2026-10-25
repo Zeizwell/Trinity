@@ -239,7 +239,10 @@ int main(void) {
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
     while (true) {
-        sleep_ms(100);
+        for (int i = 0; i < 100; i++) {                               // 100 мс: служебный API карты - каждую мс
+            card_svc_poll(boot_result > 0);
+            sleep_ms(1);
+        }
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
         if (key == 'p' && !tune_req && mode == MODE_AY) { tune_req = true; printf("pause test: ~1 min...\n"); }
         if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }

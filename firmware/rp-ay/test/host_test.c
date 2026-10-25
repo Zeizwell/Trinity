@@ -67,13 +67,25 @@ int main(void) {
     for (int i = 0; i < 6; i++) { card_slot_write(0, (uint8_t)(0xE0 + i)); t[i] = card_answer(); }
     check("итог теста читается после сброса: 23 01 50 04 10 00", t[0] == 0x23 && t[1] == 0x01 && t[2] == 0x50 && t[3] == 4 && t[4] == 0x10 && t[5] == 0);
 
-    // 5. Ключ FX, как FT2 (Fx_Detect): #C0, "TRIN", и сразу чтение - ответ 'T'
+    // 5. Ключ FX, как FT2: #C0, "TRIN"; чтение #C0 - байт статуса (FT2 doc/trinity-api.md п.3)
     card_slot_write(0, 0xC0);
+    card_svc_poll(false);
+    check("#C0 до ключа - статус: AY, задания нет (00)", card_answer() == 0x00);
     const char *key = "TRIN";
-    for (int i = 0; i < 3; i++) card_slot_write(1, (uint8_t)key[i]);
-    check("после \"TRI\" поток ещё закрыт: ответ #C0 - тень, не 'T'", card_answer() != 'T');
-    card_slot_write(1, (uint8_t)key[3]);         // шина: та же запись - и режим, и ответ (без фона)
-    check("ключ TRIN: сразу режим FX и чтение #C0 = 'T' (уровень «Шина»)", mode == MODE_FX && card_answer() == 'T');
+    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    check("ключ TRIN: сразу режим FX (уровень «Шина»)", mode == MODE_FX);
+    card_svc_poll(false);                        // ядро 0: статус освежился
+    check("статус: FX включены (бит 4) = 10", card_answer() == 0x10);
+    card_slot_write(0, 0xC1);                    // служебный пакет: SVC_LIST -> ответ из #C1
+    card_slot_write(1, 0x90); card_slot_write(1, 0); card_slot_write(1, 0);
+    card_slot_write(0, 0xC0);
+    check("SVC_LIST принят: статус занято (бит 7)", (card_answer() & 0x80) != 0);
+    card_svc_poll(false);
+    check("ядро 0 ответило: статус ответ готов (бит 6)", (card_answer() & 0xC0) == 0x40);
+    card_slot_write(0, 0xC1);
+    uint8_t sl[4];
+    for (int i = 0; i < 4; i++) { sl[i] = card_answer(); card_read_done(); }
+    check("ответ: длина 27, 1 сервис, номер 4", sl[0] == 27 && sl[1] == 0 && sl[2] == 1 && sl[3] == 4);
 
     // 6. Пакет через очередь: TABLE + ROW (SID канал A) - «Звук» пишет громкость в чип
     card_slot_write(0, 8); card_slot_write(1, 15);   // громкость A = 15 (поток открыт - регистры как обычно)
