@@ -19,7 +19,8 @@
 
 // ---- лог: одна строка на вид потери (номер вида - warned[])
 enum { W_TS, W_RELEASE, W_INSNUM, W_TABLE, W_EFF2, W_EFFUNK, W_EFFQ, W_EFFE, W_EFFTAB, W_DELAY, W_ENVEFF, W_PATS,
-       W_ORDER, W_INSLOOP, W_INSLEN, W_OLDINS, W_STEREO, W_ORNLEN, W_NOTE, W_TIMER, W_DUP };
+       W_ORDER, W_INSLOOP, W_INSLEN, W_OLDINS, W_STEREO, W_ORNLEN, W_NOTE, W_TIMER, W_DUP,
+       W_TABLEN, W_TABVAL, W_TABS, W_SIDSYNC, W_DETUNE, W_SWEEP };
 
 static void logf_(btp_conv_t *c, const char *t) { if (c->log) c->log(c->user, t); }
 
@@ -56,12 +57,17 @@ static void block(btp_conv_t *c, const char *tag) {
 
 // ================= проход 1 =================
 
+// Макросы инструмента: 0..11 - обычные (macros), 12..22 - таймерные (timerMacros)
 static const char *const mac_name[] = { "volume", "amplitudeSlide", "tone", "toneAdd", "toneAccumulation", "noise",
-    "noiseAdd", "noiseAccumulation", "envelope", "envelopeAdd", "envelopeAccumulation", "retriggerEnvelope" };
-#define MAC_N 12
+    "noiseAdd", "noiseAccumulation", "envelope", "envelopeAdd", "envelopeAccumulation", "retriggerEnvelope",
+    "sid", "syncbuzzer", "fm", "fmOffsetMode", "fmWaveform", "envFm", "envFmOffsetMode", "envFmWaveform",
+    "timerWaveform", "semitone", "detune" };
+#define MAC_N 12                    // обычных
+#define MAC_ALL 23
+enum { T_SID = 12, T_SYNC, T_FM, T_FMMODE, T_FMWAVE, T_EFM, T_EFMMODE, T_EFMWAVE, T_WAVE, T_SEMI, T_DET };
 
-static int mac_find(const char *k) {
-    for (int i = 0; i < MAC_N; i++) if (!strcmp(mac_name[i], k)) return i;
+static int mac_find(const char *k, int from, int to) {
+    for (int i = from; i < to; i++) if (!strcmp(mac_name[i], k)) return i;
     return -1;
 }
 
@@ -75,12 +81,11 @@ static int mac_at(const btp_conv_t *c, int m, int t) {
 
 static int gcd(int a, int b) { while (b) { int t = a % b; a = b, b = t; } return a; }
 
-// Макросы (у каждого своя длина и цикл) -> строки FT2 с общим циклом: с S = самый поздний цикл, период = НОК петель.
-// Не влезает в 64 строки - режем, лог
-static void ins_make(btp_conv_t *c, int id) {
-    btp_ins_t *in = &c->ins[id];
+// Макросы m0..m1-1 (у каждого своя длина и цикл) -> общие строки: цикл S = самый поздний цикл, период = НОК петель.
+// Не влезает в max строк - режем, лог. -> строк, *loop - цикл
+static int span(btp_conv_t *c, int m0, int m1, int max, int *loop, const char *what, int id) {
     int s = 0, p = 1, len = 1;
-    for (int m = 0; m < MAC_N; m++) {
+    for (int m = m0; m < m1; m++) {
         int n = c->mac_n[m], l = c->mac_loop[m];
         if (!n) continue;
         if (l >= n) l = n - 1;
@@ -88,16 +93,23 @@ static void ins_make(btp_conv_t *c, int id) {
         if (l > s) s = l;
         int q = n - l;
         p = p / gcd(p, q) * q;
-        if (p > 64) p = 64;
+        if (p > max) p = max;
     }
     int rows = s + p > len ? s + p : len;
-    if (rows > 64) {
+    if (rows > max) {
         char t[64];
-        snprintf(t, sizeof t, "instrument %02d: macro loops differ - cut to 64 rows", id);
+        snprintf(t, sizeof t, "instrument %02d: %s loops differ - cut to %d rows", id, what, max);
         logf_(c, t);
-        rows = 64;
-        if (s > 63) s = 63;
+        rows = max;
+        if (s > max - 1) s = max - 1;
     }
+    *loop = s;
+    return rows;
+}
+
+static void ins_make(btp_conv_t *c, int id) {
+    btp_ins_t *in = &c->ins[id];
+    int s, rows = span(c, 0, MAC_N, 64, &s, "macro", id);
     in->rows = (uint8_t)rows, in->loop = (uint8_t)s;
     for (int t = 0; t < rows; t++) {
         uint8_t *r = in->row[t];
@@ -109,6 +121,64 @@ static void ins_make(btp_conv_t *c, int id) {
                          (mac_at(c, 8, t) ? 0x40 : 0) | (mac_at(c, 10, t) ? 0x80 : 0));
         r[4] = (uint8_t)(env < -128 ? -128 : env > 127 ? 127 : env);
     }
+}
+
+// ---- FX: таблицы и строки
+
+// Волна строкой "[15,0,...]" -> номер таблицы FX (такая уже есть - её; 0 - пресет «меандр SID F 0»; свои - с 6)
+static int tab_get(btp_conv_t *c, const char *s) {
+    uint8_t v[16];
+    int n = 0;
+    for (const char *p = s; *p; ) {
+        while (*p && *p != '-' && (*p < '0' || *p > '9')) p++;
+        if (!*p) break;
+        long x = strtol(p, (char **)&p, 10);
+        if (n == 16) { warn(c, W_TABLEN, "timer wave longer than 16 steps - cut"); break; }
+        if (x < -128 || x > 127) warn(c, W_TABVAL, "timer wave value out of -128..127 - clamped");
+        v[n++] = (uint8_t)(x < -128 ? -128 : x > 127 ? 127 : x);
+    }
+    if (!n) v[n++] = 0;
+    for (int t = 0; t < c->tabs; t++)
+        if ((t == 0 || t >= 6) && c->tab_n[t] == n && !memcmp(c->tab[t], v, n)) return t;
+    if (c->tabs > 255) { warn(c, W_TABS, "timer waves over 250 - lost"); return 0; }
+    memcpy(c->tab[c->tabs], v, n);
+    c->tab_n[c->tabs] = (uint8_t)n;
+    return c->tabs++;
+}
+
+// Скважность Bitphase 0..100 % -> наша ступень 0..15 (0..50 %; d и 100 - d звучат одинаково)
+static uint8_t duty(int d) {
+    if (d > 50) d = 100 - d;
+    if (d < 0) d = 0;
+    return (uint8_t)((d * 15 + 25) / 50);
+}
+
+// Таймерные макросы и ШИМ инструмента -> FX с тем же номером (строки по тикам, как у инструмента; до 32)
+static void fx_make(btp_conv_t *c, int id) {
+    btp_fx_t *f = &c->fx[id];
+    int s, rows = span(c, T_SID, MAC_ALL, 32, &s, "timer macro", id), any = 0;
+    for (int t = 0; t < rows; t++) {
+        uint8_t *r = f->row[t];
+        int sid = mac_at(c, T_SID, t), sync = mac_at(c, T_SYNC, t), fm = mac_at(c, T_FM, t), efm = mac_at(c, T_EFM, t);
+        if (sid && sync) warn(c, W_SIDSYNC, "SID and Sync at once - SID taken");
+        any |= sid | sync | fm | efm;
+        r[0] = (uint8_t)((sid ? 1 : sync ? 2 : 0) | (fm ? 4 : 0) | (efm ? 8 : 0) |
+                         (mac_at(c, T_FMMODE, t) ? 0x20 : 0) | (mac_at(c, T_EFMMODE, t) ? 0x40 : 0));
+        r[1] = (uint8_t)(c->pwm_max << 4 | c->pwm_min);
+        r[2] = c->pwm_speed;
+        int semi = mac_at(c, T_SEMI, t), det = mac_at(c, T_DET, t);
+        if (det < -128 || det > 127) warn(c, W_DETUNE, "timer detune out of -128..127 - clamped");
+        uint8_t sb = (uint8_t)semi, db = (uint8_t)(det < -128 ? -128 : det > 127 ? 127 : det);
+        int tw = mac_at(c, T_WAVE, t), tf = mac_at(c, T_FMWAVE, t), te = mac_at(c, T_EFMWAVE, t);
+        r[3] = sb, r[4] = db, r[5] = (uint8_t)tw;           // Mix: полутоны, сырой детюн, таблица - у всех трёх общие
+        r[6] = sb, r[7] = db, r[8] = (uint8_t)tf;
+        r[9] = sb, r[10] = db, r[11] = (uint8_t)te;
+        r[12] = (uint8_t)((c->tab_n[tw] - 1) | (c->tab_n[tf] - 1) << 4);
+        r[13] = (uint8_t)(c->tab_n[te] - 1);
+    }
+    if (!any) return;                                       // эффекты ни на одном тике не включены - FX нет
+    f->rows = (uint8_t)rows, f->loop = (uint8_t)s;
+    f->shape = c->pwm_shape, f->phase = c->pwm_phase, f->keep = c->pwm_keep;
 }
 
 // Номер инструмента Bitphase: строка "01".."0W" - число в 36-ричной
@@ -165,7 +235,11 @@ static void pass1(btp_conv_t *c, int type) {
         return;
     }
     if (json_is(j, 0, "instruments")) {                     // инструмент: макросы -> строки
-        if (d == 2 && type == JSON_BEGIN_OBJ) { c->cur_id = 0; memset(c->mac_n, 0, sizeof c->mac_n); memset(c->mac_loop, 0, sizeof c->mac_loop); }
+        if (d == 2 && type == JSON_BEGIN_OBJ) {
+            c->cur_id = 0;
+            memset(c->mac_n, 0, sizeof c->mac_n), memset(c->mac_loop, 0, sizeof c->mac_loop);
+            c->pwm_max = duty(50), c->pwm_min = 0, c->pwm_speed = 0, c->pwm_shape = 1, c->pwm_phase = 0, c->pwm_keep = 0;
+        }
         if (d == 3 && type == JSON_STRING && json_is(j, 2, "id")) {
             c->cur_id = ins_id(j->str);
             if (c->cur_id < 1 || c->cur_id > BTP_INS) {
@@ -180,16 +254,33 @@ static void pass1(btp_conv_t *c, int type) {
         if (d == 3 && type == JSON_STRING && json_is(j, 2, "name")) strncpy(in->name, j->str, 16);
         if (d == 3 && type == JSON_BEGIN_ARR && json_is(j, 2, "rows"))
             warn(c, W_OLDINS, "old-format instruments (rows) - not converted yet");
-        if (json_is(j, 2, "macros") && d >= 5) {
-            int m = mac_find(json_key(j, 3));
+        bool tm = json_is(j, 2, "timerMacros");
+        if ((json_is(j, 2, "macros") || tm) && d >= 5) {    // макрос: цикл, значения (волна - сразу номер таблицы)
+            int m = tm ? mac_find(json_key(j, 3), MAC_N, MAC_ALL) : mac_find(json_key(j, 3), 0, MAC_N);
             if (m < 0) return;
             if (d == 5 && type == JSON_NUM && json_is(j, 4, "loop")) c->mac_loop[m] = (uint8_t)j->num;
             if (d == 6 && json_is(j, 4, "values") && c->mac_n[m] < 64)
-                c->mac_v[m][c->mac_n[m]++] = (int16_t)(type == JSON_NUM ? (int)j->num : type == JSON_TRUE);
+                c->mac_v[m][c->mac_n[m]++] = (int16_t)(type == JSON_NUM ? (int)j->num : type == JSON_STRING ? tab_get(c, j->str)
+                                                       : type == JSON_TRUE);
         }
-        if (json_is(j, 2, "timerMacros") && d == 6 && type == JSON_TRUE)
-            warn(c, W_TIMER, "timer effects (SID / Sync / FM) - not converted yet (next step)");
-        if (d == 2 && type == JSON_END_OBJ) ins_make(c, c->cur_id);
+        if (d == 3 && type == JSON_NUM) {                   // ШИМ инструмента -> наши единицы (doc/bitphase-fx.md п.4-5)
+            int v = (int)j->num;
+            if (json_is(j, 2, "timerPwmDuty")) c->pwm_max = duty(v);
+            if (json_is(j, 2, "timerPwmSweepMin")) c->pwm_min = duty(v);
+            if (json_is(j, 2, "timerPwmSweep")) {            // фаза 0..1000 -> 0..255
+                c->pwm_speed = (uint8_t)((v * 256 + 500) / 1001);
+                if (v && !c->pwm_speed) c->pwm_speed = 1, warn(c, W_SWEEP, "PWM sweep slower than ours - set slowest");
+            }
+            if (json_is(j, 2, "timerPwmSweepStartPhase")) c->pwm_phase = (uint8_t)(v * 256 / 1001);
+        }
+        if (d == 3 && type == JSON_STRING && json_is(j, 2, "timerPwmSweepShape")) {   // форма -> таблица-пресет 1..5
+            static const char *const sh[5] = { "triangle", "sine", "sawUp", "sawDown", "square" };   // как у Bitphase
+            c->pwm_shape = 1;
+            for (int i = 0; i < 5; i++) if (!strcmp(j->str, sh[i])) c->pwm_shape = (uint8_t)(i + 1);
+        }
+        if (d == 3 && (type == JSON_TRUE || type == JSON_FALSE) && json_is(j, 2, "timerPwmPreserveOnNewNote"))
+            c->pwm_keep = type == JSON_TRUE;
+        if (d == 2 && type == JSON_END_OBJ) ins_make(c, c->cur_id), fx_make(c, c->cur_id);
     }
 }
 
@@ -333,6 +424,8 @@ void btp_init(btp_conv_t *c, btp_out_fn outf, btp_log_fn log, void *user) {
     memset(c, 0, sizeof *c);
     c->out = outf, c->log = log, c->user = user;
     c->speed = 3;
+    c->tab[0][0] = 15, c->tab_n[0] = 2;                    // таблица 0 - пресет «меандр SID F 0» (как у нового трека)
+    c->tabs = 6;                                            // 1..5 - пресеты форм свипа, свои - с 6
     c->crc = 0xFFFF;                                        // CRC-16 CCITT - с #FFFF (как FT2 Cn_Crc)
 }
 
@@ -361,11 +454,11 @@ static void pass1_end(btp_conv_t *c) {
     if (c->songs > 1) warn(c, W_TS, "TurboSound (2 songs): second chip not converted yet");
     static const uint8_t hdr[6] = { 'F', 'T', '2', 'C', 1, 0 };
     out(c, hdr, 6);
-    int ni = 0, no = 0;
-    for (int i = 1; i <= BTP_INS; i++) ni += c->ins[i].rows != 0;
+    int ni = 0, no = 0, nf = 0;
+    for (int i = 1; i <= BTP_INS; i++) ni += c->ins[i].rows != 0, nf += c->fx[i].rows != 0;
     for (int i = 1; i <= BTP_ORN; i++) no += c->orn[i].rows != 0;
-    put(1), put(c->speed), put(c->tune), put(c->chip), put(c->stereo), put(1), put(0);   // чипов, скорость, Tune, тип,
-    put(c->pats), put((uint8_t)ni), put((uint8_t)no), put(0), put(0);                     //   стерео, огибающая PT, флаги
+    put(1), put(c->speed), put(c->tune), put(c->chip), put(c->stereo), put(1), put(nf ? 1 : 0);   // чипов, скорость, Tune,
+    put(c->pats), put((uint8_t)ni), put((uint8_t)no), put((uint8_t)nf), put((uint8_t)(c->tabs - 6));   //   тип, стерео, PT, FX
     put_str(c->name, 33), put_str(c->author, 33);
     block(c, "HEAD");
     put((uint8_t)(on ? on - 1 : 0)), put((uint8_t)loop);
@@ -388,9 +481,22 @@ bool btp_finish(btp_conv_t *c) {
         if (!in->rows) continue;
         put((uint8_t)i), put(in->loop), put((uint8_t)(in->rows - 1));
         for (int r = 0; r < in->rows; r++) for (int b = 0; b < 5; b++) put(in->row[r][b]);
-        put(0);                                             // FX - следующий шаг
+        put(c->fx[i].rows ? (uint8_t)i : 0);                // FX инструмента - тот же номер
         put_str(in->name, 17);
         block(c, "INST");
+    }
+    for (int i = 1; i <= BTP_INS; i++) {                    // FX: номер, заголовок 5 байт, строки, имя
+        btp_fx_t *f = &c->fx[i];
+        if (!f->rows) continue;
+        put((uint8_t)i), put((uint8_t)(f->rows - 1)), put(f->loop), put(f->shape), put(f->phase), put(f->keep);
+        for (int r = 0; r < f->rows; r++) for (int b = 0; b < 16; b++) put(f->row[r][b]);
+        put_str(c->ins[i].name, 17);
+        block(c, "FX16");
+    }
+    for (int t = 6; t < c->tabs; t++) {                     // таблицы FX: номер, 16 значений
+        put((uint8_t)t);
+        for (int k = 0; k < 16; k++) put(c->tab[t][k]);
+        block(c, "TB16");
     }
     for (int i = 1; i <= BTP_ORN; i++) {                    // орнаменты
         btp_orn_t *o = &c->orn[i];

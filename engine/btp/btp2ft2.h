@@ -26,6 +26,12 @@ typedef struct {                    // инструмент FT2 (строки п
     char    name[17];
 } btp_ins_t;
 
+typedef struct {                    // FX FT2 (doc/fx-row.md): строки по 16 байт, заголовок
+    uint8_t rows, loop;             // строк (0 - нет FX), цикл
+    uint8_t row[32][16];
+    uint8_t shape, phase, keep;     // свип ШИМ: форма (таблица 1..5), стартовая фаза 0..255, не перезапускать
+} btp_fx_t;
+
 typedef struct {                    // орнамент FT2 (строки по 2 байта)
     uint8_t rows, loop;
     uint8_t row[64][2];
@@ -49,14 +55,18 @@ typedef struct {
     uint16_t   src_len[BTP_SRC_PATS];   // длина паттерна Bitphase по номеру (0 - нет)
     btp_ins_t  ins[BTP_INS + 1];    // [1..32]
     btp_orn_t  orn[BTP_ORN + 1];    // [1..16]
+    btp_fx_t   fx[BTP_INS + 1];     // FX инструмента n - номер n
+    uint8_t    tab[256][16], tab_n[256];   // таблицы FX: значения, длина (0..5 - пресет нового трека, свои - с 6)
+    int        tabs;                // таблиц занято (следующая свободная)
+    uint8_t    pwm_max, pwm_min, pwm_speed, pwm_shape, pwm_phase, pwm_keep;   // ШИМ инструмента (уже в наших единицах)
     // ордер FT2: паттерн Bitphase -> первый номер FT2 (куски по 64 роу подряд); 0xFF - не влез
     uint8_t    first[BTP_SRC_PATS];
     uint8_t    pats;                // паттернов FT2 занято
     // текущий объект разбора (проход 1 - инструмент / таблица, проход 2 - паттерн)
     int        cur_id;              // номер инструмента / таблицы / паттерна Bitphase
     uint16_t   cur_len;
-    int16_t    mac_v[16][64];       // макросы инструмента: значения (по номеру макроса)
-    uint8_t    mac_n[16], mac_loop[16];
+    int16_t    mac_v[24][64];       // макросы инструмента: значения (0..11 - обычные, 12..22 - таймерные)
+    uint8_t    mac_n[24], mac_loop[24];
     // проход 2: паттерн Bitphase целиком (до 256 роу), канал - 16 байт, заголовок чипа - 8
     uint8_t    row[256][112];
     uint8_t    eff_n;               // команд в текущей клетке

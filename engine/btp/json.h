@@ -7,7 +7,7 @@
 
 #define JSON_DEPTH  16
 #define JSON_KEY    24
-#define JSON_STR    64
+#define JSON_STR    160            // волна таймера строкой "[15,0,...]" - до 32 значений
 
 enum { JSON_NUM = 1, JSON_STRING, JSON_TRUE, JSON_FALSE, JSON_NULL,    // значения
        JSON_BEGIN_OBJ, JSON_END_OBJ, JSON_BEGIN_ARR, JSON_END_ARR };   // границы (путь - сам контейнер)
