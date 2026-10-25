@@ -3,7 +3,7 @@
 # блоки GS / TURBO SOUND FM: шина слева и справа, каждая ножка - проводом на ввод, метка у ввода.
 # Раскладка ножек - под расстановку на плате (2026-10-25): левая сторона корпуса - шина ZX с левой части ламелей,
 # нижняя - с правой части, верхняя - шина AY (RP-AY над CPLD), правая - шина GS (RP-GS справа-сверху).
-# Шина ZX - глобальные метки, как у разъёма J4 (MultiSound). Ниже символа - питание 3.3 В, развязка, JTAG, DIP-5.
+# Шина ZX - глобальные метки, как у разъёма J4 (MultiSound). Ниже символа - питание 3.3 В, развязка, JTAG.
 #   python cpld_gen.py -> cpld.kicad_sch + сверка netlist
 import os
 import sys
@@ -32,9 +32,8 @@ AY = [(76, "AY_D0"), (77, "AY_D1"), (79, "AY_D2"), (80, "AY_D3"), (81, "AY_D4"),
 GS = [(52, "GS_C0"), (54, "GS_C1"), (55, "GS_C2"), (56, "GS_C3"), (57, "GS_C4"), (58, "GS_C5"), (60, "GS_WR"),
       (61, "GS_D0"), (63, "GS_D1"), (64, "GS_D2"), (67, "GS_D3"), (68, "GS_D4"), (69, "GS_D5"), (70, "GS_D6"),
       (71, "GS_D7"), (72, "GS_RD"), (75, "GS_RDY")]
-MISC = [(87, "CPLD_CLK"), (88, "DIP_GS"), (89, "DIP_COVOX"), (90, "DIP_OPL4"), (99, "DIP_AY"), (100, "DIP_OFF"),
-        (4, "JTAG_TDI"), (15, "JTAG_TMS"), (62, "JTAG_TCK"), (73, "JTAG_TDO")]
-SPARE = (48, 49, 50)
+MISC = [(87, "CPLD_CLK"), (4, "JTAG_TDI"), (15, "JTAG_TMS"), (62, "JTAG_TCK"), (73, "JTAG_TDO")]
+SPARE = (48, 49, 50, 88, 89, 90, 99, 100)    # DIP-5 убран (2026-10-25): настройки карты - во флеше RP (Trinity Setup)
 VCC = (3, 18, 34, 39, 51, 66, 82, 91)
 GND = (11, 26, 33, 38, 43, 53, 59, 65, 74, 78, 86, 95)
 GLOBAL = {n for _, n in ZX_LEFT + ZX_BOTTOM} - {"~{CSROMCE_OE}", "CSROM"}   # как у J4 (CSROM / CSROMCE - новые)
@@ -102,8 +101,8 @@ def build(d):
 
 
 def support(s, y0):
-    """Под блоком: 3.3 В для CPLD, развязка у каждой ножки питания, гребёнка JTAG, DIP-5."""
-    s.texts.append(("CPLD POWER, JTAG, DIP", LB + 1.27, y0 - 0.635, 2.0066, "left bottom", False))
+    """Под блоком: 3.3 В для CPLD, развязка у каждой ножки питания, гребёнка JTAG."""
+    s.texts.append(("CPLD POWER, JTAG", LB + 1.27, y0 - 0.635, 2.0066, "left bottom", False))
     # 3.3 В: AMS1117-3.3 от +5V (как MultiSound Max), по даташиту: 10u на входе, 22u на выходе
     x, y = 35.56, y0 + 12.7
     s.place("U23", "Regulator_Linear:AMS1117-3.3", "AMS1117-3.3", x, y,
@@ -158,24 +157,6 @@ def support(s, y0):
         s.stub(r, 1, 5.08, label=n)
         s.stub(r, 2, 2.54, power=to)
         net(n, r, 1); net(to, r, 2)
-    # DIP-5: GS, Covox, OPL4, AY, «карта выкл»; замкнут - 0; подтяжки 10к к 3.3 В
-    dx, dy = 40.64, y0 + 104.14
-    s.place("SW102", "Switch:SW_DIP_x05", "CARD", dx, dy,
-            props={"Footprint": "Button_Switch_SMD:SW_DIP_SPSTx05_Slide_KingTek_DSHP05TS_W7.62mm_P1.27mm"})
-    g = [s.pin("SW102", k) for k in range(1, 6)]         # общие выводы - на одну вертикаль, одна земля
-    gx = g[0][0] - 2.54
-    for q in g:
-        s.wire(q, (gx, q[1]))
-    s.wire((gx, g[0][1]), (gx, g[-1][1] + 2.54))
-    s.power("GND", gx, g[-1][1] + 2.54)
-    for k, n in enumerate(("DIP_GS", "DIP_COVOX", "DIP_OPL4", "DIP_AY", "DIP_OFF"), 1):
-        net("GND", "SW102", k)
-        s.stub("SW102", 11 - k, 7.62, label=n); net(n, "SW102", 11 - k)
-        r = f"R{228 + k}"                                 # подтяжка - рядом отдельной строкой, метками
-        s.place(r, "Device:R", "10k", 86.36 + (k - 1) * 10.16, dy, props={"Footprint": FP_R})
-        s.stub(r, 1, 2.54, power="+3V3")
-        s.stub(r, 2, 5.08, label=n)
-        net("+3V3", r, 1); net(n, r, 2)
 
 
 def main():
