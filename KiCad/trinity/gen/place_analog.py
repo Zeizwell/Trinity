@@ -11,7 +11,8 @@ import pcbnew
 MM = pcbnew.FromMM
 POWER = {"GND", "+5V", "+5VA", "+5VA_1", "+5VA_2", "-5VA", "+12V"}
 FIXED = {"U4", "U10", "RP2350B-MINI-A1", "U5", "U8", "J5", "J4", "U1", "J2", "J6", "U21"}
-DIGITAL_PREFIX = ("R20", "R22", "C20", "C114", "C115", "D1", "D2")     # блок GS, подтяжки, вход 5 В - не аналог
+DIGITAL = {f"R{n}" for n in list(range(201, 210)) + list(range(220, 226))} | {"C201", "C202", "C114", "C115", "C116",
+                                                                              "D1", "D2"}  # блок GS, подтяжки, 5 В
 ANALOG_KEEP = {"R210", "R211"}                                        # 1к микшер -> гнездо: аналог
 # зоны: (x0, y0, x1, y1), мм; сверху - микросхемы, катушки, электролиты; снизу (как MultiSound) - мелочь
 ZONES = {
@@ -49,7 +50,7 @@ def is_analog(ref):
         return False
     if ref in ANALOG_KEEP:
         return True
-    return not ref.startswith(DIGITAL_PREFIX)
+    return ref not in DIGITAL                            # (было по префиксу - "R20" цеплял и R20, "C20" - C20)
 
 
 def on_top(f, g):
