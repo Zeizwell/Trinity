@@ -20,7 +20,7 @@
 // ---- лог: одна строка на вид потери (номер вида - warned[])
 enum { W_TS, W_RELEASE, W_INSNUM, W_TABLE, W_EFF2, W_EFFUNK, W_EFFQ, W_EFFE, W_EFFTAB, W_DELAY, W_ENVEFF, W_PATS,
        W_ORDER, W_INSLOOP, W_INSLEN, W_OLDINS, W_STEREO, W_ORNLEN, W_NOTE, W_TIMER, W_DUP,
-       W_TABLEN, W_TABVAL, W_TABS, W_SIDSYNC, W_DETUNE, W_SWEEP };
+       W_TABLEN, W_TABVAL, W_TABS, W_SIDSYNC, W_DETUNE, W_SWEEP, W_ENVSLOT };
 
 static void logf_(btp_conv_t *c, const char *t) { if (c->log) c->log(c->user, t); }
 
@@ -363,8 +363,35 @@ static void pass2(btp_conv_t *c, int type) {
         if (json_is(j, 6, "noiseValue")) c->row[r][CHIP_NOISE] = (uint8_t)(v & 31 ? v & 31 : 0x20);
         return;
     }
-    if (json_is(j, 4, "patternRows") && d == 7 && type == JSON_BEGIN_OBJ && json_is(j, 6, "envelopeEffect"))
-        warn(c, W_ENVEFF, "envelope effects (pattern column) - lost");
+    // эффект общей колонки: слайд огибающей (1 - период растёт = наш 9, 2 - наш A) -> свободная команда канала той же
+    // строки (каналы в JSON - раньше общей колонки); остальное - в лог
+    if (json_is(j, 4, "patternRows") && json_is(j, 6, "envelopeEffect")) {
+        if (d == 7 && type == JSON_BEGIN_OBJ) eff_e = eff_d = eff_p = 0, eff_tab = -1;
+        if (d == 8 && type == JSON_NUM) {
+            if (json_is(j, 7, "effect")) eff_e = (int)j->num;
+            if (json_is(j, 7, "delay")) eff_d = (int)j->num;
+            if (json_is(j, 7, "parameter")) eff_p = (int)j->num;
+            if (json_is(j, 7, "tableIndex")) eff_tab = (int)j->num;
+        }
+        if (d == 7 && type == JSON_END_OBJ) {
+            int r = json_idx(j, 5);
+            if (r < 0 || r > 255) return;
+            if ((eff_e != 1 && eff_e != 2) || eff_tab >= 0) {
+                warn(c, W_ENVEFF, "envelope column: effects other than slide 1 / 2 (EA auto-envelope, arpeggio ...) - lost");
+                return;
+            }
+            if (eff_d > 15) eff_d = 15;
+            for (int ch = 0; ch < 3; ch++)
+                for (int k = 0; k < 2; k++) {
+                    uint8_t *cm = c->row[r] + 8 + ch * 16 + CH_CMD + k * 2;
+                    if (cm[0] || cm[1]) continue;
+                    cm[0] = (uint8_t)((eff_e == 1 ? 9 : 0xA) << 4 | eff_d), cm[1] = (uint8_t)eff_p;
+                    return;
+                }
+            warn(c, W_ENVSLOT, "envelope slide: no free command slot in the row - lost");
+        }
+        return;
+    }
     if (!json_is(j, 4, "channels") || d < 8) return;
     int ch = json_idx(j, 5), r = json_idx(j, 7);
     if (ch < 0 || ch > 2 || r < 0 || r > 255) return;
