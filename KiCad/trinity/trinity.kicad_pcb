@@ -75,7 +75,7 @@
 			(copper_finish "None")
 			(dielectric_constraints no)
 		)
-		(pad_to_mask_clearance 0.2)
+		(pad_to_mask_clearance 0.05)
 		(allow_soldermask_bridges_in_footprints no)
 		(tenting
 			(front yes)
@@ -6062,7 +6062,6 @@
 			(net "A14")
 			(pinfunction "IO_NC_4_1")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "89d79ed6-0c27-458d-93c0-df49fcee1dbb")
 		)
 		(pad "2" smd rect
@@ -6072,7 +6071,6 @@
 			(net "A15")
 			(pinfunction "IO_NC_7_2")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "97611ffa-84f7-459a-9a45-7a9ea776eafc")
 		)
 		(pad "3" smd rect
@@ -6082,7 +6080,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_4_3")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "d32a7847-6c19-437f-ae50-2969a4bdfb5f")
 		)
 		(pad "4" smd rect
@@ -6092,7 +6089,6 @@
 			(net "/JTAG_TDI")
 			(pinfunction "IO/TDI_4")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "99147ab2-36cf-4bd5-97c8-652fb1d8a999")
 		)
 		(pad "5" smd rect
@@ -6102,7 +6098,6 @@
 			(net "A12")
 			(pinfunction "IO_NC_2_5")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "c2dc8676-2249-40ad-a2a3-aadd27a15ff4")
 		)
 		(pad "6" smd rect
@@ -6112,7 +6107,6 @@
 			(net "A13")
 			(pinfunction "IO_4_6")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "adf4ef36-3c60-4ebe-b312-68592a997314")
 		)
 		(pad "7" smd rect
@@ -6122,7 +6116,6 @@
 			(net "D7")
 			(pinfunction "IO_NC_9_7")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "ac285885-221d-4f03-89ed-a1ccf9852962")
 		)
 		(pad "8" smd rect
@@ -6132,7 +6125,6 @@
 			(net "~{DOS}")
 			(pinfunction "IO_7_8")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "b5cb16fb-cccd-4e20-a16b-dde16be18552")
 		)
 		(pad "9" smd rect
@@ -6142,7 +6134,6 @@
 			(net "D0")
 			(pinfunction "IO_9_9")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "834032fc-5119-41bf-82e9-23a9a2460da9")
 		)
 		(pad "10" smd rect
@@ -6152,7 +6143,6 @@
 			(net "D1")
 			(pinfunction "IO_10_10")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "afea5cc4-4f4f-41fe-88df-36ca635a3cc2")
 		)
 		(pad "11" smd rect
@@ -6162,7 +6152,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_2_11")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "32962ee8-3489-4d2c-ab0c-9df903c22866")
 		)
 		(pad "12" smd rect
@@ -6172,7 +6161,6 @@
 			(net "D2")
 			(pinfunction "IO_13_12")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "9fd36a0a-406a-4fb4-b82d-ebc411217f3c")
 		)
 		(pad "13" smd rect
@@ -6182,7 +6170,6 @@
 			(net "A0")
 			(pinfunction "IO_14_13")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "72d20d08-b0f7-4c3b-a9b3-e37bfe36ce3e")
 		)
 		(pad "14" smd rect
@@ -6192,7 +6179,6 @@
 			(net "D6")
 			(pinfunction "IO_16_14")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "2a8d750a-65f0-47b9-b780-2fe6d401c1ca")
 		)
 		(pad "15" smd rect
@@ -6202,7 +6188,6 @@
 			(net "/JTAG_TMS")
 			(pinfunction "IO/TMS_15")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "cd2210f4-0b02-4073-87e9-a8b9248eb5f3")
 		)
 		(pad "16" smd rect
@@ -6212,7 +6197,6 @@
 			(net "A1")
 			(pinfunction "IO_18_16")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "36741e76-d395-4a1b-8dd1-24e222fe78e2")
 		)
 		(pad "17" smd rect
@@ -6222,7 +6206,6 @@
 			(net "D5")
 			(pinfunction "IO_19_17")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "eacb4acb-a9fb-4fba-9e35-0de1253c656d")
 		)
 		(pad "18" smd rect
@@ -6232,7 +6215,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_2_18")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "b281715e-3e3f-49cc-9682-736632820f12")
 		)
 		(pad "19" smd rect
@@ -6242,7 +6224,6 @@
 			(net "A2")
 			(pinfunction "IO_22_19")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "05d75cd7-5536-46d7-a0c3-8f4816d428c9")
 		)
 		(pad "20" smd rect
@@ -6252,7 +6233,6 @@
 			(net "D3")
 			(pinfunction "IO_24_20")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "917967d6-e6fa-4ab7-b4fc-94da2575d2b7")
 		)
 		(pad "21" smd rect
@@ -6262,7 +6242,6 @@
 			(net "A3")
 			(pinfunction "IO_25_21")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "e7859afa-9b26-48b1-a878-46d59a931caa")
 		)
 		(pad "22" smd rect
@@ -6272,7 +6251,6 @@
 			(net "D4")
 			(pinfunction "IO_NC_10_22")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "39ea344a-35b4-4bd7-a5f1-46341e9a1953")
 		)
 		(pad "23" smd rect
@@ -6282,7 +6260,6 @@
 			(net "~{IORQGE}")
 			(pinfunction "IO_27_23")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "e38bb99c-06e6-4231-8557-f5d2d376a58f")
 		)
 		(pad "24" smd rect
@@ -6292,7 +6269,6 @@
 			(net "/~{CSROMCE_OE}")
 			(pinfunction "IO_NC_12_24")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "8d278e4e-f5b6-4d77-b12c-d3472174a0ba")
 		)
 		(pad "25" smd rect
@@ -6302,7 +6278,6 @@
 			(net "~{MREQ}")
 			(pinfunction "IO_28_25")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "2ddedbbe-d9ce-4465-a392-c0c7e93bcc1a")
 		)
 		(pad "26" smd rect
@@ -6312,7 +6287,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_9_26")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "d1aa769c-ee80-4bf7-bfac-f28e5164af92")
 		)
 		(pad "27" smd rect
@@ -6322,7 +6296,6 @@
 			(net "~{IORQ}")
 			(pinfunction "IO_NC_13_27")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "e66bc295-3bf7-4a30-bf77-220a4a7dd074")
 		)
 		(pad "28" smd rect
@@ -6332,7 +6305,6 @@
 			(net "~{RD}")
 			(pinfunction "IO_NC_1_28")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "e43707bc-2479-49ec-8bf0-93e74e21e7d2")
 		)
 		(pad "29" smd rect
@@ -6342,7 +6314,6 @@
 			(net "~{WR}")
 			(pinfunction "IO_31_29")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "370deb89-b4cd-4d50-b135-7fed006e477c")
 		)
 		(pad "30" smd rect
@@ -6352,7 +6323,6 @@
 			(net "~{RST}")
 			(pinfunction "IO_33_30")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "160f9058-bc73-426e-aa98-6caf37e0f22e")
 		)
 		(pad "31" smd rect
@@ -6362,7 +6332,6 @@
 			(net "~{IODOS}")
 			(pinfunction "IO_35_31")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "e1c61c83-2a6b-4c8a-b393-09b385f03740")
 		)
 		(pad "32" smd rect
@@ -6372,7 +6341,6 @@
 			(net "A7")
 			(pinfunction "IO_37_32")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "35d9b957-646c-4aaf-8469-4f31c5298372")
 		)
 		(pad "33" smd rect
@@ -6382,7 +6350,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_5_33")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "24d12349-e576-49ac-9674-37ad3cdaf886")
 		)
 		(pad "34" smd rect
@@ -6392,7 +6359,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_34")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "5b0f4abe-5b77-4fbb-b82d-70d8e97f3aeb")
 		)
 		(pad "35" smd rect
@@ -6402,7 +6368,6 @@
 			(net "~{WAIT}")
 			(pinfunction "IO_40_35")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "be92f71e-3a19-42d6-a873-4b1e0da213ba")
 		)
 		(pad "36" smd rect
@@ -6412,7 +6377,6 @@
 			(net "A6")
 			(pinfunction "IO_42_36")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "35f7043a-f551-4768-b67f-65dcc85b2948")
 		)
 		(pad "37" smd rect
@@ -6422,7 +6386,6 @@
 			(net "A5")
 			(pinfunction "IO_43_37")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "69601f70-9b91-49b9-b3b9-b96dfdbffd36")
 		)
 		(pad "38" smd rect
@@ -6432,7 +6395,6 @@
 			(net "GND")
 			(pinfunction "GNDINT_2_38")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "375cf5fd-66bb-4bc8-94c5-7e4212cae6a7")
 		)
 		(pad "39" smd rect
@@ -6442,7 +6404,6 @@
 			(net "+3V3")
 			(pinfunction "VCCINT_39")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "e2564d9a-7e0c-4e56-9681-c1eaa849266d")
 		)
 		(pad "40" smd rect
@@ -6452,7 +6413,6 @@
 			(net "A4")
 			(pinfunction "IO_44_40")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "990b9854-a8a8-443a-904b-ce4943c1504a")
 		)
 		(pad "41" smd rect
@@ -6462,7 +6422,6 @@
 			(net "~{M1}")
 			(pinfunction "IO_45_41")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "9e60e5bb-775f-4229-8b5c-2a628db3ddb5")
 		)
 		(pad "42" smd rect
@@ -6472,7 +6431,6 @@
 			(net "/CSROM")
 			(pinfunction "IO_46_42")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "3a2fa778-27af-42ad-b04e-e7512bbe1453")
 		)
 		(pad "43" smd rect
@@ -6482,7 +6440,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_10_43")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "3a157582-7144-4208-8bfb-143ca1c87abd")
 		)
 		(pad "44" smd rect
@@ -6492,7 +6449,6 @@
 			(net "A8")
 			(pinfunction "IO_49_44")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "a1605322-65d7-4ab4-a75e-1eb08cc325c6")
 		)
 		(pad "45" smd rect
@@ -6502,7 +6458,6 @@
 			(net "A9")
 			(pinfunction "IO_51_45")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "704f7047-9ed5-4dd7-afb3-93bcc5d6908e")
 		)
 		(pad "46" smd rect
@@ -6512,7 +6467,6 @@
 			(net "A10")
 			(pinfunction "IO_52_46")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "3315a85d-35e0-46a7-8bd4-c1f81b8b5dc4")
 		)
 		(pad "47" smd rect
@@ -6522,7 +6476,6 @@
 			(net "A11")
 			(pinfunction "IO_54_47")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "b60079ab-35f3-4e9b-a55c-f466c67ff799")
 		)
 		(pad "48" smd rect
@@ -6532,7 +6485,6 @@
 			(net "unconnected-(U1-IO_56-Pad48)")
 			(pinfunction "IO_56_48")
 			(pintype "bidirectional+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "e13660ac-f0e2-4474-994f-ed9f8400ac89")
 		)
 		(pad "49" smd rect
@@ -6542,7 +6494,6 @@
 			(net "unconnected-(U1-IO_NC_5-Pad49)")
 			(pinfunction "IO_NC_5_49")
 			(pintype "bidirectional+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "8ee3509d-1a10-421e-a12f-6a34ea08be3f")
 		)
 		(pad "50" smd rect
@@ -6552,7 +6503,6 @@
 			(net "unconnected-(U1-IO_NC_8-Pad50)")
 			(pinfunction "IO_NC_8_50")
 			(pintype "bidirectional+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "9debaa46-6077-4906-8be4-ae8016d0a846")
 		)
 		(pad "51" smd rect
@@ -6562,7 +6512,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_5_51")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "c364aee7-4127-4f36-9b60-fc2e8c77965f")
 		)
 		(pad "52" smd rect
@@ -6572,7 +6521,6 @@
 			(net "/GS_C0")
 			(pinfunction "IO_2_52")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "5f26b534-00cc-4244-a01a-cc313cf170cb")
 		)
 		(pad "53" smd rect
@@ -6582,7 +6530,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_3_53")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "0075a632-4ee2-4776-9961-2c1eef6eba5c")
 		)
 		(pad "54" smd rect
@@ -6592,7 +6539,6 @@
 			(net "/GS_C1")
 			(pinfunction "IO_3_54")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "249980be-1180-4d92-800f-007dfb019908")
 		)
 		(pad "55" smd rect
@@ -6602,7 +6548,6 @@
 			(net "/GS_C2")
 			(pinfunction "IO_NC_3_55")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "1d3d6043-5fd1-4773-8242-d860c1287e7a")
 		)
 		(pad "56" smd rect
@@ -6612,7 +6557,6 @@
 			(net "/GS_C3")
 			(pinfunction "IO_5_56")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "995eb7ca-9a9f-4a83-9753-54400df5380c")
 		)
 		(pad "57" smd rect
@@ -6622,7 +6566,6 @@
 			(net "/GS_C4")
 			(pinfunction "IO_6_57")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "c357df8e-cfac-4e62-afb3-090d4ef8a8d9")
 		)
 		(pad "58" smd rect
@@ -6632,7 +6575,6 @@
 			(net "/GS_C5")
 			(pinfunction "IO_8_58")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "6752f46c-a640-4aae-93e9-9c2713eadc10")
 		)
 		(pad "59" smd rect
@@ -6642,7 +6584,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_4_59")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "fe11bac5-9385-4486-aff9-5e58505ec5c2")
 		)
 		(pad "60" smd rect
@@ -6652,7 +6593,6 @@
 			(net "/GS_WR")
 			(pinfunction "IO_11_60")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "a5b88763-54d0-4a31-b8b6-f5c433daebb3")
 		)
 		(pad "61" smd rect
@@ -6662,7 +6602,6 @@
 			(net "/GS_D0")
 			(pinfunction "IO_12_61")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "9e97a9c1-c320-432e-81b4-c76441426608")
 		)
 		(pad "62" smd rect
@@ -6672,7 +6611,6 @@
 			(net "/JTAG_TCK")
 			(pinfunction "IO/TCK_62")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "f9f35420-e07d-46f6-8bdc-2e7eaf845802")
 		)
 		(pad "63" smd rect
@@ -6682,7 +6620,6 @@
 			(net "/GS_D1")
 			(pinfunction "IO_15_63")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "9e692e55-5a7c-4d98-a922-df7dd3efcfdd")
 		)
 		(pad "64" smd rect
@@ -6692,7 +6629,6 @@
 			(net "/GS_D2")
 			(pinfunction "IO_17_64")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "67f0b518-74cf-44db-bc37-74139db23b6f")
 		)
 		(pad "65" smd rect
@@ -6702,7 +6638,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_6_65")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "e531f8b6-a4c5-43f1-827f-a23d43017d17")
 		)
 		(pad "66" smd rect
@@ -6712,7 +6647,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_3_66")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "06102d26-c04a-4fe9-9a8a-03c4c5ef9445")
 		)
 		(pad "67" smd rect
@@ -6722,7 +6656,6 @@
 			(net "/GS_D3")
 			(pinfunction "IO_20_67")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "16c5d46f-5cb0-4383-9785-2b8c44e711c9")
 		)
 		(pad "68" smd rect
@@ -6732,7 +6665,6 @@
 			(net "/GS_D4")
 			(pinfunction "IO_21_68")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "44a75caf-56a3-49f2-a2aa-a67ba710e317")
 		)
 		(pad "69" smd rect
@@ -6742,7 +6674,6 @@
 			(net "/GS_D5")
 			(pinfunction "IO_23_69")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "5303fa8a-a758-46e5-ae73-325a08f1dccd")
 		)
 		(pad "70" smd rect
@@ -6752,7 +6683,6 @@
 			(net "/GS_D6")
 			(pinfunction "IO_NC_6_70")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "3835254e-38aa-40cb-b08c-14153cbc0262")
 		)
 		(pad "71" smd rect
@@ -6762,7 +6692,6 @@
 			(net "/GS_D7")
 			(pinfunction "IO_26_71")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "801058c8-fd90-4321-99e3-e90c41f50687")
 		)
 		(pad "72" smd rect
@@ -6772,7 +6701,6 @@
 			(net "/GS_RD")
 			(pinfunction "IO_NC_11_72")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "44c29c6d-ce76-44b2-b36c-759c91d5e091")
 		)
 		(pad "73" smd rect
@@ -6782,7 +6710,6 @@
 			(net "/JTAG_TDO")
 			(pinfunction "IO/TDO_73")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "415d34c2-1c28-4f8a-a9c9-610ec2765613")
 		)
 		(pad "74" smd rect
@@ -6792,7 +6719,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_7_74")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "07429ea4-1757-4390-b920-36306574c82e")
 		)
 		(pad "75" smd rect
@@ -6802,7 +6728,6 @@
 			(net "/GS_RDY")
 			(pinfunction "IO_29_75")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "4bf80dea-28b2-4b58-82cc-c48033abdc9b")
 		)
 		(pad "76" smd rect
@@ -6812,7 +6737,6 @@
 			(net "/AY_D0")
 			(pinfunction "IO_30_76")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "8c83cd5c-cb66-44b8-8e5e-0493b7cbe6aa")
 		)
 		(pad "77" smd rect
@@ -6822,7 +6746,6 @@
 			(net "/AY_D1")
 			(pinfunction "IO_NC_14_77")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "ce20ea62-0433-4eac-93bb-1492b169d2f8")
 		)
 		(pad "78" smd rect
@@ -6832,7 +6755,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_8_78")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "5e1bdb01-0057-4f40-8f92-dda90fa6d07b")
 		)
 		(pad "79" smd rect
@@ -6842,7 +6764,6 @@
 			(net "/AY_D2")
 			(pinfunction "IO_32_79")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "637c3df0-5a90-4dbd-8d96-d429d2699a03")
 		)
 		(pad "80" smd rect
@@ -6852,7 +6773,6 @@
 			(net "/AY_D3")
 			(pinfunction "IO_34_80")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "fdb17ec1-ed8c-4ff9-ac91-1fcfdf5fe6b0")
 		)
 		(pad "81" smd rect
@@ -6862,7 +6782,6 @@
 			(net "/AY_D4")
 			(pinfunction "IO_36_81")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "7a0bb574-33a5-4c13-a7cf-e2a4fb05ece2")
 		)
 		(pad "82" smd rect
@@ -6872,7 +6791,6 @@
 			(net "+3V3")
 			(pinfunction "VCCIO_6_82")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "fd8ddd69-11aa-41d9-bbbc-d0e60833d4f5")
 		)
 		(pad "83" smd rect
@@ -6882,7 +6800,6 @@
 			(net "/AY_D5")
 			(pinfunction "IO_38_83")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "da5811f0-12c8-4df8-b585-4f5baf3044fc")
 		)
 		(pad "84" smd rect
@@ -6892,7 +6809,6 @@
 			(net "/AY_D6")
 			(pinfunction "IO_39_84")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "87fe736e-13ab-4dcc-ae13-e50eb46d0400")
 		)
 		(pad "85" smd rect
@@ -6902,7 +6818,6 @@
 			(net "/AY_D7")
 			(pinfunction "IO_41_85")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "be2ff41c-4390-4a33-99c7-0bc30556d304")
 		)
 		(pad "86" smd rect
@@ -6912,7 +6827,6 @@
 			(net "GND")
 			(pinfunction "GNDINT_86")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "1ee110c6-ee87-43dc-bdcf-712d2afefd89")
 		)
 		(pad "87" smd rect
@@ -6922,7 +6836,6 @@
 			(net "/CPLD_CLK")
 			(pinfunction "INPUT/GCLK1_87")
 			(pintype "input")
-			(solder_mask_margin 0.102)
 			(uuid "4cd68e18-15ba-4909-a51f-747f5e6aa8c6")
 		)
 		(pad "88" smd rect
@@ -6932,7 +6845,6 @@
 			(net "unconnected-(U1-INPUT{slash}OE1-Pad88)")
 			(pinfunction "INPUT/OE1_88")
 			(pintype "input+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "17a6cdc8-9eda-43d3-a32d-dd45527e161b")
 		)
 		(pad "89" smd rect
@@ -6942,7 +6854,6 @@
 			(net "unconnected-(U1-INPUT{slash}GCLR-Pad89)")
 			(pinfunction "INPUT/GCLR_89")
 			(pintype "input+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "b97caf95-ad01-46e9-9546-2799b315cbb0")
 		)
 		(pad "90" smd rect
@@ -6952,7 +6863,6 @@
 			(net "unconnected-(U1-INPUT{slash}OE2{slash}GCLK2-Pad90)")
 			(pinfunction "INPUT/OE2/GCLK2_90")
 			(pintype "input+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "0eb88397-0e3a-4958-a0bb-bbcf705800d0")
 		)
 		(pad "91" smd rect
@@ -6962,7 +6872,6 @@
 			(net "+3V3")
 			(pinfunction "VCCINT_2_91")
 			(pintype "power_in")
-			(solder_mask_margin 0.102)
 			(uuid "34d7511a-de9d-46ec-81af-103aa02da1f5")
 		)
 		(pad "92" smd rect
@@ -6972,7 +6881,6 @@
 			(net "/AY_WR")
 			(pinfunction "IO_47_92")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "b032e912-5525-467c-98d7-14805ca688c9")
 		)
 		(pad "93" smd rect
@@ -6982,7 +6890,6 @@
 			(net "/AY_RD")
 			(pinfunction "IO_48_93")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "8a6ddfd4-905f-4da8-87ee-3523204fdd26")
 		)
 		(pad "94" smd rect
@@ -6992,7 +6899,6 @@
 			(net "/AY_C0")
 			(pinfunction "IO_50_94")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "b6db667c-ea07-4a6d-b605-897d9305f905")
 		)
 		(pad "95" smd rect
@@ -7002,7 +6908,6 @@
 			(net "GND")
 			(pinfunction "GNDIO_95")
 			(pintype "passive")
-			(solder_mask_margin 0.102)
 			(uuid "ecb4a14b-e38d-4b5e-9059-834e68232319")
 		)
 		(pad "96" smd rect
@@ -7012,7 +6917,6 @@
 			(net "/AY_C1")
 			(pinfunction "IO_53_96")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "015a9d6f-ecb2-48ce-bed3-44c17cb21128")
 		)
 		(pad "97" smd rect
@@ -7022,7 +6926,6 @@
 			(net "/AY_RDY")
 			(pinfunction "IO_55_97")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "2ac3163a-18e7-4f98-9c90-424c6078de32")
 		)
 		(pad "98" smd rect
@@ -7032,7 +6935,6 @@
 			(net "/AY_RST")
 			(pinfunction "IO_57_98")
 			(pintype "bidirectional")
-			(solder_mask_margin 0.102)
 			(uuid "a7da9f7f-e518-4387-8ae7-a7fbd0ab12f5")
 		)
 		(pad "99" smd rect
@@ -7042,7 +6944,6 @@
 			(net "unconnected-(U1-IO_58-Pad99)")
 			(pinfunction "IO_58_99")
 			(pintype "bidirectional+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "e7b3f0dd-d429-4b79-9a99-1ace43d3dd33")
 		)
 		(pad "100" smd rect
@@ -7052,7 +6953,6 @@
 			(net "unconnected-(U1-IO-Pad100)")
 			(pinfunction "IO_100")
 			(pintype "bidirectional+no_connect")
-			(solder_mask_margin 0.102)
 			(uuid "61b87f76-1a04-42c8-9c91-c4812b53c593")
 		)
 		(embedded_fonts no)
