@@ -45,6 +45,7 @@
 			)
 			(layer "F.Mask"
 				(type "Top Solder Mask")
+				(color "Purple")
 				(thickness 0.01)
 			)
 			(layer "F.Cu"
@@ -64,6 +65,7 @@
 			)
 			(layer "B.Mask"
 				(type "Bottom Solder Mask")
+				(color "Purple")
 				(thickness 0.01)
 			)
 			(layer "B.Paste"
@@ -91,6 +93,7 @@
 		)
 		(capping no)
 		(filling no)
+		(zone_defaults)
 		(pcbplotparams
 			(layerselection 0x00000000_00000000_55555555_575555ff)
 			(plot_on_all_layers_selection 0x00000000_00000000_00000000_00000000)
@@ -42174,7 +42177,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "170.00 mm"
+		(gr_text "170,00 mm"
 			(at 143.6 66.75 0)
 			(layer "F.Fab")
 			(uuid "1eb073e3-8c82-4257-bb1d-0d5f53d3be16")
@@ -42210,7 +42213,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "47.55 mm"
+		(gr_text "47,55 mm"
 			(at 82.375 139.85 0)
 			(layer "F.Fab")
 			(uuid "4f876ca0-e10b-4388-bf7b-d0f2cd69791e")
@@ -42246,7 +42249,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "55.97 mm"
+		(gr_text "55,97 mm"
 			(at 46.85 99.585 90)
 			(layer "F.Fab")
 			(uuid "65f66861-0780-4d5f-9a7d-dc9415273e32")
@@ -42282,7 +42285,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "81.03 mm"
+		(gr_text "81,03 mm"
 			(at 146.665 139.85 0)
 			(layer "F.Fab")
 			(uuid "c1600de7-fb9c-4ed2-830f-c97fa0b3ab04")
