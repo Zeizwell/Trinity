@@ -1231,11 +1231,11 @@
 	(footprint "trinity:QFP50P1600X1600X120-100N"
 		(layer "F.Cu")
 		(uuid "1892d5c4-088c-4ea7-92d2-8cbd7e75d9b6")
-		(at 194.5 117.895)
+		(at 178.5 116.5)
 		(property "Reference" "U1"
 			(at 0.66045 -9.93227 0)
 			(layer "F.SilkS")
-			(uuid "e47641f9-5722-4bbf-8c21-fab2a947e544")
+			(uuid "cbabfe87-8b44-44e8-a627-05cde8b3b50c")
 			(effects
 				(font
 					(size 1.640142 1.640142)
@@ -1246,7 +1246,7 @@
 		(property "Value" "EPM3128ATC100-10N"
 			(at 19.34147 9.73425 0)
 			(layer "F.Fab")
-			(uuid "ff33d766-40d9-456b-8db3-c81f2667a254")
+			(uuid "05fcf052-1351-4bc8-a937-b9b4ccef45ae")
 			(effects
 				(font
 					(size 1.641024 1.641024)
@@ -1258,7 +1258,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "1e86929c-24bb-44d9-a922-c4e71ec1e9e7")
+			(uuid "b7191b2e-2a81-4633-bd7a-bb68e9ec122d")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1269,7 +1269,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "aa966ac6-d116-4c28-828a-2bc1ab3acb12")
+			(uuid "77ca6adb-43d5-454f-b3ef-db9e9a803601")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7033,7 +7033,7 @@
 	(footprint "Capacitor_SMD:C_0805_2012Metric"
 		(layer "F.Cu")
 		(uuid "1b224d3d-d69f-43e2-8d32-4ce268cf708b")
-		(at 172.525 111.75)
+		(at 196.3 122.75)
 		(descr "Capacitor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf, https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing)")
 		(tags "capacitor")
 		(property "Reference" "C115"
@@ -10915,7 +10915,7 @@
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "42f5c8e2-3e78-4d2c-9ea2-b999270ce052")
-		(at 172.675 108.25)
+		(at 196.175 118.5)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R223"
@@ -12282,7 +12282,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_6.3x7.7"
 		(layer "F.Cu")
 		(uuid "64a4bdb7-95fd-436b-99b9-6da5fb55e267")
-		(at 179.5 113.5)
+		(at 203.5 118.5)
 		(descr "SMD capacitor, aluminum electrolytic, Nichicon, 6.3x7.7mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C114"
@@ -20632,7 +20632,7 @@
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "b696458d-712a-4926-810c-324e6a5c1545")
-		(at 176.145 108.274)
+		(at 196.175 115.25)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R224"
@@ -36847,7 +36847,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "170.00 mm"
+		(gr_text "170,00 mm"
 			(at 143.6 66.75 0)
 			(layer "F.Fab")
 			(uuid "1eb073e3-8c82-4257-bb1d-0d5f53d3be16")
@@ -36883,7 +36883,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "47.55 mm"
+		(gr_text "47,55 mm"
 			(at 82.375 139.85 0)
 			(layer "F.Fab")
 			(uuid "4f876ca0-e10b-4388-bf7b-d0f2cd69791e")
@@ -36919,7 +36919,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "55.97 mm"
+		(gr_text "55,97 mm"
 			(at 46.85 99.585 90)
 			(layer "F.Fab")
 			(uuid "65f66861-0780-4d5f-9a7d-dc9415273e32")
@@ -36955,7 +36955,7 @@
 			(extension_offset 0.5)
 			(keep_text_aligned yes)
 		)
-		(gr_text "81.03 mm"
+		(gr_text "81,03 mm"
 			(at 146.665 139.85 0)
 			(layer "F.Fab")
 			(uuid "c1600de7-fb9c-4ed2-830f-c97fa0b3ab04")
