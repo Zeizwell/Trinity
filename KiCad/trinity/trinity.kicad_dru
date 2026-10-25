@@ -1,0 +1,7 @@
+(version 1)
+
+# Панельки YM (U4, U10) - одна рамка, без перемычек: между рядами ножек под чипом (3-4 мм над платой) стоит SMD-мелочь.
+(rule "parts inside YM sockets"
+	(severity ignore)
+	(condition "A.Reference == 'U4' || A.Reference == 'U10' || B.Reference == 'U4' || B.Reference == 'U10'")
+	(constraint courtyard_clearance))
