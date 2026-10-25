@@ -101,7 +101,7 @@ def build(d):
 
 
 def support(s, y0):
-    """Под блоком: 3.3 В для CPLD, развязка у каждой ножки питания, гребёнка JTAG."""
+    """Под блоком: 3.3 В для CPLD, развязка у каждой ножки питания, подтяжки JTAG."""
     s.texts.append(("CPLD POWER, JTAG", LB + 1.27, y0 - 0.635, 2.0066, "left bottom", False))
     # 3.3 В: AMS1117-3.3 от +5V (как MultiSound Max), по даташиту: 10u на входе, 22u на выходе
     x, y = 35.56, y0 + 12.7
@@ -134,22 +134,10 @@ def support(s, y0):
     s.wire((xs[0] - 5.08, yc + 6.35), (xs[-1], yc + 6.35))
     s.power("+3V3", xs[0] - 5.08, yc - 6.35)
     s.power("GND", xs[0] - 5.08, yc + 6.35)
-    # JTAG: гребёнка 2x5 (как ByteBlaster / USB-Blaster: 1 TCK, 2 GND, 3 TDO, 4 VCC, 5 TMS, 9 TDI, 10 GND);
-    # подтяжки по рекомендации Altera: TCK 1к вниз, TMS и TDI 10к вверх. Те же линии - от RP-GS (шьёт CPLD файлом SVF).
-    jx, jy = 45.72, y0 + 71.12
-    s.place("J7", "Connector_Generic:Conn_02x05_Odd_Even", "JTAG", jx, jy,
-            props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_2x05_P2.54mm_Vertical"})
-    for p, n in ((1, "JTAG_TCK"), (3, "JTAG_TDO"), (5, "JTAG_TMS"), (9, "JTAG_TDI")):
-        s.stub("J7", p, 7.62, label=n); net(n, "J7", p)
-    p2, p4, p10 = s.pin("J7", 2), s.pin("J7", 4), s.pin("J7", 10)   # правый ряд: земли и питание - врозь
-    s.wire(p2, (p2[0] + 5.08, p2[1]), (p2[0] + 5.08, p2[1] - 5.08))
-    s.power("GND", p2[0] + 5.08, p2[1] - 5.08, rot=180)
-    s.wire(p4, (p4[0] + 10.16, p4[1]))
-    s.power("+3V3", p4[0] + 10.16, p4[1])
-    s.stub("J7", 10, 2.54, power="GND")
-    net("GND", "J7", 2); net("GND", "J7", 10); net("+3V3", "J7", 4)
-    for p in (6, 7, 8):
-        s.nc("J7", p); NO_CONNECT.append(("J7", str(p)))
+    # JTAG: гребёнки нет (2026-10-25, рев A) - CPLD шьёт RP-GS (SVF) по GP44-47; запасной путь - провода USB-Blaster к
+    # этим торцевым площадкам модуля. Подтяжки по рекомендации Altera (пока RP-GS не настроила ножки): TCK 1к вниз,
+    # TMS и TDI 10к вверх.
+    jy = y0 + 66.04
     for k, (r, v, n, to) in enumerate((("R226", "1k", "JTAG_TCK", "GND"), ("R227", "10k", "JTAG_TMS", "+3V3"),
                                        ("R228", "10k", "JTAG_TDI", "+3V3"))):
         rx = 81.28 + k * 10.16
