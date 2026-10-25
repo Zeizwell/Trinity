@@ -468,7 +468,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "06acc8fe-7533-4e59-8590-ca6987b0dc25")
-		(at 95.374999 105)
+		(at 91.75 106.75)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C6"
@@ -915,7 +915,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "0f7359cf-0810-40d4-b878-897156409212")
-		(at 104.25 105.5)
+		(at 102.525 101.25)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C118"
@@ -8838,7 +8838,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "26d1bf64-8316-4833-88f7-38d1a803d777")
-		(at 100.75 105.5)
+		(at 102.5 99)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C104"
@@ -8996,7 +8996,7 @@
 	(footprint "Package_TO_SOT_SMD:TO-252-2"
 		(layer "F.Cu")
 		(uuid "28f3a36b-51ea-4094-8ad9-094a4da31e4f")
-		(at 219.0725 115.66 90)
+		(at 221.8225 115.66 90)
 		(descr "TO-252/DPAK SMD package, http://www.infineon.com/cms/en/product/packages/PG-TO252/PG-TO252-3-1/")
 		(tags "DPAK TO-252 DPAK-3 TO-252-3 SOT-428")
 		(property "Reference" "U105"
@@ -10468,7 +10468,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "4131fdf6-5d13-4dd0-b802-8e95e854736f")
-		(at 91.75 117)
+		(at 91.75 123.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C82"
@@ -10915,7 +10915,7 @@
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "42f5c8e2-3e78-4d2c-9ea2-b999270ce052")
-		(at 172.145 108.504)
+		(at 172.675 108.25)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R223"
@@ -11073,7 +11073,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "547beb95-4124-4b07-9d36-12333a6a0b87")
-		(at 84 117)
+		(at 84 117.75)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C7"
@@ -11678,7 +11678,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "58749f3e-e667-4d3b-89d1-a655a90915a1")
-		(at 113.5 113.5)
+		(at 97.475 103.25)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C106"
@@ -12282,7 +12282,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_6.3x7.7"
 		(layer "F.Cu")
 		(uuid "64a4bdb7-95fd-436b-99b9-6da5fb55e267")
-		(at 180 113.25)
+		(at 179.5 113.5)
 		(descr "SMD capacitor, aluminum electrolytic, Nichicon, 6.3x7.7mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C114"
@@ -13439,7 +13439,7 @@
 	(footprint "Package_DIP:DIP-8_W7.62mm_Socket"
 		(layer "F.Cu")
 		(uuid "66956739-3fd1-4879-899f-5ecb04ddf7fa")
-		(at 117.484999 113.725)
+		(at 106.94 113.38)
 		(descr "8-lead though-hole mounted DIP package, row spacing 7.62mm (300 mils), Socket")
 		(tags "THT DIP DIL PDIP 2.54mm 7.62mm 300mil Socket")
 		(property "Reference" "U12"
@@ -13666,7 +13666,7 @@
 			)
 		)
 		(point
-			(at 121.294999 117.535)
+			(at 110.75 117.19)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "1e9609df-fdd5-44e2-ba22-d989124074ed")
@@ -13776,7 +13776,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "674a59b3-0baa-49f4-839f-82253c278947")
-		(at 84 122.5)
+		(at 84 123.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C12"
@@ -15640,7 +15640,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "7bcb8ba9-5329-434f-a281-2bacfe57d7fe")
-		(at 113.5 118.5)
+		(at 104.444999 104.134999)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C121"
@@ -16245,7 +16245,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "874cb3f5-b4de-4a8d-abf2-08d509f4eaec")
-		(at 90.607502 109.554999)
+		(at 84.5 113.25)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R4"
@@ -16561,7 +16561,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "8ac689db-27a3-4715-8ac4-5de3e8b162c6")
-		(at 88.107502 98.785)
+		(at 88 97.75)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R2"
@@ -17121,7 +17121,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "90459f17-bbef-4a16-8965-564955deab1d")
-		(at 99.5 111.25)
+		(at 91.75 112.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C8"
@@ -18489,7 +18489,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "b08bf670-96a9-4628-86fc-c0654b3380e3")
-		(at 99.5 122.5)
+		(at 99.5 123.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C9"
@@ -20790,7 +20790,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "b8dfa5b5-69f5-428e-91be-7e6e777d624d")
-		(at 107.45 122.5)
+		(at 99.5 108.5)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C16"
@@ -21395,7 +21395,7 @@
 	(footprint "Package_TO_SOT_SMD:TO-252-2"
 		(layer "F.Cu")
 		(uuid "c444c69f-ed38-4623-849d-21b3d2cbefc3")
-		(at 207.67 115.91 90)
+		(at 212.975 115.835 90)
 		(descr "TO-252/DPAK SMD package, http://www.infineon.com/cms/en/product/packages/PG-TO252/PG-TO252-3-1/")
 		(tags "DPAK TO-252 DPAK-3 TO-252-3 SOT-428")
 		(property "Reference" "U104"
@@ -22723,7 +22723,7 @@
 	(footprint "Inductor_SMD:L_Bourns_SRN6045TA"
 		(layer "F.Cu")
 		(uuid "d5bc6457-bf7a-43a9-ae87-cc73750e9aaa")
-		(at 110.575 107.895001)
+		(at 110.575 107)
 		(descr "http://www.bourns.com/docs/product-datasheets/srn6045ta.pdf")
 		(tags "Semi-shielded Power Inductor")
 		(property "Reference" "L103"
@@ -22971,7 +22971,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "dd2d48dc-82c9-49cc-9a4b-80d5c8f0d986")
-		(at 213.394999 120.53)
+		(at 217.725 124.75)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C116"
@@ -24254,7 +24254,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "e9419faf-3238-476f-81a0-c22b25cfb899")
-		(at 99.5 117)
+		(at 91.75 117.75)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C83"
@@ -25017,7 +25017,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_5x5.4"
 		(layer "F.Cu")
 		(uuid "f0abdec9-e0ee-4615-a0f8-7426091bca05")
-		(at 107.5 116.25)
+		(at 99 115)
 		(descr "SMD capacitor, aluminum electrolytic, Nichicon, 5.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C105"
@@ -34038,7 +34038,7 @@
 	(footprint "Capacitor_SMD:C_1206_3216Metric"
 		(layer "B.Cu")
 		(uuid "be81d0cc-2b22-4037-a3ed-986f93bc3fc6")
-		(at 121.78 116.089999 90)
+		(at 111.235 115.745 90)
 		(descr "Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C23"
@@ -35364,7 +35364,7 @@
 	(footprint "Capacitor_SMD:C_1206_3216Metric"
 		(layer "B.Cu")
 		(uuid "f12461cc-9907-4560-9b1a-eeade348dcb3")
-		(at 128.279999 113.549999 90)
+		(at 117.735 113.704999 90)
 		(descr "Capacitor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C22"
