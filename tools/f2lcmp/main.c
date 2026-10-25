@@ -41,9 +41,15 @@ static int load_f2l(const char *name, frame_t *fr, int max) {
     long len;
     unsigned char *b = load(name, &len);
     if (len < 8 || memcmp(b, "F2LG", 4)) { printf("%s: not F2LG\n", name); exit(1); }
-    int rec = b[6] | b[7] << 8, n = 0;
+    int rec = b[6] | b[7] << 8, n = 0, chips = b[4] >= 2 ? 2 : 1, part = rec / chips, ch = 0, best = -1;
+    for (int c = 0; c < chips; c++) {                       // v2 - два чипа в записи: берём тот, где звук
+        int k = 0;
+        for (long i = 8 + c * part; i + 14 <= len; i += rec) k += (b[i + 8] | b[i + 9] | b[i + 10]) & 0x1F ? 1 : 0;
+        if (k > best) best = k, ch = c;
+    }
+    printf("%s: %d chip(s), taking chip %d\n", name, chips, ch);
     unsigned char r13 = 0;
-    for (long i = 8; i + rec <= len && n < max; i += rec, n++) {
+    for (long i = 8 + ch * part; i + 14 <= len && n < max; i += rec, n++) {
         memcpy(fr[n].r, b + i, 14);
         fr[n].w13 = b[i + 13] != 0xFF;
         if (fr[n].w13) r13 = b[i + 13];
