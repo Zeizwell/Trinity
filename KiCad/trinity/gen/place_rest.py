@@ -36,15 +36,17 @@ def main():
     for r, f in fps.items():
         if r not in TODO:
             P.block(f)
-    for r, (u, bottom) in TODO.items():
+    for r, v in TODO.items():
+        u, bottom = v[0], v[1]
         f, ic = fps[r], fps[u]
-        pad = target_pad(f, ic)
+        pad = next(p for p in ic.Pads() if p.GetNumber() == v[2]) if len(v) > 2 else target_pad(f, ic)
         px, py = pcbnew.ToMM(pad.GetPosition().x), pcbnew.ToMM(pad.GetPosition().y)
         ok = False
-        for side in (bottom, not bottom):
+        only = bottom == "top"                             # "top" - только сверху (разъёмы, переключатели), ищем шире
+        for side in ((False,) if only else (bottom, not bottom)):
             if f.IsFlipped() != side:
                 f.Flip(f.GetPosition(), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
-            for d in (10, 20):
+            for d in ((10, 20, 30, 45, 60) if only else (10, 20)):
                 win = (max(px - d, P.BOARD[0]), max(py - d, P.BOARD[1]), min(px + d, P.BOARD[2]),
                        min(py + d, P.BOARD[3]))
                 if P.put(f, win, near=(px, py)):
