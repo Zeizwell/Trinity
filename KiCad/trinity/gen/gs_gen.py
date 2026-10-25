@@ -2,11 +2,13 @@
 # Блок GS платы Тринити по образцу TURBO SOUND FM (MultiSound) на том же листе: блок обведён шиной, всё, что идёт в
 # другие блоки, выходит на неё вводами; метка - у ввода, текст к детали (шрифт и выравнивание - как у образца, их
 # приводит merge_into_root.py); внутри (RP-GS -> PCM5102, RP-GS -> microSD) - прямые провода.
-# RP-GS - Spotpear RP2350B-MINI-A; ножки (2026-10-25, при разводке можно переставить - в прошивке это переменные):
-#   слева -> шина к CPLD: GP0-7 GS_D0-7, GP8 GS_WR, GP9 GS_RD, GP10-15 GS_C0-5, GP16 GS_RDY, GP17 JTAG_TCK, GP18 JTAG_TMS,
-#     GP21 CPLD_CLK, GP22 JTAG_TDI, GP23 JTAG_TDO; GP19 (PSRAM), GP24 (VBUS) - нет;
-#   справа: I2S GP40 BCK / GP41 LRCK / GP42 DIN (33 Ом), GP43 XSMT (1к); SD GP32 CS / GP31 MOSI / GP30 SCK / GP28 MISO;
-#     GP33 AY_RUN, GP36 GS_TX, GP37 GS_RX - к RP-AY; остальное - на гребёнку J6.
+# RP-GS - Spotpear RP2350B-MINI-A; ножки (переложены 2026-10-25 под расстановку на плате; в прошивке - переменные):
+#   слева (смотрит на RP-AY, низ - к CPLD) -> шина блока: GP0-5 GS_C0-5, GP6 GS_TX / GP7 GS_RX (UART к RP-AY - ножки
+#     напротив её GP45 RX / GP44 TX со сдвигом на одну: точно напротив всегда одно направление; GP6 / GP7 - UART1
+#     через доп. функцию UART RP2350 - сверить по даташиту до прошивки), GP8 GS_WR, GP9-16 GS_D0-7 (подряд, для PIO),
+#     GP17 GS_RD, GP18 GS_RDY, GP21 CPLD_CLK, GP25 AY_RUN (у площадки R RP-AY); GP19 (PSRAM), GP24 (VBUS), GP22-23 - нет;
+#   справа: I2S GP40 BCK / GP41 LRCK / GP42 DIN (33 Ом), GP43 XSMT (1к); SD GP32 CS / GP31 MOSI / GP30 SCK / GP28 MISO
+#     (33 Ом на SCK / MOSI - линия до SD длинная); JTAG CPLD GP44 TCK / GP45 TMS / GP46 TDI / GP47 TDO; остальное - J6.
 #   python gs_gen.py -> gs.kicad_sch + сверка netlist; вставка в корень - merge_into_root.py
 import os
 import sys
@@ -78,15 +80,13 @@ def build(d):
     s.place(U, "Trinity:RP2350B-MINI-A", "RP-GS", RX, RY, props={"Footprint": "trinity:rp2350b"})
 
     # ---- левый край -> шина блока (к CPLD)
-    left = [(f"GP{i}", f"GS_D{i}") for i in range(8)] + [("GP8", "GS_WR"), ("GP9", "GS_RD")] + \
-           [(f"GP{10 + i}", f"GS_C{i}") for i in range(6)] + \
-           [("GP16", "GS_RDY"), ("GP17", "JTAG_TCK"), ("GP18", "JTAG_TMS"), ("GP21", "CPLD_CLK"),
-            ("GP22", "JTAG_TDI"), ("GP23", "JTAG_TDO")]
+    left = [(f"GP{i}", f"GS_C{i}") for i in range(6)] + [("GP6", "GS_TX"), ("GP7", "GS_RX"), ("GP8", "GS_WR")] + \
+           [(f"GP{9 + i}", f"GS_D{i}") for i in range(8)] + \
+           [("GP17", "GS_RD"), ("GP18", "GS_RDY"), ("GP21", "CPLD_CLK"), ("GP25", "AY_RUN")]
     for p, n in left:
         to_left_bus(s, p, n)
-    for p in ("GP19", "GP24"):
+    for p in ("GP19", "GP24", "GP22", "GP23"):
         nc(s, U, p)
-    lab_stub(s, U, "GP25", "GS_GP25", 5.08)
 
     # ---- низ: земли модуля; RUN своей RP, светодиод, торец без дыр - не используем
     g1, g2 = s.pin(U, "G1"), s.pin(U, "G2")              # обе земли - скобой вниз, один символ
@@ -115,10 +115,10 @@ def build(d):
     net("3V3_GS", U, "3V3")
 
     # ---- запасные справа -> гребёнка J6 (метки); связь с RP-AY - метками
-    spare = ["GP25", "GP29", "GP34", "GP35", "GP38", "GP39", "GP44", "GP45", "GP46", "GP47"]
-    for p in spare[1:]:
+    spare = ["GP39", "GP38", "GP37", "GP36", "GP35", "GP34", "GP33", "GP29"]   # как идут по краю модуля сверху вниз
+    for p in spare:
         lab_stub(s, U, p, f"GS_{p}", 5.08)
-    for p, n in (("GP33", "AY_RUN"), ("GP36", "GS_TX"), ("GP37", "GS_RX")):
+    for p, n in (("GP44", "JTAG_TCK"), ("GP45", "JTAG_TMS"), ("GP46", "JTAG_TDI"), ("GP47", "JTAG_TDO")):
         lab_stub(s, U, p, n, 5.08)
 
     # ---- I2S: RP -> 33 Ом -> PCM5102 прямыми проводами; резисторы - рядами через 7.62 (надписи не на проводах)
@@ -171,10 +171,15 @@ def build(d):
     XJ, YJ = 213.36, 139.7                                # ниже PCM; линии - лесенкой (нижняя поворачивает первой)
     s.place("J5", "Connector:Micro_SD_Card_Det2", "MEM2055-00-190-01-A", XJ, YJ,
             props={"Footprint": "trinity:GCT-MEM2055-00-190-01-A"})
-    for p, n, pp, xj in (("GP32", "SD_CS", 2, 162.56), ("GP31", "SD_MOSI", 3, 157.48), ("GP30", "SD_SCK", 5, 152.4),
-                         ("GP28", "SD_MISO", 7, 147.32)):
+    for p, n, pp, xj in (("GP32", "SD_CS", 2, 162.56), ("GP28", "SD_MISO", 7, 142.24)):
         route(s, s.pin(U, p), s.pin("J5", pp), xj)
         net(n, U, p); net(n, "J5", pp)
+    for r, p, n, pp, xj in (("R212", "GP31", "SD_MOSI", 3, 157.48), ("R213", "GP30", "SD_SCK", 5, 152.4)):
+        a, b = s.pin(U, p), s.pin("J5", pp)               # 33 Ом у RP - на вертикальном участке лесенки
+        s.place(r, "Device:R", "33", xj, (a[1] + b[1]) / 2, props={"Footprint": FP_R})
+        s.wire(a, (xj, a[1]), s.pin(r, 1))
+        s.wire(s.pin(r, 2), (xj, b[1]), b)
+        net(f"{n}_RP", U, p); net(f"{n}_RP", r, 1); net(n, r, 2); net(n, "J5", pp)
     pulls = [(1, "SD_DAT2", 182.88, -1), (2, "SD_CS", 175.26, -1), (7, "SD_MISO", 165.1, 1), (8, "SD_DAT1", 182.88, 1)]
     for pn, n, x, up in pulls:                            # up -1 - резистор вверх, 1 - вниз
         jx, jy = s.pin("J5", pn)
@@ -206,17 +211,16 @@ def build(d):
         net("3V3_GS", c, 1); net("GND", c, 2)
 
     # ---- гребёнка J6: запасные ножки RP-GS
-    s.place("J6", "Connector_Generic:Conn_01x12", "SPARE", 271.78, 76.2,
-            props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical"})
-    # порядок контактов - как ножки идут по правому краю модуля сверху вниз (линии на плате не перекрещиваются),
-    # GP25 - с нижнего угла левого края
-    for k2, p in enumerate(["GP47", "GP46", "GP45", "GP44", "GP39", "GP38", "GP35", "GP34", "GP29", "GP25"], 1):
+    s.place("J6", "Connector_Generic:Conn_01x10", "SPARE", 271.78, 76.2,
+            props={"Footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical"})
+    # порядок контактов - как ножки идут по правому краю модуля сверху вниз (линии на плате не перекрещиваются)
+    for k2, p in enumerate(spare, 1):
         lab_stub(s, "J6", k2, f"GS_{p}", 5.08)
-    lab_stub(s, "J6", 11, "AY_GP47", 5.08)               # единственная свободная ножка RP-AY
-    j = s.pin("J6", 12)                                   # земля гребёнки - уголком вниз, мимо меток
+    lab_stub(s, "J6", 9, "AY_GP47", 5.08)                # единственная свободная ножка RP-AY
+    j = s.pin("J6", 10)                                   # земля гребёнки - уголком вниз, мимо меток
     s.wire(j, (j[0] - 2.54, j[1]), (j[0] - 2.54, j[1] + 2.54))
     s.power("GND", j[0] - 2.54, j[1] + 2.54)
-    net("GND", "J6", 12)
+    net("GND", "J6", 10)
 
     # AY + FM с микшера (SND_L / SND_R) -> 1к -> гнездо модуля: там уже GS (ЦАП через 470 Ом модуля);
     # нагрузка ЦАП 470 + 1к = 1.47 кОм (даташит PCM5102A: не меньше 1 кОм)

@@ -2,10 +2,12 @@
   "analog.kicad_sch": "1e64929ab363da8387e09b515e846e643a3b82f14df278fc85bc8dc3f04e222b",
   "mixer.kicad_sch": "13933e9a55ed797488065d70e71577ce1ccda747fd165cdf06324190f758dea9",
   "addon.kicad_sch": "fa0d47be4d6a3f57259649e6cdefe9acc3ddf0422ed0e9467023f1040d6f89ac",
-  "gs.kicad_sch": "646c563a2f221c03642bc6fe9a3cd2e21a145e3c1c542c1d5e8a2c6505362fbf",
+  "gs.kicad_sch": "2ca5ba3bdd72f96a1406022698023979dc210807cd9e1bf944b04d722a5ff6a3",
   "rpay.kicad_sch": "5686b3568d85e403c3e94b1a076337aa4a795c3042a7cb9be807d85d07ebd782",
   "rpay_pu.kicad_sch": "04b0bdd876e6acf7b4a99e5daaed15064ba3ac740fc781f665d89c6e53877567",
   "a12v.kicad_sch": "fcdf4f753472f86ae1882e64cb0c83feb4c334cfc42cc46b08beaed03491de3e",
   "bulk.kicad_sch": "d91c45c3e5786bf822057b288cf60a047dbc0aff165da3dcdad460324dd2ed8e",
-  "dec.kicad_sch": "3cebaccbe217013de287687c833e5d8d82c0f42d1a232cb1ff5f8550921b4492"
+  "dec.kicad_sch": "3cebaccbe217013de287687c833e5d8d82c0f42d1a232cb1ff5f8550921b4492",
+  "cpld.kicad_sch": "c3dde9af4c9bcccc869b21db00ae978841170ce78525b871352d46bf4a558150",
+  "zxbus.kicad_sch": "1bb03b027e7d25469c869e70a1271731b94ff0ed0b9513d62b35ffe7ee8071b1"
 }

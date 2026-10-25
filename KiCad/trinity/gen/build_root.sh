@@ -25,3 +25,10 @@ cp $T/root.kicad_sch $T/p10.kicad_sch
 python gen/patch_fp.py $T/p10.kicad_sch $T/root.kicad_sch
 cp $T/root.kicad_sch $T/p11.kicad_sch
 python gen/patch_fmref.py $T/p11.kicad_sch $T/root.kicad_sch
+cp $T/root.kicad_sch $T/p12.kicad_sch
+python gen/delete_parts.py $T/p12.kicad_sch U1 U21 | tail -1
+python gen/patch_zxbus_old.py $T/p12.kicad_sch $T/p13.kicad_sch
+python gen/fix_epm.py $T/p13.kicad_sch $T/p14.kicad_sch
+python gen/merge_into_root.py gen/cpld.kicad_sch $T/p14.kicad_sch $T/p15.kicad_sch
+python gen/merge_into_root.py gen/zxbus.kicad_sch $T/p15.kicad_sch $T/p16.kicad_sch --skip-ref J4TMP
+python gen/norm_global.py $T/p16.kicad_sch $T/root.kicad_sch
