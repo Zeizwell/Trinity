@@ -21019,7 +21019,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
+		(lib_id "Device:C")
 		(at 252.73 163.195 0)
 		(unit 1)
 		(body_style 1)
@@ -21040,7 +21040,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10u/16V X5R"
 			(at 256.54 165.735 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -21051,7 +21051,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_4x5.4"
+		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
 			(at 253.6952 167.005 0)
 			(hide yes)
 			(show_name no)
@@ -22916,7 +22916,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
+		(lib_id "Device:C")
 		(at 252.73 99.06 0)
 		(unit 1)
 		(body_style 1)
@@ -22937,7 +22937,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10u/16V X5R"
 			(at 256.54 101.6 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22948,7 +22948,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_4x5.4"
+		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
 			(at 253.6952 102.87 0)
 			(hide yes)
 			(show_name no)
@@ -25068,7 +25068,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
+		(lib_id "Device:C")
 		(at 245.745 99.06 0)
 		(unit 1)
 		(body_style 1)
@@ -25089,7 +25089,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10u/16V X5R"
 			(at 249.555 101.6 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25100,7 +25100,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_4x5.4"
+		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
 			(at 246.7102 102.87 0)
 			(hide yes)
 			(show_name no)
@@ -28915,7 +28915,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C_Polarized")
+		(lib_id "Device:C")
 		(at 245.745 163.195 0)
 		(unit 1)
 		(body_style 1)
@@ -28936,7 +28936,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "10u"
+		(property "Value" "10u/16V X5R"
 			(at 249.555 165.735 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -28947,7 +28947,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_4x5.4"
+		(property "Footprint" "Capacitor_SMD:C_1206_3216Metric"
 			(at 246.7102 167.005 0)
 			(hide yes)
 			(show_name no)
