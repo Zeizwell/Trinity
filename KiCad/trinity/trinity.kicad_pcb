@@ -131,7 +131,7 @@
 	(footprint "Package_DIP:DIP-8_W7.62mm_Socket"
 		(layer "F.Cu")
 		(uuid "0660d75f-94e3-49f7-82ff-f002ddd659d9")
-		(at 107.025 85.204999)
+		(at 104.88 85.204999)
 		(descr "8-lead though-hole mounted DIP package, row spacing 7.62mm (300 mils), Socket")
 		(tags "THT DIP DIL PDIP 2.54mm 7.62mm 300mil Socket")
 		(property "Reference" "U6"
@@ -358,7 +358,7 @@
 			)
 		)
 		(point
-			(at 110.835 89.014999)
+			(at 108.69 89.014999)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "dc437016-83bb-444e-814a-410917a1c53e")
@@ -1547,7 +1547,7 @@
 	(footprint "trinity:QFP50P1600X1600X120-100N"
 		(layer "F.Cu")
 		(uuid "1892d5c4-088c-4ea7-92d2-8cbd7e75d9b6")
-		(at 178.5 116.5)
+		(at 182.7448 116.5)
 		(property "Reference" "U1"
 			(at 0.66045 -9.93227 0)
 			(layer "F.SilkS")
@@ -6902,7 +6902,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "1ada6f91-ad75-4c31-aae9-fb8183616285")
-		(at 83.932501 103.310001)
+		(at 79.45 94.5)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C1"
@@ -7836,7 +7836,7 @@
 	(footprint "Package_DIP:DIP-40_W15.24mm_Socket"
 		(layer "F.Cu")
 		(uuid "1ca3217c-55c2-4946-a7a2-a2b7dfd4fa02")
-		(at 167.64 93.98 -90)
+		(at 165.97 93.98 -90)
 		(descr "40-lead though-hole mounted DIP package, row spacing 15.24mm (600 mils), Socket")
 		(tags "THT DIP DIL PDIP 2.54mm 15.24mm 600mil Socket")
 		(property "Reference" "U10"
@@ -8065,7 +8065,7 @@
 			)
 		)
 		(point
-			(at 143.51 101.6)
+			(at 141.84 101.6)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "d8fa6ccf-e082-4523-9bc8-1fdce2334905")
@@ -10920,13 +10920,13 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "3c7c0174-7614-4052-9cfe-8ca1a87dff3f")
-		(at 101.5 84.907501)
+		(at 99.75 84.907501)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R15"
 			(at 0 -1.65 0)
 			(layer "F.SilkS")
-			(uuid "9bde111f-e7c1-42a7-b5aa-280bfad15226")
+			(uuid "5e5cde4e-468a-48f6-af82-83aa51950600")
 			(effects
 				(font
 					(size 1 1)
@@ -10937,7 +10937,7 @@
 		(property "Value" "10K"
 			(at 0 1.65 0)
 			(layer "F.Fab")
-			(uuid "1f3f9a76-3114-4ae7-8e76-ea945e8a728d")
+			(uuid "effd7cde-af38-4d8f-9c5f-15bf67d16de9")
 			(effects
 				(font
 					(size 1 1)
@@ -10949,7 +10949,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "5c219dfb-ab3e-4122-905d-86a1dff2d92d")
+			(uuid "bdb525e3-ff01-462d-9e52-7d7fa458f7c2")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10960,7 +10960,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "432b0bf8-e579-41fa-801d-d635a79341df")
+			(uuid "bb19b09a-a9b5-421b-a093-1f1d349f9947")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12876,7 +12876,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "58749f3e-e667-4d3b-89d1-a655a90915a1")
-		(at 97.475 103.25)
+		(at 96.975 119.5)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C106"
@@ -13192,7 +13192,7 @@
 	(footprint "Button_Switch_SMD:SW_DIP_SPSTx04_Slide_Omron_A6H-4101_W6.15mm_P1.27mm"
 		(layer "F.Cu")
 		(uuid "5ace12b3-e844-4146-b16e-e64016c666c0")
-		(at 80.9825 96.25)
+		(at 80.25 105.75)
 		(descr "SMD 4x-dip-switch SPST Omron_A6H-4101, Slide, row spacing 6.15 mm (242 mils), body size  (see https://www.omron.com/ecb/products/pdf/en-a6h.pdf)")
 		(tags "SMD DIP Switch SPST Slide 6.15mm 242mil")
 		(property "Reference" "SW101"
@@ -13545,7 +13545,7 @@
 			)
 		)
 		(point
-			(at 84.0575 98.155)
+			(at 83.325 107.655)
 			(size 0.635)
 			(layer "F.Fab")
 			(uuid "964564ae-6286-4dc9-bb78-f51fb9023cc0")
@@ -14243,7 +14243,7 @@
 	(footprint "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
 		(layer "F.Cu")
 		(uuid "64b04c5e-6e31-46c9-8c7f-822be7e00a73")
-		(at 78 112.46)
+		(at 78 111.75)
 		(descr "Through hole straight pin header, 1x04, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x04 2.54mm single row")
 		(property "Reference" "J2"
@@ -14506,7 +14506,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "64e23cec-2080-44fe-8d0d-f84025cae5a6")
-		(at 93.4325 84.27)
+		(at 93.2 84)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C21"
@@ -14953,7 +14953,7 @@
 	(footprint "Package_DIP:DIP-8_W7.62mm_Socket"
 		(layer "F.Cu")
 		(uuid "66956739-3fd1-4879-899f-5ecb04ddf7fa")
-		(at 106.94 113.38)
+		(at 106.94 114.88)
 		(descr "8-lead though-hole mounted DIP package, row spacing 7.62mm (300 mils), Socket")
 		(tags "THT DIP DIL PDIP 2.54mm 7.62mm 300mil Socket")
 		(property "Reference" "U12"
@@ -15180,7 +15180,7 @@
 			)
 		)
 		(point
-			(at 110.75 117.19)
+			(at 110.75 118.69)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "1e9609df-fdd5-44e2-ba22-d989124074ed")
@@ -16143,7 +16143,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "7065d95e-62c0-4e23-a4fa-e2687aef21b1")
-		(at 94.725 93.75)
+		(at 77.975 126.25)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C108"
@@ -16301,7 +16301,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "7134adf6-cfed-4b1b-9170-2e853ddd98b9")
-		(at 192 122.5)
+		(at 197.5 122.5)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C123"
@@ -16748,7 +16748,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "74062880-f1c0-449c-bf1d-223f6d05bebe")
-		(at 90.099999 91.25)
+		(at 90.099999 88.5)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R10"
@@ -17154,7 +17154,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_5x5.4"
 		(layer "F.Cu")
 		(uuid "79f0259f-a8e6-45e9-bc5f-c1e660f39fad")
-		(at 112.25 79.25)
+		(at 108.25 79.25)
 		(descr "SMD capacitor, aluminum electrolytic, Nichicon, 5.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C103"
@@ -18364,7 +18364,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "874cb3f5-b4de-4a8d-abf2-08d509f4eaec")
-		(at 84.5 113.25)
+		(at 68.75 125)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R4"
@@ -18522,7 +18522,7 @@
 	(footprint "Capacitor_SMD:C_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "88522111-a9e3-48dd-bcc4-f4337f71e345")
-		(at 111.275 73.75)
+		(at 110.725 73.75)
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "capacitor")
 		(property "Reference" "C120"
@@ -18838,7 +18838,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "8ac689db-27a3-4715-8ac4-5de3e8b162c6")
-		(at 88 97.75)
+		(at 79.75 99.25)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R2"
@@ -18996,7 +18996,7 @@
 	(footprint "Package_TO_SOT_SMD:SOT-23-5"
 		(layer "F.Cu")
 		(uuid "8c8b14bc-7866-4883-b0ff-565481568f04")
-		(at 78.1125 124.4)
+		(at 78.1125 123.45)
 		(descr "SOT, 5 Pin (JEDEC MO-178 Var AA https://www.jedec.org/document_search?search_api_views_fulltext=MO-178)")
 		(tags "SOT TO_SOT_SMD")
 		(property "Reference" "U103"
@@ -20477,7 +20477,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "9a8e4785-d987-4aa2-828d-a42c2de9bf45")
-		(at 88.107501 94.075)
+		(at 89.45 80.25)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R32"
@@ -20793,7 +20793,7 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "9d4a63ca-e060-4147-9e75-9c74a8a7463c")
-		(at 101.5 87.907501)
+		(at 99.75 87.907501)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R11"
@@ -22113,7 +22113,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "b08bf670-96a9-4628-86fc-c0654b3380e3")
-		(at 99.5 123.25)
+		(at 99.75 123.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C9"
@@ -25656,7 +25656,7 @@
 	(footprint "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "c65a8fe7-d9e7-48e0-9bee-03a6f5b2a936")
-		(at 94.7125 91.25)
+		(at 94.9625 88.5)
 		(descr "Capacitor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf, https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing)")
 		(tags "capacitor handsolder")
 		(property "Reference" "C4"
@@ -25972,7 +25972,7 @@
 	(footprint "Package_DIP:DIP-40_W15.24mm_Socket"
 		(layer "F.Cu")
 		(uuid "d54418df-3c49-4dc5-9e32-d3d32904c072")
-		(at 167.64 73.66 -90)
+		(at 165.97 73.66 -90)
 		(descr "40-lead though-hole mounted DIP package, row spacing 15.24mm (600 mils), Socket")
 		(tags "THT DIP DIL PDIP 2.54mm 15.24mm 600mil Socket")
 		(property "Reference" "U4"
@@ -26201,7 +26201,7 @@
 			)
 		)
 		(point
-			(at 143.51 81.28)
+			(at 141.84 81.28)
 			(size 1.27)
 			(layer "F.Fab")
 			(uuid "41d6a459-23c9-4776-a285-70ccafbef3f9")
@@ -29245,13 +29245,13 @@
 	(footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
 		(layer "F.Cu")
 		(uuid "f0545ba7-1fc6-46ca-bffb-113aa7981916")
-		(at 101.5 81.907501)
+		(at 68.75 122)
 		(descr "Resistor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal with elongated pad for handsoldering. (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor handsolder")
 		(property "Reference" "R16"
 			(at 0 -1.65 0)
 			(layer "F.SilkS")
-			(uuid "16bdec93-ab8e-47cf-9ed9-31859a8725d4")
+			(uuid "dd4027b0-75fe-43f6-8742-b40c1564eca5")
 			(effects
 				(font
 					(size 1 1)
@@ -29262,7 +29262,7 @@
 		(property "Value" "47k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
-			(uuid "9e3c69a1-6562-48b2-92f3-ce720fb70ce8")
+			(uuid "d88cb4a4-1b0c-47bb-8846-a3d6e74a0f5f")
 			(effects
 				(font
 					(size 1 1)
@@ -29274,7 +29274,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "56998462-ad1f-46a9-bc13-1b8d1f6ab1cb")
+			(uuid "79f26fa8-3437-4b83-ba5e-9fac5cbec051")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -29285,7 +29285,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "ec71fc79-4b86-4fd9-99c1-964a3d73dbd7")
+			(uuid "a80e2f84-61c5-445f-baad-12644db925e9")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -29403,7 +29403,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_5x5.4"
 		(layer "F.Cu")
 		(uuid "f0abdec9-e0ee-4615-a0f8-7426091bca05")
-		(at 99 115)
+		(at 99.75 115)
 		(descr "SMD capacitor, aluminum electrolytic, Nichicon, 5.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C105"
@@ -29850,7 +29850,7 @@
 	(footprint "Capacitor_SMD:CP_Elec_4x5.4"
 		(layer "F.Cu")
 		(uuid "f0cd60eb-3de2-4ebf-9fe9-e1140c108073")
-		(at 84.432501 109.079999)
+		(at 87.2 100.25)
 		(descr "SMD capacitor, aluminum electrolytic, Panasonic A5 / Nichicon, 4.0x5.4mm")
 		(tags "capacitor electrolytic")
 		(property "Reference" "C2"
@@ -31710,7 +31710,7 @@
 	(footprint "Resistor_SMD:R_0603_1608Metric"
 		(layer "F.Cu")
 		(uuid "fc311690-26f1-463a-8d0c-d62cbad29324")
-		(at 89.675 88.25)
+		(at 88.175 126.75)
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)")
 		(tags "resistor")
 		(property "Reference" "R210"
