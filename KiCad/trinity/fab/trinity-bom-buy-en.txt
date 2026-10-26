@@ -1,0 +1,37 @@
+ZX Trinity rev A - parts to buy (for 1 board)
+
+Capacitors
+1. Capacitor 2.2uF 16V X5R 0603 - 1 pcs
+2. Electrolytic capacitor SMD 10uF 16V 4x5.4mm - 14 pcs
+3. Electrolytic capacitor SMD 22uF 16V 4x5.4mm - 1 pcs
+4. Electrolytic capacitor SMD 47uF 16V 5x5.4mm - 3 pcs
+5. Electrolytic capacitor SMD 100uF 16V 6.3x7.7mm - 1 pcs
+
+Resistors, 1%
+6. Resistor 33R 0603 - 5 pcs
+7. Resistor 0R 0805 - 1 pcs
+8. Resistor 82K 0805 - 4 pcs
+
+ICs and semiconductors SMD
+9. Schottky diode SS14 (SMA) - 2 pcs
+10. Power inductor SMD 27uH 6x6mm (SRN6045 / FNR6045) - 3 pcs
+11. NJM4580 op-amp (SOIC-8) - 1 pcs
+12. LM358 op-amp (SOIC-8) - 2 pcs
+13. 74LVC1G125 buffer (SOT-23-5) - 2 pcs
+14. AMS1117-3.3 regulator (SOT-223) - 1 pcs
+15. TPS60400 charge pump (SOT-23-5) - 1 pcs
+16. DIP switch SMD 4 positions, 1.27mm pitch (Omron A6H-4101) - 1 pcs
+
+Large parts
+17. EPM3128ATC100-10N (Altera CPLD, TQFP-100) - 1 pcs
+18. YM3014B (DIP-8) - 2 pcs
+19. IC socket DIP-40 wide (15.24mm), round pin - 2 pcs
+20. IC socket DIP-8 (7.62mm) - 2 pcs
+21. microSD socket GCT MEM2055-00-190-01-A - 1 pcs
+22. Pin header 1x4, 2.54mm - 1 pcs
+23. Pin header 1x10, 2.54mm - 1 pcs
+
+Only if the assembler's 10uF / 2.2nF do not fit:
+24. Capacitor 10uF 25V X5R 0805 - 6 pcs
+25. Capacitor 10uF 50V X5R 1206 - 4 pcs
+26. Capacitor 2.2nF 50V C0G (NP0) 0805 - 2 pcs
