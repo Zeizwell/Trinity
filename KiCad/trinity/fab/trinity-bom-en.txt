@@ -43,14 +43,11 @@ ICs and semiconductors SMD
 
 Large parts, modules, sockets, connectors
 32. EPM3128ATC100-10N (Altera CPLD, TQFP-100) - 1 pcs
-33. Spotpear RP2350B-MINI-A module - 2 pcs
-34. YM2203 (DIP-40) - 2 pcs
-35. YM3014B (DIP-8) - 2 pcs
-36. IC socket DIP-40 wide (15.24mm), round pin - 2 pcs
-37. IC socket DIP-8 (7.62mm) - 2 pcs
-38. GY-PCM5102 DAC module (PCM5102A) - 1 pcs
-39. microSD socket GCT MEM2055-00-190-01-A - 1 pcs
-40. Pin header 1x4, 2.54mm - 1 pcs
-41. Pin header 1x10, 2.54mm - 1 pcs
+33. YM3014B (DIP-8) - 2 pcs
+34. IC socket DIP-40 wide (15.24mm), round pin - 2 pcs
+35. IC socket DIP-8 (7.62mm) - 2 pcs
+36. microSD socket GCT MEM2055-00-190-01-A - 1 pcs
+37. Pin header 1x4, 2.54mm - 1 pcs
+38. Pin header 1x10, 2.54mm - 1 pcs
 
 Not fitted: U104, U105, C112, C113, C116, R205.
