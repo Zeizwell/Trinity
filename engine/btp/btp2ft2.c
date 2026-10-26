@@ -367,7 +367,8 @@ static void pass2(btp_conv_t *c, int type) {
         int r = json_idx(j, 5), v = (int)j->num;
         if (r < 0 || r > 255 || !v) return;
         if (json_is(j, 6, "envelopeValue")) c->row[r][CHIP_ENVPER] = (uint8_t)v, c->row[r][CHIP_ENVPER + 1] = (uint8_t)(v >> 8);
-        if (json_is(j, 6, "noiseValue")) c->row[r][CHIP_NOISE] = (uint8_t)(v & 31 ? v & 31 : 0x20);
+        if (json_is(j, 6, "noiseValue"))        // 0 - пусто (выше), -1 - шум = 0 (наш #20), иначе база шума
+            c->row[r][CHIP_NOISE] = (uint8_t)(v < 0 || !(v & 31) ? 0x20 : v & 31);
         return;
     }
     // эффект общей колонки -> команда огибающей чипа (CHIP_ECMD, FT2 doc/commands.md «Колонка огибающей»): те же коды,
