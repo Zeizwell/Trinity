@@ -21,7 +21,7 @@
 // ---- лог: одна строка на вид потери (номер вида - warned[])
 enum { W_TS, W_RELEASE, W_INSNUM, W_TABLE, W_EFF2, W_EFFUNK, W_EFFQ, W_EFFE, W_EFFTAB, W_DELAY, W_ENVEFF, W_PATS,
        W_ORDER, W_INSLOOP, W_INSLEN, W_OLDINS, W_STEREO, W_ORNLEN, W_NOTE, W_TIMER, W_DUP,
-       W_TABLEN, W_TABVAL, W_TABS, W_SIDSYNC, W_DETUNE, W_SWEEP, W_ENVSLOT };
+       W_TABLEN, W_TABVAL, W_TABS, W_SIDSYNC, W_DETUNE, W_SWEEP, W_ENVSLOT, W_TUNE };
 
 static void logf_(btp_conv_t *c, const char *t) { if (c->log) c->log(c->user, t); }
 
@@ -205,7 +205,13 @@ static void pass1(btp_conv_t *c, int type) {
     if (json_is(j, 0, "songs")) {                           // песня: чип, частота, стерео, длины паттернов
         if (d == 2 && type == JSON_END_OBJ) c->songs++;
         if (json_idx(j, 1) != 0) return;
-        if (d == 3 && type == JSON_NUM && json_is(j, 2, "chipFrequency")) c->tune = j->num > 1760000 ? 1 : 0;
+        // Tune - по самой таблице нот песни (Bitphase берёт её отдельно от частоты чипа): C-1 3344 - наша 1.75 МГц,
+        // 3389 - 1.7734 (FT2 srs/player.asm Note_175 / Note_177); другая - ближайшая, в лог
+        if (d == 4 && type == JSON_NUM && json_is(j, 2, "tuningTable") && json_idx(j, 3) == 0) {
+            int p = (int)j->num;
+            c->tune = p >= (3344 + 3389) / 2;
+            if (p != 3344 && p != 3389) warn(c, W_TUNE, "note table not 1.75 / 1.7734 MHz - nearest taken");
+        }
         if (d == 3 && type == JSON_STRING && json_is(j, 2, "chipVariant")) c->chip = !strcmp(j->str, "YM");
         if (d == 3 && type == JSON_STRING && json_is(j, 2, "stereoLayout")) {
             static const char *const st[5] = { "ABC", "ACB", "BAC", "BCA", "CAB" };
