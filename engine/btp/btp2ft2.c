@@ -412,6 +412,7 @@ static void pass2(btp_conv_t *c, int type) {
         if (json_is(j, 8, "volume") && v) cell[CH_VOLUME] = (uint8_t)v;
         if (json_is(j, 8, "table") && v) {                  // 0 - пусто, -1 - выключить, k - таблица k-1 (орнамент k)
             if (v < 0) cell[CH_ORNAMENT] = 1;
+            else if (v <= BTP_ORN && !c->orn[v].rows) ;     // такой таблицы нет - Bitphase не трогает, играет прежняя
             else if (v <= BTP_ORN) cell[CH_ORNAMENT] = (uint8_t)(v + 1);
             else warn(c, W_TABLE, "table over 16 in the pattern - lost");
         }
