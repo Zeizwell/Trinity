@@ -14,6 +14,7 @@
 #define CH_CMD 6
 #define CHIP_ENVPER 0
 #define CHIP_NOISE 4
+#define CHIP_ECMD 2                 // команда огибающей чипа (FT2 sdk: CHIP_ECMD)
 #define NOTE_OFF 97
 #define CMD_EXT 0xF
 
@@ -363,8 +364,8 @@ static void pass2(btp_conv_t *c, int type) {
         if (json_is(j, 6, "noiseValue")) c->row[r][CHIP_NOISE] = (uint8_t)(v & 31 ? v & 31 : 0x20);
         return;
     }
-    // эффект общей колонки: слайд огибающей (1 - период растёт = наш 9, 2 - наш A) -> свободная команда канала той же
-    // строки (каналы в JSON - раньше общей колонки); остальное - в лог
+    // эффект общей колонки -> команда огибающей чипа (CHIP_ECMD, FT2 doc/commands.md «Колонка огибающей»): те же коды,
+    // что у канала, цель - период огибающей. Плеер FT2 пока играет слайды 1 / 2; EA (автоогибающая) - в лог
     if (json_is(j, 4, "patternRows") && json_is(j, 6, "envelopeEffect")) {
         if (d == 7 && type == JSON_BEGIN_OBJ) eff_e = eff_d = eff_p = 0, eff_tab = -1;
         if (d == 8 && type == JSON_NUM) {
@@ -376,19 +377,10 @@ static void pass2(btp_conv_t *c, int type) {
         if (d == 7 && type == JSON_END_OBJ) {
             int r = json_idx(j, 5);
             if (r < 0 || r > 255) return;
-            if ((eff_e != 1 && eff_e != 2) || eff_tab >= 0) {
-                warn(c, W_ENVEFF, "envelope column: effects other than slide 1 / 2 (EA auto-envelope, arpeggio ...) - lost");
-                return;
-            }
-            if (eff_d > 15) eff_d = 15;
-            for (int ch = 0; ch < 3; ch++)
-                for (int k = 0; k < 2; k++) {
-                    uint8_t *cm = c->row[r] + 8 + ch * 16 + CH_CMD + k * 2;
-                    if (cm[0] || cm[1]) continue;
-                    cm[0] = (uint8_t)((eff_e == 1 ? 9 : 0xA) << 4 | eff_d), cm[1] = (uint8_t)eff_p;
-                    return;
-                }
-            warn(c, W_ENVSLOT, "envelope slide: no free command slot in the row - lost");
+            if (eff_tab >= 0) { warn(c, W_EFFTAB, "effects with a table (XTY) - lost"); return; }
+            if (eff_e == 'E') { warn(c, W_ENVEFF, "envelope column: EA (auto-envelope) - lost (not in FT2 yet)"); return; }
+            if (eff_e != 1 && eff_e != 2) warn(c, W_ENVSLOT, "envelope column: effects other than slides - written, FT2 player does not play them yet");
+            eff_map(c, eff_e, eff_d, eff_p, c->row[r] + CHIP_ECMD);
         }
         return;
     }
