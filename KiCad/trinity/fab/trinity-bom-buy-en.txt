@@ -1,23 +1,23 @@
 2.2uF 16V X5R 0603 - 1 pcs
-10uF 16V electrolytic SMD 4x5.4mm - 14 pcs
-22uF 16V electrolytic SMD 4x5.4mm - 1 pcs
-47uF 16V electrolytic SMD 5x5.4mm - 3 pcs
-100uF 16V electrolytic SMD 6.3x7.7mm - 1 pcs
+10uF 16V 4x5.4mm (VT1C100M0405) - 14 pcs
+22uF 16V 4x5.4mm (RVT1C220M0405) - 1 pcs
+47uF 16V 5x5.4mm (RVT1C470M0505) - 3 pcs
+100uF 16V 6.3x7.7mm (RVT1C101M0607) - 1 pcs
 33R 1% 0603 - 5 pcs
 0R 0805 - 1 pcs
 82K 1% 0805 - 4 pcs
 SS14 SMA - 2 pcs
-27uH 6x6mm SMD inductor (SRN6045 / FNR6045) - 3 pcs
+27uH 6x6mm (FNR6045S270MT) - 3 pcs
 NJM4580 SOIC-8 - 1 pcs
 LM358 SOIC-8 - 2 pcs
 74LVC1G125 SOT-23-5 - 2 pcs
 AMS1117-3.3 SOT-223 - 1 pcs
 TPS60400 SOT-23-5 - 1 pcs
-Omron A6H-4101 - 1 pcs
+A6H-4101 - 1 pcs
 EPM3128ATC100-10N - 1 pcs
 YM3014B DIP-8 - 2 pcs
-DIP-40 socket 15.24mm round pin - 2 pcs
-DIP-8 socket - 2 pcs
-MEM2055-00-190-01-A microSD - 1 pcs
-Pin header 1x4 2.54mm - 1 pcs
-Pin header 1x10 2.54mm - 1 pcs
+DIP-40 15.24mm - 2 pcs
+DIP-8 7.62mm - 2 pcs
+MEM2055-00-190-01-A - 1 pcs
+1x4 2.54mm - 1 pcs
+1x10 2.54mm - 1 pcs
