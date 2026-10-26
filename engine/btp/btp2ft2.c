@@ -64,6 +64,10 @@ static const char *const mac_name[] = { "volume", "amplitudeSlide", "tone", "ton
     "sid", "syncbuzzer", "fm", "fmOffsetMode", "fmWaveform", "envFm", "envFmOffsetMode", "envFmWaveform",
     "timerWaveform", "semitone", "detune" };
 #define MAC_N 12                    // обычных
+// Макроса нет в файле - значение по умолчанию, как у Bitphase (mixer-macros.ts, ay-timer-macros.ts): громкость 15,
+// тон вкл, detune 1, остальное 0
+static const int mac_def[] = { 15, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
+typedef char mac_def_23[sizeof mac_def / sizeof mac_def[0] == 23 ? 1 : -1];   // все 23 макроса
 #define MAC_ALL 23
 enum { T_SID = 12, T_SYNC, T_FM, T_FMMODE, T_FMWAVE, T_EFM, T_EFMMODE, T_EFMWAVE, T_WAVE, T_SEMI, T_DET };
 
@@ -75,7 +79,7 @@ static int mac_find(const char *k, int from, int to) {
 // Значение макроса на тике t: до конца - по порядку, дальше - по кругу с цикла
 static int mac_at(const btp_conv_t *c, int m, int t) {
     int n = c->mac_n[m], l = c->mac_loop[m];
-    if (!n) return 0;
+    if (!n) return mac_def[m];
     if (t >= n) { if (l >= n) l = n - 1; t = l + (t - l) % (n - l); }
     return c->mac_v[m][t];
 }
@@ -83,8 +87,9 @@ static int mac_at(const btp_conv_t *c, int m, int t) {
 static int gcd(int a, int b) { while (b) { int t = a % b; a = b, b = t; } return a; }
 
 // Макросы m0..m1-1 (у каждого своя длина и цикл) -> общие строки: цикл S = самый поздний цикл, период = НОК петель.
-// Не влезает в max строк - режем, лог. -> строк, *loop - цикл
-static int span(btp_conv_t *c, int m0, int m1, int max, int *loop, const char *what, int id) {
+// Не влезает в max строк - режем, лог: последняя наша строка - последняя строка Bitphase (*last - её номер,
+// иначе = строк-1). -> строк, *loop - цикл
+static int span(btp_conv_t *c, int m0, int m1, int max, int *loop, int *last, const char *what, int id) {
     int s = 0, p = 1, len = 1;
     for (int m = m0; m < m1; m++) {
         int n = c->mac_n[m], l = c->mac_loop[m];
@@ -97,12 +102,13 @@ static int span(btp_conv_t *c, int m0, int m1, int max, int *loop, const char *w
         if (p > max) p = max;
     }
     int rows = s + p > len ? s + p : len;
+    *last = rows - 1;
     if (rows > max) {
-        char t[64];
-        snprintf(t, sizeof t, "instrument %02d: %s loops differ - cut to %d rows", id, what, max);
+        char t[96];
+        snprintf(t, sizeof t, "instrument %02d: %s %d rows - cut to %d (last row kept)", id, what, rows, max);
         logf_(c, t);
+        if (s == rows - 1 || s > max - 1) s = max - 1;   // цикл на последней - на нашей последней
         rows = max;
-        if (s > max - 1) s = max - 1;
     }
     *loop = s;
     return rows;
@@ -110,10 +116,11 @@ static int span(btp_conv_t *c, int m0, int m1, int max, int *loop, const char *w
 
 static void ins_make(btp_conv_t *c, int id) {
     btp_ins_t *in = &c->ins[id];
-    int s, rows = span(c, 0, MAC_N, 64, &s, "macro", id);
+    int s, last, rows = span(c, 0, MAC_N, 64, &s, &last, "macro", id);
     in->rows = (uint8_t)rows, in->loop = (uint8_t)s;
-    for (int t = 0; t < rows; t++) {
-        uint8_t *r = in->row[t];
+    for (int i = 0; i < rows; i++) {
+        uint8_t *r = in->row[i];
+        int t = i == rows - 1 ? last : i;                   // обрезан - последняя строка Bitphase в последнюю нашу
         int tone = mac_at(c, 3, t) & 0xFFF, slide = mac_at(c, 1, t), env = -mac_at(c, 9, t);   // наша огибающая - вычитается
         r[0] = (uint8_t)((mac_at(c, 6, t) & 0x1F) | (mac_at(c, 5, t) ? 0 : 0x40) | (mac_at(c, 7, t) ? 0x80 : 0));
         r[1] = (uint8_t)tone;
@@ -157,7 +164,7 @@ static uint8_t duty(int d) {
 // Таймерные макросы и ШИМ инструмента -> FX с тем же номером (строки по тикам, как у инструмента; до 32)
 static void fx_make(btp_conv_t *c, int id) {
     btp_fx_t *f = &c->fx[id];
-    int s, rows = span(c, T_SID, MAC_ALL, 32, &s, "timer macro", id), any = 0;
+    int s, last, rows = span(c, T_SID, MAC_ALL, 32, &s, &last, "timer macro", id), any = 0;
     for (int t = 0; t < rows; t++) {
         uint8_t *r = f->row[t];
         int sid = mac_at(c, T_SID, t), sync = mac_at(c, T_SYNC, t), fm = mac_at(c, T_FM, t), efm = mac_at(c, T_EFM, t);
@@ -265,8 +272,8 @@ static void pass1(btp_conv_t *c, int type) {
         if ((json_is(j, 2, "macros") || tm) && d >= 5) {    // макрос: цикл, значения (волна - сразу номер таблицы)
             int m = tm ? mac_find(json_key(j, 3), MAC_N, MAC_ALL) : mac_find(json_key(j, 3), 0, MAC_N);
             if (m < 0) return;
-            if (d == 5 && type == JSON_NUM && json_is(j, 4, "loop")) c->mac_loop[m] = (uint8_t)j->num;
-            if (d == 6 && json_is(j, 4, "values") && c->mac_n[m] < 64)
+            if (d == 5 && type == JSON_NUM && json_is(j, 4, "loop")) c->mac_loop[m] = (uint16_t)j->num;
+            if (d == 6 && json_is(j, 4, "values") && c->mac_n[m] < BTP_MAC)
                 c->mac_v[m][c->mac_n[m]++] = (int16_t)(type == JSON_NUM ? (int)j->num : type == JSON_STRING ? tab_get(c, j->str)
                                                        : type == JSON_TRUE);
         }

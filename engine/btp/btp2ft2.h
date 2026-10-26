@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include "json.h"
 
+#define BTP_MAC     512             // значений в макросе (как Bitphase INSTRUMENT_MACRO_MAX_LENGTH)
 #define BTP_PATS     64             // паттернов FT2
 #define BTP_ROWS     64             // роу в паттерне FT2
 #define BTP_SRC_PATS 256            // паттернов Bitphase (номера)
@@ -65,8 +66,8 @@ typedef struct {
     // текущий объект разбора (проход 1 - инструмент / таблица, проход 2 - паттерн)
     int        cur_id;              // номер инструмента / таблицы / паттерна Bitphase
     uint16_t   cur_len;
-    int16_t    mac_v[24][64];       // макросы инструмента: значения (0..11 - обычные, 12..22 - таймерные)
-    uint8_t    mac_n[24], mac_loop[24];
+    int16_t    mac_v[24][BTP_MAC];  // макросы инструмента: значения (0..11 - обычные, 12..22 - таймерные)
+    uint16_t   mac_n[24], mac_loop[24];
     // проход 2: паттерн Bitphase целиком (до 256 роу), канал - 16 байт, заголовок чипа - 8
     uint8_t    row[256][112];
     uint8_t    eff_n;               // команд в текущей клетке
