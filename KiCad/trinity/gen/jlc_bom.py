@@ -2,7 +2,7 @@
 # Файлы монтажа JLCPCB из файла позиций KiCad: BOM (Comment, Designator, Footprint, LCSC) и CPL (позиции).
 # Коды LCSC подобраны 2026-10-25 по складу JLC (base - без доплаты за тип). Не ставят: CPLD и слот microSD (паяет
 # пользователь, слота у JLC нет), сквозные детали и модули, DNP.
-#   python jlc_bom.py <pos.csv> <bom.csv> <cpl.csv>
+#   python jlc_bom.py <pos.csv> <bom.csv> <cpl.csv> [<bom_mpn.csv>] - последний: универсальный BOM с MPN (не JLC)
 import csv
 import sys
 
@@ -42,6 +42,21 @@ LCSC = {  # (значение, корпус) -> код
 }
 
 
+MPN = {  # код LCSC -> партномер производителя (для фабрики не JLC: универсальный BOM)
+    "C14663": "Yageo CC0603KRX7R9BB104", "C15849": "Samsung CL10A105KB8NNNC", "C23630": "Samsung CL10A225KO8NNNC",
+    "C15850": "Samsung CL21A106KAYNNNE", "C49678": "Yageo CC0805KRX7R9BB104", "C28260": "Samsung CL21C222JBFNNNE",
+    "C13585": "Samsung CL31A106KBHNNNE", "C213487": "Lelon VT1C100M0405", "C72502": "Lelon RVT1C220M0405",
+    "C72515": "Lelon RVT1C470M0505", "C72476": "Lelon RVT1C101M0607", "C17840": "UNI-ROYAL 0805W8F8202T5E",
+    "C26010": "UNI-ROYAL 0805W8F3301T5E", "C17477": "UNI-ROYAL 0805W8F0000T5E", "C17575": "UNI-ROYAL 0805W8F2402T5E",
+    "C17414": "UNI-ROYAL 0805W8F1002T5E", "C17713": "UNI-ROYAL 0805W8F4702T5E", "C17513": "UNI-ROYAL 0805W8F1001T5E",
+    "C17710": "UNI-ROYAL 0805W8F4700T5E", "C22859": "UNI-ROYAL 0603WAF100JT5E", "C23140": "UNI-ROYAL 0603WAF330JT5E",
+    "C21190": "UNI-ROYAL 0603WAF1001T5E", "C25804": "UNI-ROYAL 0603WAF1002T5E", "C2480": "SS14",
+    "C7950": "onsemi LM358DR2G", "C3000516": "Nisshinbo NJM4580E-TE1", "C23654": "TI SN74LVC1G125DBVR",
+    "C6186": "AMS AMS1117-3.3", "C9839": "TI TPS60400DBVR", "C168081": "FNR6045S270MT",
+    "C397291": "Omron A6H-4101",
+}
+
+
 def main():
     rows = list(csv.DictReader(open(sys.argv[1], encoding="utf-8")))
     groups, cpl, skip = {}, [], []
@@ -57,6 +72,12 @@ def main():
         w.writerow(["Comment", "Designator", "Footprint", "LCSC"])
         for (v, p, c), refs in sorted(groups.items(), key=lambda g: g[1][0]):
             w.writerow([v, ",".join(refs), p, c])
+    if len(sys.argv) > 4:                               # универсальный BOM (любая фабрика): + количество, MPN
+        with open(sys.argv[4], "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["Designator", "Quantity", "Value", "Package", "Manufacturer Part", "LCSC"])
+            for (v, p, c), refs in sorted(groups.items(), key=lambda g: g[1][0]):
+                w.writerow([",".join(refs), len(refs), v, p, MPN.get(c, ""), c])
     with open(sys.argv[3], "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
