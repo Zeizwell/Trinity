@@ -68,10 +68,35 @@ static int first_sound(const frame_t *fr, int n) {
 static const char *const rname[14] = { "A tone lo", "A tone hi", "B tone lo", "B tone hi", "C tone lo", "C tone hi",
     "noise", "mixer", "A vol", "B vol", "C vol", "env lo", "env hi", "env shape" };
 
+// Звучит ли регистр k в кадре f (как компаратор FT2: сравниваем только звучащее). Канал слышен - громкость не 0
+static int audible1(const frame_t *f, int k) {
+    int on[3], env = 0, noise = 0;
+    for (int c = 0; c < 3; c++) {
+        on[c] = (f->r[8 + c] & 0x1F) != 0;
+        if (on[c] && (f->r[8 + c] & 0x10)) env = 1;
+        if (on[c] && !(f->r[7] & (8 << c))) noise = 1;
+    }
+    if (k <= 5) return on[k / 2] && !(f->r[7] & (1 << (k / 2)));   // тон: канал слышен и тон включён
+    if (k == 6) return noise;
+    if (k == 7) return on[0] || on[1] || on[2];
+    if (k <= 10) return 1;                                  // громкость - всегда
+    return env;                                             // огибающая: хоть один канал на ней
+}
+static int audible(const frame_t *x, const frame_t *y, int k) { return audible1(x, k) || audible1(y, k); }
+
+// Микшер: только биты слышимых каналов
+static int mixer_diff(const frame_t *x, const frame_t *y) {
+    int m = 0;
+    for (int c = 0; c < 3; c++) if ((x->r[8 + c] | y->r[8 + c]) & 0x1F) m |= 9 << c;
+    return (x->r[7] & m) != (y->r[7] & m);
+}
+
 int main(int argc, char **argv) {
     if (argc < 3) { printf("f2lcmp ref.psg ours.f2l [frames]\n"); return 1; }
     static frame_t a[200000], b[200000];
-    int na = load_psg(argv[1], a, 200000), nb = load_f2l(argv[2], b, 200000);
+    int na = load_psg(argv[1], a, 200000);
+    const char *ext = strrchr(argv[2], '.');                // наше: PSG (экспорт FT2) или F2L (запись Unreal)
+    int nb = ext && (!strcmp(ext, ".psg") || !strcmp(ext, ".PSG")) ? load_psg(argv[2], b, 200000) : load_f2l(argv[2], b, 200000);
     int sa = first_sound(a, na), sb = first_sound(b, nb);
     int n = na - sa < nb - sb ? na - sa : nb - sb;
     if (argc > 3 && atoi(argv[3]) < n) n = atoi(argv[3]);
@@ -80,14 +105,16 @@ int main(int argc, char **argv) {
     for (int k = 0; k < 14; k++) first[k] = -1;
     for (int i = 0; i < n; i++) {
         const frame_t *x = &a[sa + i], *y = &b[sb + i];
+        int any = 0;
         for (int k = 0; k < 14; k++) {
-            int d = k == 13 ? (x->w13 != y->w13 || (x->w13 && x->r[13] != y->r[13])) : x->r[k] != y->r[k];
+            if (!audible(x, y, k)) continue;                // не звучит - не сравниваем
+            int d = k == 13 ? (x->w13 != y->w13 || (x->w13 && x->r[13] != y->r[13])) : k == 7 ? mixer_diff(x, y)
+                  : x->r[k] != y->r[k];
             if (!d) continue;
+            any = 1;
             diff[k]++;
             if (first[k] < 0) first[k] = i;
         }
-        int any = 0;
-        for (int k = 0; k < 14; k++) any |= x->r[k] != y->r[k];
         if (any && shown < 20) {                            // первые расходящиеся кадры целиком
             printf("frame %6d ref ", i);
             for (int k = 0; k < 14; k++) printf("%02X ", x->r[k]);
