@@ -97,6 +97,8 @@ int main(int argc, char **argv) {
     int na = load_psg(argv[1], a, 200000);
     const char *ext = strrchr(argv[2], '.');                // наше: PSG (экспорт FT2) или F2L (запись Unreal)
     int nb = ext && (!strcmp(ext, ".psg") || !strcmp(ext, ".PSG")) ? load_psg(argv[2], b, 200000) : load_f2l(argv[2], b, 200000);
+    for (int i = 1; i < nb; i++)                            // экспорт PSG Bitphase пишет R13 только при смене значения
+        if (b[i].w13 && b[i].r[13] == b[i - 1].r[13]) b[i].w13 = 0;   //   (encodePSG), хотя его плеер перезапускает
     int sa = first_sound(a, na), sb = first_sound(b, nb);
     int n = na - sa < nb - sb ? na - sa : nb - sb;
     if (argc > 3 && atoi(argv[3]) < n) n = atoi(argv[3]);
