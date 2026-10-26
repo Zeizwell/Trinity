@@ -483,8 +483,8 @@ static void pass1_end(btp_conv_t *c) {
     int ni = 0, no = 0, nf = 0;
     for (int i = 1; i <= BTP_INS; i++) ni += c->ins[i].rows != 0, nf += c->fx[i].rows != 0;
     for (int i = 1; i <= BTP_ORN; i++) no += c->orn[i].rows != 0;
-    put(1), put(c->speed), put(c->tune), put(c->chip), put(c->stereo), put(1), put(nf ? 1 : 0);   // чипов, скорость, Tune,
-    put(c->pats), put((uint8_t)ni), put((uint8_t)no), put((uint8_t)nf), put((uint8_t)(c->tabs - 6));   //   тип, стерео, PT, FX
+    put(1), put(c->speed), put(c->tune), put(c->chip), put(c->stereo), put(0), put(nf ? 1 : 0);   // чипов, скорость, Tune,
+    put(c->pats), put((uint8_t)ni), put((uint8_t)no), put((uint8_t)nf), put((uint8_t)(c->tabs - 6));   //   тип, стерео, FT (правила FT 1.15 / Bitphase), FX
     put_str(c->name, 33), put_str(c->author, 33);
     block(c, "HEAD");
     put((uint8_t)(on ? on - 1 : 0)), put((uint8_t)loop);
