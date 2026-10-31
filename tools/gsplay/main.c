@@ -11,6 +11,12 @@
 #include "../../engine/gs/gs_cfg.h"
 #include "../../engine/gs/gs_dev_gs.h"
 
+// 1-4 - пресеты. 5 - только для сравнения на ПК: GS с выводом 37500 вместо 75000
+static void set_mode(int m) {
+    gs_cfg_mode((gs_mode_t)((m == 5 ? 1 : m) - 1));
+    if (m == 5) gs_cfg.rate_hz = 37500;
+}
+
 #define BLOCK 2048              // отсчётов в блоке
 #define BLOCKS 4
 
@@ -81,16 +87,16 @@ static int live(const unsigned char *mod, int size) {
         waveOutPrepareHeader(wo, &hdr[i], sizeof hdr[i]);
         hdr[i].dwFlags |= WHDR_DONE;
     }
-    printf("1 GS  2 Paula A500  3 Paula A1200  4 HiFi  |  p PWM on/off  t/g treble +/-  b/v bass +/-  space pause  s stop/start  q quit\n");
+    printf("1 GS  2 Paula A500  3 Paula A1200  4 HiFi  5 GS 37500  |  p PWM on/off  t/g treble +/-  b/v bass +/-  space pause  s stop/start  q quit\n");
     int paused = 0, run = 1;
     show(paused);
     for (;;) {
         while (_kbhit()) {
             int k = _getch();
             if (k == 'q' || k == 27) goto done;
-            if (k >= '1' && k <= '4') {
+            if (k >= '1' && k <= '5') {
                 uint32_t was = gs_cfg.rate_hz;
-                gs_cfg_mode((gs_mode_t)(k - '1'));
+                set_mode(k - '0');
                 if (gs_cfg.rate_hz != was) {            // своя частота у режима: как ЦАП на карте
                     waveOutReset(wo);
                     for (int i = 0; i < BLOCKS; i++) waveOutUnprepareHeader(wo, &hdr[i], sizeof hdr[i]);
@@ -142,7 +148,7 @@ int main(int argc, char **argv) {
     if (!gs_gs_play_mod(mod, size)) { printf("%s: not a MOD\n", argv[1]); return 1; }
     if (argc >= 4 && !strcmp(argv[2], "-wav")) {
         int secs = argc > 4 ? atoi(argv[4]) : 30;
-        if (argc > 5) gs_cfg_mode((gs_mode_t)(atoi(argv[5]) - 1));
+        if (argc > 5) set_mode(atoi(argv[5]));
         if (argc > 7) gs_cfg.treble_db = (int8_t)atoi(argv[6]), gs_cfg.bass_db = (int8_t)atoi(argv[7]);
         return to_wav(argv[3], secs);
     }
