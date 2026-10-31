@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "hardware/dma.h"
@@ -6,12 +7,10 @@
 #include "hardware/sync.h"
 #include "gs/gs_core.h"
 #include "gs/gs_cfg.h"
+#include "config.h"
 #include "audio.h"
 #include "i2s.pio.h"
 
-// Ножки макета: doc/zx-trinity.md, «PCM5102A на макете»
-#define PIN_DIN 14
-#define PIN_BCK 15              // GP16 - LCK
 
 #define FLOAT_TO_I32 2147483520.0f      // ближайшее к 2^31 снизу, что есть во float
 
@@ -26,7 +25,7 @@ static uint32_t pattern_n, rate_now;
 static volatile uint8_t free_mask;      // какие буферы DMA уже отыграл
 
 audio_stat_t audio_stat;
-volatile int audio_pattern;
+volatile int audio_pattern, audio_hold;
 
 // Отыграл - адрес на начало, буфер отдаём ядру 1. Цепочка каналов идёт сама
 static void __isr dma_irq(void) {
@@ -43,6 +42,10 @@ static void __isr dma_irq(void) {
 
 static void render(int i) {
     int32_t *out = dma_buf[i];
+    if (audio_hold) {                               // движок занят замером на ядре 0
+        memset(out, 0, sizeof dma_buf[i]);
+        return;
+    }
     if (audio_pattern) {
         for (int s = 0; s < AUDIO_FRAMES; s++, pattern_n++) {
             out[s * 2] = (int32_t)(0x11000000u | (pattern_n & 0xFFFFFF));
@@ -61,6 +64,7 @@ static void render(int i) {
 }
 
 static void core1_main(void) {
+    multicore_lockout_victim_init();                // запись настроек во флеш останавливает это ядро
     irq_set_exclusive_handler(DMA_IRQ_1, dma_irq);
     irq_set_enabled(DMA_IRQ_1, true);       // на ядре 1
     dma_channel_start(dma_ch[0]);

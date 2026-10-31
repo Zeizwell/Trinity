@@ -5,6 +5,9 @@
 
 #include <stdint.h>
 
+// Код порта от CPLD (п.12). Новый порт - код здесь и строка в таблице (gs_core.c)
+enum { GS_CODE_B3, GS_CODE_BB, OPL4_CODE_C4, OPL4_CODE_C5, OPL4_CODE_C6, OPL4_CODE_C7, GS_CODE_COUNT };
+
 typedef struct {
     const char *name;
     int  (*enabled)(void);                  // включено в настройках
@@ -26,5 +29,14 @@ void gs_core_claim(const gs_dev_t *dev);    // устройство начало
 const gs_dev_t *gs_core_active(void);       // кто звучит, NULL - никто
 void gs_core_work(void);                     // ядро 0: команды всех устройств
 void gs_core_audio(float *out, int n);      // ядро 1: буфер L, R, L, R...: звук, цепочка, громкость
+
+// Шина: по коду порта - устройство. Только быстро
+void gs_core_port_write(uint8_t code, uint8_t v);
+uint8_t gs_core_port_read(uint8_t code);
+uint8_t gs_core_port_peek(uint8_t code);
+
+// Настройки на лету с ядра 0: под замком, звук не застанет их наполовину
+void gs_core_set_mode(int mode);
+void gs_core_set_tone(int bass_db, int treble_db);
 
 #endif

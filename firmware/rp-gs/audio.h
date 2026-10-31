@@ -14,6 +14,7 @@ typedef struct {
 
 extern audio_stat_t audio_stat;
 extern volatile int audio_pattern;      // 1 - вместо звука счётчик: L 0x11nnnnnn, R 0x22nnnnnn (проверка формата)
+extern volatile int audio_hold;         // 1 - ядро 1 выводит тишину и не трогает движок
 
 void audio_start(void);                 // запускает ядро 1 и DMA
 int  audio_check(uint32_t *words, int n);   // читает n слов с ножек, как ЦАП (с начала кадра, L, R, L, R...)

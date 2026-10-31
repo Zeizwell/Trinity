@@ -11,6 +11,9 @@ typedef enum { GS_LP_OFF, GS_LP_A500, GS_LP_A1200 } gs_lp_t;             // ФН
 typedef enum { GS_LED_OFF, GS_LED_MODULE, GS_LED_ON } gs_led_t;          // LED-фильтр: выкл / по команде E0x / всегда
 
 typedef struct {
+    // --- железо
+    uint32_t sys_khz;           // такт RP, кГц
+    uint32_t gs_ram_kb;         // память GS в PSRAM, КБ (п.60 не решён, рабочее значение)
     // --- устройства
     uint8_t  gs_on;             // GS отвечает на порты и звучит
     // --- вывод

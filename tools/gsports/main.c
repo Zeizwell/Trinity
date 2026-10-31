@@ -6,6 +6,7 @@
 #include "../../engine/gs/gs_core.h"
 #include "../../engine/gs/gs_dev_gs.h"
 #include "../../engine/gs/gs_mod.h"
+#include "../../engine/gs/gs_cfg.h"
 #include "../../engine/gs/gs_fx.h"
 #include "../../engine/gs/gs_chan.h"
 
@@ -100,6 +101,7 @@ int main(int argc, char **argv) {
     double peak;
 
     // Эталон: прямой запуск
+    gs_cfg_defaults();
     gs_core_init();
     gs_gs_set_ram(ram, RAM_SIZE);
     gs_gs_play_mod(mod, size);
@@ -108,6 +110,7 @@ int main(int argc, char **argv) {
     gs_gs_stop();
 
     // Флаги
+    gs_cfg_defaults();
     gs_core_init();
     gs_gs_set_ram(ram, RAM_SIZE);
     check("старт: бит 0 и бит 7", st() & 0x81, 0);
@@ -317,6 +320,13 @@ int main(int argc, char **argv) {
         check("арбитр: звучит OPL4", gs_core_active() == &gs_dev_opl4, 1);
         check("порты OPL4 живут", gs_dev_opl4.port_read(0), 0xFF);
     }
+
+    // Коды портов коре: тот же GS, OPL4 пока молчит
+    gs_core_port_write(GS_CODE_BB, 0x36);
+    gs_dev_gs.work();
+    check("коре: код BB -> GS", gs_core_port_read(GS_CODE_B3), 0xFF);
+    check("коре: код C4 -> OPL4", gs_core_port_peek(OPL4_CODE_C4), 0xFF);
+    check("коре: чужой код", gs_core_port_peek(63), 0xFF);
 
     printf(fails ? "ОШИБОК: %d\n" : "ВСЁ OK\n", fails);
     return fails != 0;

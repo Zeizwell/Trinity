@@ -137,6 +137,7 @@ int main(int argc, char **argv) {
     if (argc < 2) { printf("gsplay file.mod [-wav out.wav [secs [mode 1-4 [treble bass]]]]\n"); return 1; }
     int size;
     unsigned char *mod = load(argv[1], &size);
+    gs_cfg_defaults();
     gs_core_init();
     if (!gs_gs_play_mod(mod, size)) { printf("%s: not a MOD\n", argv[1]); return 1; }
     if (argc >= 4 && !strcmp(argv[2], "-wav")) {

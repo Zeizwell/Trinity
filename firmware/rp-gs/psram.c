@@ -2,15 +2,13 @@
 #include "hardware/structs/qmi.h"
 #include "hardware/structs/xip_ctrl.h"
 #include "hardware/sync.h"
+#include "hardware/clocks.h"
 #include "psram.h"
 
 #define PIN_PSRAM_CS 19
 
-// Сроки при 250 МГц, CLKDIV 3 = 83 МГц (APS6404: до 84 МГц на страницах 1 КБ)
-#define CLKDIV     3
-#define RXDELAY    3
-#define MAX_SELECT 31           // 8 мкс (обновление чипа), в единицах 64 такта
-#define MIN_DESEL  13            // 50 нс, в тактах
+// Сроки APS6404: до 84 МГц на страницах 1 КБ, CS не дольше 8 мкс (обновление чипа), пауза 50 нс. Считаем от такта
+#define PSRAM_MAX_KHZ 84000u
 
 // Один байт команды, прямым режимом
 static uint32_t direct(uint32_t tx) {
@@ -28,6 +26,10 @@ static void cmd(uint32_t tx) {
 
 uint32_t psram_init(void) {
     uint32_t id = 0;
+    uint32_t khz = clock_get_hz(clk_sys) / 1000u;
+    uint32_t clkdiv = (khz + PSRAM_MAX_KHZ - 1) / PSRAM_MAX_KHZ;
+    uint32_t max_select = khz * 8u / 1000u / 64u;   // в единицах 64 такта
+    uint32_t min_desel = khz * 50u / 1000000u + 1u;
     gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
     uint32_t ints = save_and_disable_interrupts();
     qmi_hw->direct_csr = 30 << QMI_DIRECT_CSR_CLKDIV_LSB | QMI_DIRECT_CSR_EN_BITS;
@@ -52,10 +54,10 @@ uint32_t psram_init(void) {
 
     qmi_hw->m[1].timing = 1u << QMI_M1_TIMING_COOLDOWN_LSB
         | QMI_M1_TIMING_PAGEBREAK_VALUE_1024 << QMI_M1_TIMING_PAGEBREAK_LSB
-        | MAX_SELECT << QMI_M1_TIMING_MAX_SELECT_LSB
-        | MIN_DESEL << QMI_M1_TIMING_MIN_DESELECT_LSB
-        | RXDELAY << QMI_M1_TIMING_RXDELAY_LSB
-        | CLKDIV << QMI_M1_TIMING_CLKDIV_LSB;
+        | max_select << QMI_M1_TIMING_MAX_SELECT_LSB
+        | min_desel << QMI_M1_TIMING_MIN_DESELECT_LSB
+        | clkdiv << QMI_M1_TIMING_RXDELAY_LSB
+        | clkdiv << QMI_M1_TIMING_CLKDIV_LSB;
     qmi_hw->m[1].rfmt = QMI_M1_RFMT_PREFIX_WIDTH_VALUE_Q << QMI_M1_RFMT_PREFIX_WIDTH_LSB
         | QMI_M1_RFMT_ADDR_WIDTH_VALUE_Q << QMI_M1_RFMT_ADDR_WIDTH_LSB
         | QMI_M1_RFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M1_RFMT_SUFFIX_WIDTH_LSB

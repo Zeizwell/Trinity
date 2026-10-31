@@ -5,30 +5,28 @@
 #include "hardware/structs/systick.h"
 #include "config.h"
 #include "gs/gs_core.h"
-#include "gs/gs_dev_gs.h"
 #include "bus.h"
 #include "bus.pio.h"
-
-extern const gs_dev_t gs_dev_gs;
 
 static PIO pio = pio1;
 static uint sm_wr, sm_rd;
 static volatile uint32_t irq_top;
 
-static uint8_t code_of(int a0) { return a0 ? GS_PORT_B3 : GS_PORT_BB; }
+// Макет: код порта по A0. Рев А: код на ножках от CPLD (п.12), ответ на чтение по коду - другая программа PIO
+static uint8_t code_of(int a0) { return a0 ? GS_CODE_B3 : GS_CODE_BB; }
 
 // Готовый образ: A0 = 1 данные, A0 = 0 статус
 static void answer_now(void) {
-    bus_rd_set(pio, sm_rd, gs_dev_gs.port_peek(GS_PORT_B3), gs_dev_gs.port_peek(GS_PORT_BB));
+    bus_rd_set(pio, sm_rd, gs_core_port_peek(GS_CODE_B3), gs_core_port_peek(GS_CODE_BB));
 }
 
-static void on_write(int a0, uint8_t v) {
-    gs_dev_gs.port_write(code_of(a0), v);
+static void on_write(uint8_t code, uint8_t v) {
+    gs_core_port_write(code, v);
     answer_now();
 }
 
 static void on_read_data(void) {
-    gs_dev_gs.port_read(GS_PORT_B3);
+    gs_core_port_read(GS_CODE_B3);
     answer_now();
 }
 
@@ -39,7 +37,7 @@ static void __isr bus_irq(void) {
     while (!pio_sm_is_rx_fifo_empty(pio, sm_wr)) {
         uint32_t w = pio_sm_get(pio, sm_wr);        // снимок ножек от D0
         if (w >> (PIN_SLOT_CS - PIN_SLOT_D0) & 1) continue;
-        on_write((int)(w >> (PIN_SLOT_A0 - PIN_SLOT_D0) & 1), (uint8_t)w);
+        on_write(code_of((int)(w >> (PIN_SLOT_A0 - PIN_SLOT_D0) & 1)), (uint8_t)w);
     }
     while (!pio_sm_is_rx_fifo_empty(pio, sm_rd)) {  // метка PIO: данные прочитали
         pio_sm_get(pio, sm_rd);
@@ -72,19 +70,19 @@ void bus_answer(void) {
 }
 
 // Замер: те же действия, что в прерывании, с запретом прерываний
-void bus_inject_wr(int a0, uint8_t v) {
+void bus_inject_wr(uint8_t code, uint8_t v) {
     uint32_t ints = save_and_disable_interrupts();
     uint32_t t0 = cyc_now();
-    on_write(a0, v);
+    on_write(code, v);
     uint32_t d = (t0 - cyc_now()) & 0xFFFFFF;
     if (d > irq_top) irq_top = d;
     restore_interrupts(ints);
 }
 
-int bus_inject_rd(int a0) {
+int bus_inject_rd(uint8_t code) {
     uint32_t ints = save_and_disable_interrupts();
-    int v = gs_dev_gs.port_peek(code_of(a0));
-    if (a0) on_read_data();
+    int v = gs_core_port_peek(code);
+    if (code == GS_CODE_B3) on_read_data();
     restore_interrupts(ints);
     return v;
 }
