@@ -69,7 +69,19 @@ static void chan_to_voice(int i) {
     }
 }
 
+// Режим сменил частоту: темп и высота должны остаться те же
+static void rate_check(void) {
+    int to = (int)gs_cfg_mix_hz(), from = pm.samples_per_second;
+    if (to == from) return;
+    float k = (float)to / (float)from;
+    pm.samples_per_second = to;
+    pm.samples_per_tick *= k;
+    pm.sample *= k;
+    for (int i = 0; i < pm.num_channels; i++) pm.channels[i].increment /= k;
+}
+
 void gs_mod_audio(float *out, int n) {
+    if (loaded) rate_check();
     if (!playing) { gs_chan_mix(out, n); return; }  // эффекты звучат и без модуля
     while (n > 0) {
         int num = (int)(pm.samples_per_tick - pm.sample);   // до конца тика

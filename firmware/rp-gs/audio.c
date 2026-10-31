@@ -21,7 +21,7 @@ static int dma_ch[2];
 
 static int32_t dma_buf[2][AUDIO_FRAMES * 2] __attribute__((aligned(8)));
 static float mix[AUDIO_FRAMES * 2];
-static uint32_t pattern_n;
+static uint32_t pattern_n, rate_now;
 
 static volatile uint8_t free_mask;      // какие буферы DMA уже отыграл
 
@@ -49,6 +49,10 @@ static void render(int i) {
             out[s * 2 + 1] = (int32_t)(0x22000000u | (pattern_n & 0xFFFFFF));
         }
         return;
+    }
+    if (gs_cfg.rate_hz != rate_now) {               // режим сменил частоту ЦАП
+        rate_now = gs_cfg.rate_hz;
+        pio_sm_set_clkdiv(pio, sm_out, (float)clock_get_hz(clk_sys) / (float)(rate_now * 64u * 2u));
     }
     gs_core_audio(mix, AUDIO_FRAMES);
     for (int s = 0; s < AUDIO_FRAMES * 2; s++) out[s] = (int32_t)(mix[s] * FLOAT_TO_I32);
@@ -80,6 +84,7 @@ void audio_start(void) {
     uint off = pio_add_program(pio, &i2s_out_program);
     off_chk = pio_add_program(pio, &i2s_check_program);
     i2s_out_init(pio, sm_out, off, PIN_DIN, PIN_BCK, gs_cfg.rate_hz);
+    rate_now = gs_cfg.rate_hz;
     dma_ch[0] = dma_claim_unused_channel(true);
     dma_ch[1] = dma_claim_unused_channel(true);
     for (int i = 0; i < 2; i++) {

@@ -58,11 +58,17 @@ static void show(int paused) {
     fflush(stdout);
 }
 
-static int live(const unsigned char *mod, int size) {
+static HWAVEOUT wo;
+static HANDLE ev;
+
+static int out_open(void) {
     WAVEFORMATEX wf = { WAVE_FORMAT_PCM, 2, gs_cfg.rate_hz, gs_cfg.rate_hz * 4, 4, 16, 0 };
-    HWAVEOUT wo;
-    HANDLE ev = CreateEvent(NULL, FALSE, FALSE, NULL);
-    if (waveOutOpen(&wo, WAVE_MAPPER, &wf, (DWORD_PTR)ev, 0, CALLBACK_EVENT) != MMSYSERR_NOERROR) {
+    return waveOutOpen(&wo, WAVE_MAPPER, &wf, (DWORD_PTR)ev, 0, CALLBACK_EVENT) == MMSYSERR_NOERROR;
+}
+
+static int live(const unsigned char *mod, int size) {
+    ev = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!out_open()) {
         printf("no audio device\n");
         return 1;
     }
@@ -82,7 +88,21 @@ static int live(const unsigned char *mod, int size) {
         while (_kbhit()) {
             int k = _getch();
             if (k == 'q' || k == 27) goto done;
-            if (k >= '1' && k <= '4') gs_cfg_mode((gs_mode_t)(k - '1'));
+            if (k >= '1' && k <= '4') {
+                uint32_t was = gs_cfg.rate_hz;
+                gs_cfg_mode((gs_mode_t)(k - '1'));
+                if (gs_cfg.rate_hz != was) {            // своя частота у режима: как ЦАП на карте
+                    waveOutReset(wo);
+                    for (int i = 0; i < BLOCKS; i++) waveOutUnprepareHeader(wo, &hdr[i], sizeof hdr[i]);
+                    waveOutClose(wo);
+                    if (!out_open()) return 1;
+                    for (int i = 0; i < BLOCKS; i++) {
+                        hdr[i].dwFlags = 0;
+                        waveOutPrepareHeader(wo, &hdr[i], sizeof hdr[i]);
+                        hdr[i].dwFlags |= WHDR_DONE;
+                    }
+                }
+            }
             if (k == 'p') gs_cfg.pwm = !gs_cfg.pwm;
             if (k == 't' && gs_cfg.treble_db < 12) gs_cfg.treble_db++;
             if (k == 'g' && gs_cfg.treble_db > -12) gs_cfg.treble_db--;

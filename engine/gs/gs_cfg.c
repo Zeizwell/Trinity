@@ -1,10 +1,14 @@
 #include "gs_cfg.h"
 
+#ifndef GS_RATE_GS
+#define GS_RATE_GS 75000     // ЦАП режима GS: 2 x 37500, как NeoGS (24 МГц / 5 / 64). Тик ровно на два отсчёта, без пересчёта
+#endif
+#define RATE_PAULA 48000
+
 gs_cfg_t gs_cfg;
 
 void gs_cfg_defaults(void) {
     gs_cfg.gs_on = 1;
-    gs_cfg.rate_hz = 48000;
     gs_cfg.oversample = 1;
     gs_cfg.voices = 8;                          // 4 модуль, 4 эффекты
     gs_cfg.master_pct = 80;                     // запас: выбросы BLEP на громких модулях шли за 16 бит
@@ -17,9 +21,10 @@ uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
 void gs_cfg_mode(gs_mode_t mode) {
     gs_cfg.mode = mode;
     gs_cfg.rc16k = 0;
+    gs_cfg.rate_hz = mode == GS_MODE_GS ? GS_RATE_GS : RATE_PAULA;
     if (mode != GS_MODE_CUSTOM) gs_cfg.color_bass_db = gs_cfg.color_treble_db = 0, gs_cfg.comp = 0;
     switch (mode) {
-    case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц, RC после ЦАП
+    case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц прямо в ЦАП, RC после ЦАП
         gs_cfg.resample = GS_RS_ROM, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
         gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 0, gs_cfg.rc16k = 1;
         break;

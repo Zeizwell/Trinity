@@ -3,6 +3,7 @@
 #include "gs_cfg.h"
 #include "gs_filter.h"
 #include "gs_down.h"
+#include "gs_chan.h"
 
 extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
 
@@ -11,11 +12,13 @@ static const gs_dev_t *const dev_list[] = { &gs_dev_gs, &gs_dev_opl4 };
 #define DEV_N ((int)(sizeof dev_list / sizeof dev_list[0]))
 
 static const gs_dev_t *active;
+static uint32_t rate_now;
 
 void gs_core_init(void) {
     gs_cfg_defaults();
     active = 0;
-    gs_filter_init((float)gs_cfg_mix_hz());
+    rate_now = gs_cfg_mix_hz();
+    gs_filter_init((float)rate_now);
     gs_down_reset();
     for (int i = 0; i < DEV_N; i++) dev_list[i]->reset();
 }
@@ -41,6 +44,11 @@ static void render(float *buf, int n) {
 #define CHUNK 512
 void gs_core_audio(float *out, int n) {
     static float mix[CHUNK * 2 * 2];
+    if (gs_cfg_mix_hz() != rate_now) {              // режим сменил частоту ЦАП
+        gs_chan_rate(rate_now, gs_cfg_mix_hz());
+        rate_now = gs_cfg_mix_hz();
+        gs_filter_init((float)rate_now);
+    }
     float *p = out;
     for (int left = n; left > 0; ) {
         int k = left < CHUNK ? left : CHUNK;

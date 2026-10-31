@@ -42,6 +42,7 @@ void gs_chan_reset(void);
 void gs_chan_clear(int first, int n);        // только эти голоса: модуль не трогает эффекты
 void gs_voice_set_inc(gs_voice_t *v, float inc);   // шаг на отсчёт смешивания
 void gs_voice_set_pos(gs_voice_t *v, float pos);
+void gs_chan_rate(uint32_t from, uint32_t to);   // сменилась частота смешивания: пересчитать шаги голосов
 // Добавить звук каналов к буферу (L, R, L, R...), n отсчётов
 void gs_chan_mix(float *out, int n);
 

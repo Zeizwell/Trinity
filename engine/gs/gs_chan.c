@@ -46,6 +46,11 @@ void gs_voice_set_inc(gs_voice_t *v, float inc) {
     v->ratio = inc > 0.0f ? (uint32_t)(65536.0 * hold / ((double)inc * mix)) : 0;
 }
 
+void gs_chan_rate(uint32_t from, uint32_t to) {
+    for (int i = 0; i < GS_VOICES_MAX; i++)
+        if (gs_voice[i].inc) gs_voice_set_inc(&gs_voice[i], gs_voice[i].inc_f * (float)from / (float)to);
+}
+
 void gs_voice_set_pos(gs_voice_t *v, float pos) {
     v->pos = (uint64_t)((double)pos * Q_ONE);
     v->on = 1;
