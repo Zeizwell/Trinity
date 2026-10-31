@@ -1,11 +1,13 @@
-// Плеер MOD: логика строк и команд - pocketmod (MIT), звук - наши каналы (gs_chan)
+// Модули: выбирает плеер-плагин (gs_player.h) и ведёт общее: играет / пауза, громкость
 #ifndef GS_MOD_H
 #define GS_MOD_H
 
 #include <stdint.h>
 
-int  gs_mod_load(const void *data, int size);   // 1 - годится, с начала. Данные должны жить, пока играет
-int  gs_mod_play(const void *data, int size, uint8_t pos);  // то же, с позиции pos
+// Чья память у модуля. RAM - можно писать в сэмплы (команда EFx), ROM - нельзя
+typedef enum { GS_MOD_RAM, GS_MOD_ROM } gs_mod_mem_t;
+
+int  gs_mod_play(const void *data, int size, uint8_t pos, gs_mod_mem_t mem);    // 1 - играет с позиции pos. Данные должны жить, пока играет
 void gs_mod_stop(void);
 void gs_mod_pause(void);                        // с места продолжит gs_mod_resume
 int  gs_mod_resume(void);                       // 1 - есть что продолжать

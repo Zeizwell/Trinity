@@ -27,7 +27,7 @@ static uint32_t budget_us(void) { return AUDIO_FRAMES * 1000000u / gs_cfg.rate_h
 static void bench_mode(const void *mod, int size, gs_mode_t mode) {
     gs_core_init();
     gs_cfg_mode(mode);
-    if (!gs_gs_play_mod(mod, size)) { printf("не модуль\n"); return; }
+    if (!gs_gs_play_mod(mod, size, GS_MOD_ROM)) { printf("не модуль\n"); return; }
     uint64_t sum = 0;
     uint32_t top = 0;
     for (int i = 0; i < BLOCKS; i++) {

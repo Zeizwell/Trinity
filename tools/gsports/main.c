@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
     gs_cfg_defaults();
     gs_core_init();
     gs_gs_set_ram(ram, RAM_SIZE);
-    gs_gs_play_mod(mod, size);
+    gs_gs_play_mod(mod, size, GS_MOD_RAM);
     render(a, BLOCKS, &peak);
     printf("эталон: пик %.3f\n", peak);
     gs_gs_stop();

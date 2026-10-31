@@ -85,7 +85,7 @@ static void vars_reset(void) {
 // #31, #65: запуск. В ответе - номер модуля, 0 - не запустился
 static void play(uint8_t handle, uint8_t pos) {
     if (!handle) handle = mod_cur;
-    if (!handle || handle > mod_count || !gs_mod_play(ram + mod_base, (int)mod_size, pos)) {
+    if (!handle || handle > mod_count || !gs_mod_play(ram + mod_base, (int)mod_size, pos, GS_MOD_RAM)) {
         mod_cur = 0;
         data_out(0);
         return;
@@ -357,8 +357,8 @@ void gs_gs_set_ram(void *mem, uint32_t size) {
     ram_used = 0;
 }
 
-int gs_gs_play_mod(const void *data, int size) {
-    if (!gs_mod_load(data, size)) return 0;
+int gs_gs_play_mod(const void *data, int size, gs_mod_mem_t mem) {
+    if (!gs_mod_play(data, size, 0, mem)) return 0;
     gs_core_claim(&gs_dev_gs);
     return 1;
 }

@@ -1,11 +1,11 @@
 #include <math.h>
 #include <string.h>
 #include "gs_fx.h"
+#include "gs_amiga.h"
 #include "gs_chan.h"
 #include "gs_cfg.h"
 
 #define FX_VOICE 4              // эффекты играют в голосах после модуля
-#define CCK_HZ 3546894.6        // такт Paula, PAL, как в плеере модулей
 #define NOTE_C2 48              // C-2 Амиги: период 428
 
 static gs_fx_t fx[GS_FX_MAX];
@@ -79,7 +79,7 @@ void gs_fx_play_chan(int handle, int chan, int note, int vol) {
     v->len = f->len;
     v->loop_start = f->loop_begin;
     v->loop_len = f->loop_begin >> 16 != 0xFF && f->loop_begin < f->loop_end && f->loop_end <= f->len ? f->loop_end - f->loop_begin : 0;
-    gs_voice_set_inc(v, (float)(CCK_HZ / (428.0 * pow(2.0, -semi / 12.0) * gs_cfg_mix_hz())));
+    gs_voice_set_inc(v, (float)(GS_PAULA_HZ / (428.0 * pow(2.0, -semi / 12.0) * gs_cfg_mix_hz())));
     gs_voice_set_pos(v, 0.0f);
     chan_prio[chan] = f->prio;
     chan_vol[chan] = (uint8_t)(vol < 0 ? f->vol : vol > 64 ? 64 : vol);

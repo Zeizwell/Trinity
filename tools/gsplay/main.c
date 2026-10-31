@@ -117,7 +117,7 @@ static int live(const unsigned char *mod, int size) {
             if (k == ' ') paused = !paused;
             if (k == 's') {
                 run = !run;
-                if (run) gs_gs_play_mod(mod, size); else gs_gs_stop();
+                if (run) gs_gs_play_mod(mod, size, GS_MOD_RAM); else gs_gs_stop();
             }
             show(paused);
         }
@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
     unsigned char *mod = load(argv[1], &size);
     gs_cfg_defaults();
     gs_core_init();
-    if (!gs_gs_play_mod(mod, size)) { printf("%s: not a MOD\n", argv[1]); return 1; }
+    if (!gs_gs_play_mod(mod, size, GS_MOD_RAM)) { printf("%s: not a MOD\n", argv[1]); return 1; }
     if (argc >= 4 && !strcmp(argv[2], "-wav")) {
         int secs = argc > 4 ? atoi(argv[4]) : 30;
         if (argc > 5) set_mode(atoi(argv[5]));

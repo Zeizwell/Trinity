@@ -24,13 +24,12 @@ int gs_pt_play_pos(void);                                           // стро�
 int gs_pt_play_row(void);
 int gs_pt_speed(void);
 int gs_pt_bpm(void);
-int gs_pt_delay(void);                                              // идёт EEx
 int gs_pt_stopped(void);                                            // была команда F00
-int gs_pt_led(void);                                                // -1 нет команды, иначе E0x: 1 - фильтр вкл (и снять отметку)
 double gs_pt_tick_sec(void);                                        // длина тика по CIA
 int gs_pt_period(int chan);                                         // период ноты без вибрато и арпеджио
 
-// Реализует тот, кто выводит: старт DMA канала, в регистрах уже новые LC, LEN, PER
-void gs_pt_dma_start(int chan);
+// Реализует тот, кто выводит
+void gs_pt_dma_start(int chan);                                     // старт DMA, в регистрах уже новые LC, LEN, PER
+void gs_pt_led_set(int on);                                         // E0x: 1 - фильтр включён
 
 #endif

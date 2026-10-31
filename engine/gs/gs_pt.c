@@ -1,22 +1,23 @@
 // Логика - реплеер pt2-clone, pt2_replayer.c. Copyright (c) 2010-2026, Olav Sorensen, BSD 3-Clause. Причуды PT сохранены.
 // Сверено с оригиналом по тикам (doc/paula.md). Не сделано: E8x (по умолчанию выключен и в pt2-clone).
 #include <stddef.h>
+#include <string.h>
 #include "gs_pt.h"
+#include "gs_amiga.h"
 
 #define VOICES 4
 #define ROWS 64
 #define SAMPLES 31
-#define CIA_HZ (3546895.0 / 5.0)
+#define CIA_BPM_K 1773447                   // период таймера = K / bpm
 
 typedef struct {
-    const int8_t *start;
+    int8_t *start;
     uint16_t len, rep, replen;  // слова
     uint8_t fine, vol;
 } smp_t;
 
 typedef struct {
-    const int8_t *n_start, *n_loopstart;
-    int8_t *n_wavestart;
+    int8_t *n_start, *n_loopstart, *n_wavestart;
     int8_t n_volume, n_toneportdirec, n_pattpos, n_loopcount;
     uint8_t n_wavecontrol, n_glissfunk, n_sampleoffset, n_toneportspeed;
     uint8_t n_vibratocmd, n_tremolocmd, n_finetune, n_funkoffset;
@@ -32,7 +33,7 @@ static const uint8_t *patterns, *order;
 static int song_len, can_write;
 static smp_t smp[SAMPLES];
 static chan_t chans[VOICES];
-static int tick, speed, bpm, cia_bpm, stopped, led = -1;
+static int tick, speed, bpm, cia_bpm, stopped;
 static int8_t row, break_pos;
 static uint8_t patt, patt_del, patt_del2, low_mask, break_flag, jump;
 static int16_t pos;
@@ -60,7 +61,7 @@ static void update_funk(chan_t *c) {
     if (c->n_funkoffset >= 128) {
         c->n_funkoffset = 0;
         if (c->n_loopstart && c->n_wavestart) {
-            if (++c->n_wavestart >= c->n_loopstart + (c->n_replen << 1)) c->n_wavestart = (int8_t *)c->n_loopstart;
+            if (++c->n_wavestart >= c->n_loopstart + (c->n_replen << 1)) c->n_wavestart = c->n_loopstart;
             if (can_write) *c->n_wavestart = (int8_t)(-1 - *c->n_wavestart);
         }
     }
@@ -202,7 +203,7 @@ static void sample_offset(chan_t *c) {
 static void e_commands(chan_t *c) {
     int p = c->n_cmd & 0xF;
     switch ((c->n_cmd & 0xF0) >> 4) {
-    case 0x0: if (!tick) led = (c->n_cmd & 1) ^ 1; break;
+    case 0x0: if (!tick) gs_pt_led_set((c->n_cmd & 1) ^ 1); break;
     case 0x1: if (!tick) { low_mask = 0xF; porta_up(c); } break;
     case 0x2: if (!tick) { low_mask = 0xF; porta_down(c); } break;
     case 0x3: c->n_glissfunk = (uint8_t)((c->n_glissfunk & 0xF0) | p); break;
@@ -321,7 +322,7 @@ static void play_voice(chan_t *c) {
             c->n_loopstart = c->n_start + (s->rep << 1);
             c->n_length = (uint16_t)(s->rep + c->n_replen);
         } else c->n_loopstart = c->n_start;
-        c->n_wavestart = (int8_t *)c->n_loopstart;
+        c->n_wavestart = c->n_loopstart;
         if (!c->n_length) c->n_loopstart = NULL, c->n_wavestart = NULL;
     }
 
@@ -418,20 +419,18 @@ int gs_pt_load(const void *data, int size, int writable) {
         if (ls >= len) ls = 0, ll = 2;
         else if (ls + ll > len) ll = (len - ls) < 2 ? 2 : len - ls;
         if (len < 2) ls = 0, ll = 2;
-        s->start = (const int8_t *)d + off;
+        s->start = (int8_t *)d + off;                   // писать будет только EFx и только при writable
         s->len = (uint16_t)(len >> 1), s->rep = (uint16_t)(ls >> 1), s->replen = (uint16_t)(ll >> 1);
         s->fine = h[24] & 0xF;
         s->vol = h[25] > 64 ? 64 : h[25];
         off += len;
     }
     for (int i = 0; i < VOICES; i++) {
-        chan_t *c = &chans[i];
-        const uint8_t *z = (const uint8_t *)c;
-        for (size_t k = 0; k < sizeof *c; k++) ((uint8_t *)z)[k] = 0;
-        c->index = (uint8_t)i;
-        gs_pt_reg[i].period = 0, gs_pt_reg[i].vol = 0, gs_pt_reg[i].lc = NULL, gs_pt_reg[i].len = 0;
+        memset(&chans[i], 0, sizeof chans[i]);
+        memset(&gs_pt_reg[i], 0, sizeof gs_pt_reg[i]);
+        chans[i].index = (uint8_t)i;
     }
-    speed = 6, bpm = 125, cia_bpm = -1, stopped = 0, led = -1;
+    speed = 6, bpm = 125, cia_bpm = -1, stopped = 0;
     row = 0, break_pos = 0, patt_del = patt_del2 = 0, break_flag = jump = 0, low_mask = 0xFF;
     pos = 0, patt = order[0], play_pos = play_row = 0;
     tick = speed - 1;                                   // первый тик - сразу нулевой
@@ -449,8 +448,6 @@ int gs_pt_play_pos(void) { return play_pos; }
 int gs_pt_play_row(void) { return play_row; }
 int gs_pt_speed(void) { return speed; }
 int gs_pt_bpm(void) { return bpm; }
-int gs_pt_delay(void) { return patt_del2; }
 int gs_pt_stopped(void) { return stopped; }
-int gs_pt_led(void) { int v = led; led = -1; return v; }
-double gs_pt_tick_sec(void) { return (1773447 / bpm + 1) / CIA_HZ; }      // да, PT отбрасывает дробь
+double gs_pt_tick_sec(void) { return (CIA_BPM_K / bpm + 1) / GS_CIA_HZ; }      // да, PT отбрасывает дробь
 int gs_pt_period(int chan) { return chans[chan].n_period & 0xFFF; }

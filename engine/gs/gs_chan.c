@@ -2,10 +2,10 @@
 #include <math.h>
 #include "gs_chan.h"
 #include "gs_cfg.h"
+#include "gs_amiga.h"
 
 #define NO_IDX 0xFFFFFFFFu
 #define Q_ONE  4294967296.0     // позиция 32.32
-#define CCK_HZ 3546895.0        // такт Paula, PAL
 
 gs_voice_t gs_voice[GS_VOICES_MAX];
 
@@ -395,7 +395,7 @@ void gs_chan_mix(float *out, int n) {
         ticks_block(voices, n, rs, hold / rate);
     } else {                                            // на каждый отсчёт: кубика, рампа, ШИМ
         float ramp_k = gs_cfg.ramp ? 1000.0f / (1.5f * rate) : 0.0f;    // рампа ~1.5 мс
-        double cck = CCK_HZ / rate;                     // тактов CCK на отсчёт
+        double cck = GS_PAULA_HZ / rate;                //  тактов CCK на отсчёт
         for (int c = 0; c < voices; c++)                // пришли из режима с фронтами: уровни на шине снять
             if (gs_voice[c].blep.last != 0.0f) bus_edge(c, 0, 0.0f, gs_voice[c].blep.last), gs_voice[c].blep.last = 0.0f;
         if (use_pwm) {
