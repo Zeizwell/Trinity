@@ -227,22 +227,22 @@ static void raw_test(const char *name) {
     check("нарушений протокола", m_viol, 0);
 }
 
-static void fat_test(void) {
+static void fat_test(BYTE fmt, int type, const char *name) {
     FATFS fs;
     FIL f;
     DIR d;
     FILINFO fi;
     UINT n;
     static uint8_t work[FF_MAX_SS * 8];
-    MKFS_PARM parm = { FM_FAT32, 0, 0, 0, 0 };
+    MKFS_PARM parm = { fmt, 0, 0, 0, 0 };
     // Имя с русскими буквами в CP866, длинное
     const char *lname = "0:/TRINITY/\x8C\xAE\xA4\xE3\xAB\xEC \xE1 \xA4\xAB\xA8\xAD\xAD\xEB\xAC \xA8\xAC\xA5\xAD\xA5\xAC.mod";
 
-    printf("--- FAT32\n");
+    printf("--- %s\n", name);
     for (int i = 0; i < (int)sizeof pat; i++) pat[i] = (uint8_t)(i ^ i >> 8 ^ i >> 16);
     check("разметка", f_mkfs("0:", &parm, work, sizeof work), FR_OK);
     check("монтирование", f_mount(&fs, "0:", 1), FR_OK);
-    check("тип FAT32", fs.fs_type, FS_FAT32);
+    check("тип файловой системы", fs.fs_type, type);
     check("каталог", f_mkdir("0:/TRINITY"), FR_OK);
     check("создать файл", f_open(&f, lname, FA_WRITE | FA_CREATE_ALWAYS), FR_OK);
     check("записать 1 МБ", f_write(&f, pat, sizeof pat, &n), FR_OK);
@@ -312,6 +312,7 @@ int main(int argc, char **argv) {
     sd_set_port(&port);
 
     card_reset(1, 0, 131072); raw_test("SDHC");
+    card_reset(1, 0, 124735488); raw_test("SDXC 64 ГБ (размер из CSD, пишем в начало)");
     card_reset(0, 0, 131072); raw_test("SDSC v2");
     card_reset(0, 1, 131072); raw_test("SDSC v1");
 
@@ -326,7 +327,9 @@ int main(int argc, char **argv) {
       check("запись отвергнута", sd_write(0, b, 1), 0); }
 
     card_reset(1, 0, 131072);
-    fat_test();
+    fat_test(FM_EXFAT, FS_EXFAT, "exFAT");
+    card_reset(1, 0, 131072);
+    fat_test(FM_FAT32, FS_FAT32, "FAT32");
     fflush(img);
     fclose(img);
     img = NULL;
