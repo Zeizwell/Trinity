@@ -15,6 +15,7 @@ typedef struct {
     uint8_t  gs_on;             // GS отвечает на порты и звучит
     // --- вывод
     uint32_t rate_hz;           // частота вывода, Гц (I2S)
+    uint8_t  oversample;        // смешивание: 1 - на частоте вывода, 2 - вдвое выше + понижение FIR (как pt2-clone). Действует с gs_core_init
     uint8_t  voices;            // каналов в микшере
     uint8_t  master_pct;        // общая громкость, %
     // --- звук (цепочка: пересчёт -> громкость -> сведение -> фильтры)
@@ -31,6 +32,7 @@ typedef struct {
 extern gs_cfg_t gs_cfg;
 
 void gs_cfg_defaults(void);
+uint32_t gs_cfg_mix_hz(void);            // частота смешивания
 void gs_cfg_mode(gs_mode_t mode);       // выставить переменные режима
 const char *gs_cfg_mode_name(gs_mode_t mode);
 

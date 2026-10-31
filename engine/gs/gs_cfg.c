@@ -5,10 +5,13 @@ gs_cfg_t gs_cfg;
 void gs_cfg_defaults(void) {
     gs_cfg.gs_on = 1;
     gs_cfg.rate_hz = 48000;
+    gs_cfg.oversample = 2;
     gs_cfg.voices = 4;
     gs_cfg.master_pct = 100;
     gs_cfg_mode(GS_MODE_GS);
 }
+
+uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
 
 // Режим - только значения переменных
 void gs_cfg_mode(gs_mode_t mode) {

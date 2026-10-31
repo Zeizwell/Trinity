@@ -12,8 +12,11 @@ typedef struct {
     uint32_t len;               // длина, байт
     uint32_t loop_start;
     uint32_t loop_len;          // 0 - без цикла
-    float    pos;               // позиция; < 0 - сэмпл кончился
-    float    inc;               // шаг на отсчёт вывода
+    uint64_t pos;               // позиция 32.32
+    uint64_t inc;               // шаг на отсчёт смешивания, 32.32
+    uint64_t step;              // шаг на ступеньку GS_RS_STEP
+    float    inc_f;             // тот же шаг в float: только для доли фронта BLEP
+    uint8_t  on;                // 0 - сэмпл кончился
     uint8_t  vol;               // 0..64
     float    held;              // текущая ступенька, -1..1
     uint32_t idx;               // GS_RS_BLEP: какой отсчёт сэмпла звучит
@@ -24,6 +27,8 @@ typedef struct {
 extern gs_voice_t gs_voice[GS_VOICES_MAX];
 
 void gs_chan_reset(void);
+void gs_voice_set_inc(gs_voice_t *v, float inc);   // шаг на отсчёт смешивания
+void gs_voice_set_pos(gs_voice_t *v, float pos);
 // Добавить звук каналов к буферу (L, R, L, R...), n отсчётов
 void gs_chan_mix(float *out, int n);
 

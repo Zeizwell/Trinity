@@ -12,7 +12,7 @@ int gs_mod_load(const void *data, int size) {
     playing = 0;
     gs_chan_reset();
     gs_led_module = 0;
-    if (!pocketmod_init(&pm, data, size, (int)gs_cfg.rate_hz)) return 0;
+    if (!pocketmod_init(&pm, data, size, (int)gs_cfg_mix_hz())) return 0;
     if (pm.num_channels > GS_VOICES_MAX) return 0;
     playing = 1;
     return 1;
@@ -25,11 +25,13 @@ void gs_mod_stop(void) {
 
 int gs_mod_playing(void) { return playing; }
 
-// Состояние канала pocketmod -> наш канал. Позицию ведёт он при ноте, мы - при звуке
+// Состояние канала pocketmod -> наш канал. Позицию ведём мы (32.32); от него берём только новую: при ноте он пишет >= 0,
+// мы оставляем ему POS_OURS. Его float на длинных сэмплах плывёт по высоте
+#define POS_OURS (-2.0f)
 static void chan_to_voice(int i) {
     _pocketmod_chan *ch = &pm.channels[i];
     gs_voice_t *v = &gs_voice[i];
-    if (!ch->sample || ch->position < 0.0f) { v->data = 0; return; }
+    if (!ch->sample) { v->data = 0; return; }
     _pocketmod_sample *smp = &pm.samples[ch->sample - 1];
     unsigned char *h = POCKETMOD_SAMPLE(&pm, ch->sample);
     uint32_t loop_start = (uint32_t)((h[4] << 8) | h[5]) << 1;
@@ -38,9 +40,12 @@ static void chan_to_voice(int i) {
     v->len = smp->length;
     v->loop_start = loop_start;
     v->loop_len = loop_len > 2 && loop_start + loop_len <= smp->length ? loop_len : 0;
-    v->pos = ch->position;
-    v->inc = ch->increment;
     v->vol = ch->real_volume;
+    gs_voice_set_inc(v, ch->increment);
+    if (ch->position >= 0.0f) {
+        gs_voice_set_pos(v, ch->position);
+        ch->position = POS_OURS;
+    }
 }
 
 void gs_mod_audio(float *out, int n) {
@@ -51,8 +56,6 @@ void gs_mod_audio(float *out, int n) {
         if (num > n) num = n;
         for (int i = 0; i < pm.num_channels; i++) chan_to_voice(i);
         gs_chan_mix(out, num);
-        for (int i = 0; i < pm.num_channels; i++)           // позиция - обратно
-            if (gs_voice[i].data) pm.channels[i].position = gs_voice[i].pos;
         out += num * 2;
         n -= num;
         pm.sample += (float)num;
