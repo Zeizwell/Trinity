@@ -74,6 +74,8 @@ void gs_filter_run(float *buf, int n) {
     if (use_bass && bass.db != gs_cfg.bass_db) shelf_set(&bass, BASS_HZ, gs_cfg.bass_db, 0);
     if (use_treble && treble.db != gs_cfg.treble_db) shelf_set(&treble, TREBLE_HZ, gs_cfg.treble_db, 1);
     if (!use_lp && !use_led && !hp && !use_rc && !use_bass && !use_treble) return;
+    int up = gs_cfg.bass_db > gs_cfg.treble_db ? gs_cfg.bass_db : gs_cfg.treble_db;
+    float head = up > 0 ? (float)pow(10.0, -up / 20.0) : 1.0f;  // запас под подъём ручками: иначе пики режутся
     for (int i = 0; i < n * 2; i += 2) {
         for (int c = 0; c < 2; c++) {
             float x = buf[i + c];
@@ -89,6 +91,7 @@ void gs_filter_run(float *buf, int n) {
                 hp->s[c] = x * hp->a0 + hp->s[c] * hp->b1;
                 x -= hp->s[c];
             }
+            x *= head;
             if (use_bass) x = shelf_run(&bass, c, x);
             if (use_treble) x = shelf_run(&treble, c, x);
             buf[i + c] = x;

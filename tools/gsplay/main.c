@@ -114,7 +114,7 @@ done:
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) { printf("gsplay file.mod [-wav out.wav [secs [mode 1-4]]]\n"); return 1; }
+    if (argc < 2) { printf("gsplay file.mod [-wav out.wav [secs [mode 1-4 [treble bass]]]]\n"); return 1; }
     int size;
     unsigned char *mod = load(argv[1], &size);
     gs_core_init();
@@ -122,6 +122,7 @@ int main(int argc, char **argv) {
     if (argc >= 4 && !strcmp(argv[2], "-wav")) {
         int secs = argc > 4 ? atoi(argv[4]) : 30;
         if (argc > 5) gs_cfg_mode((gs_mode_t)(atoi(argv[5]) - 1));
+        if (argc > 7) gs_cfg.treble_db = (int8_t)atoi(argv[6]), gs_cfg.bass_db = (int8_t)atoi(argv[7]);
         return to_wav(argv[3], secs);
     }
     return live(mod, size);
