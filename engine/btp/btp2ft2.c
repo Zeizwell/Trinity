@@ -378,7 +378,7 @@ static void pass2(btp_conv_t *c, int type) {
             c->row[r][CHIP_NOISE] = (uint8_t)(v < 0 || !(v & 31) ? 0x20 : v & 31);
         return;
     }
-    // эффект общей колонки -> команда огибающей чипа (CHIP_ECMD, FT2 doc/commands.md «Колонка огибающей»): те же коды,
+    // эффект общей колонки -> команда огибающей чипа (CHIP_ECMD, FT2/doc/commands.md «Колонка огибающей»): те же коды,
     // что у канала, цель - период огибающей. Плеер FT2 пока играет слайды 1 / 2; EA (автоогибающая) - в лог
     if (json_is(j, 4, "patternRows") && json_is(j, 6, "envelopeEffect")) {
         if (d == 7 && type == JSON_BEGIN_OBJ) eff_e = eff_d = eff_p = 0, eff_tab = -1;

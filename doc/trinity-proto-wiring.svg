@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="1530" viewBox="0 0 680 1020" font-family="Segoe UI, Arial, sans-serif">
+<title>Макет Тринити: слот YM2203 на MultiSound - RP2350B (Spotpear) - панелька YM2203</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="680" height="1020" fill="#ffffff"/>
+
+<!-- ===== 1. Основная схема ===== -->
+<text x="40" y="22" font-size="15" font-weight="600" fill="#2C2C2A">1. Макет: RP в разрыве слота YM2203 (U4) на MultiSound</text>
+<text x="40" y="42" font-size="12" fill="#5F5E5A">Spotpear: не трогать GP19 (PSRAM), GP20 (RGB), GP24 (VBUS), GP40–47 (АЦП, 5 В не терпят)</text>
+<g font-size="12" fill="#2C2C2A">
+<rect x="40" y="60" width="180" height="320" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.8"/>
+<text x="130" y="86" text-anchor="middle" font-size="14" font-weight="600">Разъём DIP-40</text>
+<text x="130" y="104" text-anchor="middle" fill="#5F5E5A">в слот U4 MultiSound</text>
+<text x="52" y="134">D0–D7 (40, 2–8)</text>
+<text x="52" y="164">/CS (34)</text>
+<text x="52" y="194">/WR (35)</text>
+<text x="52" y="224">A0 (37)</text>
+<text x="52" y="254">/RD (36)</text>
+<text x="52" y="284">φM (38)</text>
+<text x="52" y="314">/IC (24)</text>
+<text x="52" y="344">+5VA (21) → диод (п.2)</text>
+<text x="52" y="362">GND (1)</text>
+<rect x="280" y="60" width="120" height="320" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.8"/>
+<text x="340" y="86" text-anchor="middle" font-size="14" font-weight="600" fill="#3C3489">RP2350B</text>
+<text x="340" y="104" text-anchor="middle" fill="#534AB7">Spotpear</text>
+<g fill="#3C3489">
+<text x="290" y="134">GP0–7</text><text x="390" y="134" text-anchor="end">GP28–35</text>
+<text x="290" y="164">GP8</text><text x="390" y="164" text-anchor="end">GP36</text>
+<text x="290" y="194">GP9</text><text x="390" y="194" text-anchor="end">GP37</text>
+<text x="290" y="224">GP11</text><text x="390" y="224" text-anchor="end">GP38</text>
+<text x="390" y="254" text-anchor="end">GP39</text>
+<text x="290" y="254">GP10</text>
+<text x="290" y="284">GP12</text>
+<text x="290" y="314">GP13</text>
+<text x="290" y="344">5V (через диод)</text>
+<text x="290" y="362">G</text>
+</g>
+<rect x="460" y="60" width="180" height="320" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+<text x="550" y="86" text-anchor="middle" font-size="14" font-weight="600" fill="#085041">Панелька YM2203</text>
+<text x="550" y="104" text-anchor="middle" fill="#0F6E56">RP пишет и читает (тест)</text>
+<g fill="#085041">
+<text x="472" y="134">D0–D7 (40, 2–8)</text>
+<text x="472" y="164">/CS (34)</text>
+<text x="472" y="194">/WR (35)</text>
+<text x="472" y="224">A0 (37)</text>
+<text x="472" y="254">/RD (36) + 10к на +5 (п.2)</text>
+<text x="472" y="284">φM (38) проводом</text>
+<text x="472" y="314">/IC (24) проводом</text>
+<text x="472" y="344">+5VA, GND проводом</text>
+</g>
+</g>
+<g stroke="#444" stroke-width="1.2" fill="none">
+<line x1="224" y1="130" x2="276" y2="130" marker-start="url(#a)" marker-end="url(#a)"/>
+<line x1="222" y1="160" x2="276" y2="160" marker-end="url(#a)"/>
+<line x1="222" y1="190" x2="276" y2="190" marker-end="url(#a)"/>
+<line x1="222" y1="220" x2="276" y2="220" marker-end="url(#a)"/>
+<line x1="222" y1="250" x2="276" y2="250" marker-end="url(#a)"/>
+<line x1="222" y1="280" x2="276" y2="280" marker-end="url(#a)"/>
+<line x1="222" y1="310" x2="276" y2="310" marker-end="url(#a)"/>
+<line x1="222" y1="340" x2="276" y2="340" marker-end="url(#a)"/>
+<line x1="222" y1="358" x2="276" y2="358" marker-end="url(#a)"/>
+<line x1="404" y1="130" x2="456" y2="130" marker-start="url(#a)" marker-end="url(#a)"/>
+<line x1="402" y1="160" x2="456" y2="160" marker-end="url(#a)"/>
+<line x1="402" y1="190" x2="456" y2="190" marker-end="url(#a)"/>
+<line x1="402" y1="220" x2="456" y2="220" marker-end="url(#a)"/>
+<line x1="402" y1="250" x2="456" y2="250" marker-end="url(#a)"/>
+<path d="M130 382 L130 410 L550 410 L550 384" marker-end="url(#a)"/>
+</g>
+<g font-size="12" fill="#2C2C2A" text-anchor="middle">
+<text x="340" y="436">Проводом напрямую разъём ↔ панелька: 1, 17 (GND), 21 (+5VA), 18, 19, 20 (SSG C, B, A), 24 (/IC),</text>
+<text x="340" y="456">38 (φM), 22, 39, 23 (FM в ЦАП MultiSound). Не паяем: 14 (MIDI). Второй YM2203 (U10) вынуть.</text>
+</g>
+<line x1="40" y1="480" x2="640" y2="480" stroke="#D3D1C7" stroke-width="1"/>
+
+<!-- ===== 2. Питание и мелочи ===== -->
+<text x="40" y="506" font-size="15" font-weight="600" fill="#2C2C2A">2. Питание RP через диод, подтяжка /RD, резисторы</text>
+<g font-size="12" fill="#2C2C2A">
+<text x="40" y="548">ножка 21 разъёма</text>
+<text x="40" y="564" fill="#5F5E5A">(+5VA)</text>
+<line x1="150" y1="544" x2="290" y2="544" stroke="#444" stroke-width="1.4"/>
+<path d="M290 532 L290 556 L312 544 Z" fill="#2C2C2A"/>
+<line x1="313" y1="531" x2="313" y2="557" stroke="#2C2C2A" stroke-width="2.5"/>
+<line x1="313" y1="544" x2="450" y2="544" stroke="#444" stroke-width="1.4"/>
+<text x="460" y="548">5V на Spotpear</text>
+<text x="460" y="564" fill="#5F5E5A">(рядом с G)</text>
+<text x="284" y="524" text-anchor="end" fill="#5F5E5A">анод</text>
+<text x="320" y="524" fill="#5F5E5A">катод</text>
+<text x="40" y="606" fill="#5F5E5A">Как выглядит:</text>
+<line x1="150" y1="602" x2="250" y2="602" stroke="#888" stroke-width="2"/>
+<rect x="250" y="592" width="90" height="20" rx="3" fill="#2C2C2A"/>
+<rect x="322" y="592" width="10" height="20" fill="#C9C7BE"/>
+<line x1="340" y1="602" x2="450" y2="602" stroke="#888" stroke-width="2"/>
+<text x="150" y="630">ножка БЕЗ полоски → к 21 разъёма</text>
+<text x="450" y="630" text-anchor="end">ножка С полоской → к 5V Spotpear</text>
+<text x="40" y="664" font-weight="600">Какой диод (любой из):</text>
+<text x="52" y="684">• 1N5817, 1N5819 — с ножками (корпус DO-41), удобнее всего паять проводами</text>
+<text x="52" y="702">• SS14, SS34 — маленький SMD (корпус SMA), полоска на корпусе — тоже катод</text>
+<text x="52" y="720">• на крайний случай обычный 1N4001…1N4007: теряет ~0.8 В, Spotpear всё равно работает</text>
+<text x="40" y="746" fill="#5F5E5A">Зачем: без диода USB от ПК и питание слота спорят. С диодом USB можно втыкать, не вынимая из слота.</text>
+<text x="40" y="780" font-weight="600">10 кОм (обязательно):</text>
+<text x="186" y="780">между ножками 36 (/RD) и 21 (+5) панельки чипа. Оставить и с проводом GP39.</text>
+<text x="40" y="804" font-weight="600">100–220 Ом × 8 (можно не ставить):</text>
+<text x="262" y="804">в разрыв D0–D7: разъём ↔ GP0–7 и GP28–35 ↔ панелька.</text>
+</g>
+<line x1="40" y1="826" x2="640" y2="826" stroke="#D3D1C7" stroke-width="1"/>
+
+<!-- ===== 3. Анализатор ===== -->
+<text x="40" y="852" font-size="15" font-weight="600" fill="#2C2C2A">3. Анализатор: фиолетовая Pico (RP2040), к Spotpear НЕ подключается</text>
+<g font-size="12" fill="#2C2C2A">
+<text x="40" y="874" fill="#5F5E5A">Прошивка pico_baseline.uf2, на ПК PulseView (D:\_Work\Tools\sigrok). Питание Pico — только её USB от ПК.</text>
+<text x="40" y="890" fill="#5F5E5A">Ножки ищи по подписи GPx на плате Pico (номер ножки по краю — другой). Провода — крючки или пайка.</text>
+<g font-weight="600"><text x="52" y="914">Pico</text><text x="140" y="914">→ куда на макете</text><text x="370" y="914">Pico</text><text x="440" y="914">→ куда на макете</text></g>
+<text x="52" y="934">GND</text><text x="140" y="934">ножка 1 разъёма (обязательно!)</text>
+<text x="52" y="952">GP2–GP9</text><text x="140" y="952">D0–D7 разъёма (40, 2, 3 … 8)</text>
+<text x="52" y="970">GP10</text><text x="140" y="970">/CS разъёма (34)</text>
+<text x="52" y="988">GP11</text><text x="140" y="988">/WR разъёма (35)</text>
+<text x="370" y="934">GP12</text><text x="440" y="934">/RD разъёма (36)</text>
+<text x="370" y="952">GP13</text><text x="440" y="952">A0 разъёма (37)</text>
+<text x="370" y="970">GP14</text><text x="440" y="970">/CS панельки (34)</text>
+<text x="370" y="988">GP15</text><text x="440" y="988">/WR панельки (35)</text>
+<text x="370" y="1006">GP16</text><text x="440" y="1006">A0 панельки (37)</text>
+<text x="40" y="1008" fill="#A32D2D" font-weight="600">НЕ цеплять (5 В): 21, /RD панельки, 18–20</text>
+</g>
+</svg>

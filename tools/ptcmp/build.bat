@@ -1,11 +1,11 @@
 @echo off
 rem Стенд: gs_pt против настоящего реплеера ProTracker из pt2-clone (регистры Паулы на каждом тике).
-rem Чужой код в git не лежит: берём его из PT2_SRC (по умолчанию материалы рядом с FT2), собираем во временной папке.
+rem Чужой код в git не лежит: берём его из PT2_SRC (по умолчанию ref/Paula), собираем во временной папке.
 rem Запуск: %TEMP%\ptcmp\cmp_pt.exe a.mod b.mod ...
 setlocal
 call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul
 set T=%~dp0
-if "%PT2_SRC%"=="" set PT2_SRC=%T%..\..\..\FT2\Paula\pt2-clone-master\src
+if "%PT2_SRC%"=="" set PT2_SRC=%T%..\..\ref\Paula\pt2-clone-master\src
 set W=%TEMP%\ptcmp
 if not exist "%W%" mkdir "%W%"
 for %%h in (audio config helpers paula posed scopes tables visuals visuals_sync) do echo #include "stub.h"> "%W%\pt2_%%h.h"

@@ -9,7 +9,7 @@
 		(date "2026-10-24")
 		(rev "A")
 		(company "ZX Trinity")
-		(comment 1 "FT2 doc/trinity-board-analog.md; refs from 101")
+		(comment 1 "doc/trinity-board-analog.md; refs from 101")
 	)
 	(lib_symbols
 		(symbol "Device:C"

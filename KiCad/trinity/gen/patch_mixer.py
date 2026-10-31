@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Довести блок MIXER (копия MultiSound в корневом листе) до Тринити, НЕ меняя рисунка: номиналы, DNP, имена меток,
-# символ питания на V- ОУ. Решения - FT2 doc/trinity-board-analog.md.
+# символ питания на V- ОУ. Решения - doc/trinity-board-analog.md.
 #   python patch_mixer.py <in.kicad_sch> <out.kicad_sch>
 import re
 import sys

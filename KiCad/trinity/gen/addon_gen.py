@@ -3,7 +3,7 @@
 #   NARROW STEREO - DIP-4: AY_A1 / AY_A2 -> NAR1 / NAR2 (входы правого сумматора, 82к), AY_C1 / AY_C2 -> NAR3 / NAR4
 #                   (левого); ON - узко (~30 %), OFF - обычное ABC;
 #   ANALOG POWER  - +5VA (микшер), +5VA_1 / +5VA_2 (каждому YM свой фильтр), -5VA (TPS60400, V- у U3).
-# Спецификация - FT2 doc/trinity-board-analog.md.   python addon_gen.py -> addon.kicad_sch + сверка netlist
+# Спецификация - doc/trinity-board-analog.md.   python addon_gen.py -> addon.kicad_sch + сверка netlist
 import os
 import sys
 
@@ -15,7 +15,7 @@ import analog_gen as g  # noqa: E402  (хелперы: rail, hpart, vpart, net, 
 
 def build(d):
     s = d.sheet("addon.kicad_sch", "Trinity addon: narrow stereo DIP, analog power", paper="auto",
-                comment="FT2 doc/trinity-board-analog.md; refs from 101")
+                comment="doc/trinity-board-analog.md; refs from 101")
 
     s.block_start("NARROW STEREO (DIP ON = narrow ~30%, OFF = plain ABC)")
     s.place("SW101", "Switch:SW_DIP_x04", "NARROW", 50.8, 50.8,

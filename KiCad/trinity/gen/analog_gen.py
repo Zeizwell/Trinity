@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Лист MIXER платы Тринити (mixer.kicad_sch): входы SSG / FM / GS, узкое стерео, сумматоры L / R, линейный выход,
-# питание аналога. Спецификация - FT2 doc/trinity-board-analog.md. Генератор - schlib (kicad-claude-skills).
+# питание аналога. Спецификация - doc/trinity-board-analog.md. Генератор - schlib (kicad-claude-skills).
 # Рисуем как MultiSound: блоки, внутри детали соединены проводами; метки - только между блоками.
 # Обозначения с 101 (не пересекаются с корнем). Блоки копируются в корневой лист (один лист, как MultiSound);
 # связь с другими блоками - метки с теми же именами:
@@ -174,7 +174,7 @@ def rail(s, x, y, src, fbval, dst, caps, dst_glob=False, flag=False):
 
 def build(d):
     s = d.sheet("mixer.kicad_sch", "MIXER: SSG / FM / GS inputs, narrow stereo, summing amps, line out, analog power",
-                paper="auto", comment="FT2 doc/trinity-board-analog.md; MultiSound rev.A1 values; refs from 101")
+                paper="auto", comment="doc/trinity-board-analog.md; MultiSound rev.A1 values; refs from 101")
 
     # ---- Развязка входов: 10 мкФ (+ к YM: у выхода SSG постоянка выше нуля)
     s.block_start("INPUT COUPLING (SSG load 3.3k is at the chips)")

@@ -67,7 +67,7 @@ int main(void) {
     for (int i = 0; i < 6; i++) { card_slot_write(0, (uint8_t)(0xE0 + i)); t[i] = card_answer(); }
     check("итог теста читается после сброса: 23 01 50 04 10 00", t[0] == 0x23 && t[1] == 0x01 && t[2] == 0x50 && t[3] == 4 && t[4] == 0x10 && t[5] == 0);
 
-    // 5. Ключ FX, как FT2: #C0, "TRIN"; чтение #C0 - байт статуса (FT2 doc/trinity-api.md п.3)
+    // 5. Ключ FX, как FT2: #C0, "TRIN"; чтение #C0 - байт статуса (doc/trinity-api.md п.3)
     card_slot_write(0, 0xC0);
     card_svc_poll(false);
     check("#C0 до ключа - статус: AY, задания нет (00)", card_answer() == 0x00);

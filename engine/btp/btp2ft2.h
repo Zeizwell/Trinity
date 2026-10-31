@@ -1,10 +1,10 @@
 // Конвертер Bitphase (.btp) -> трек FT2 (контейнер FT2C). Переносимый C: консольная утилита на ПК и сервис RP-AY
-// (FT2 doc/zx-trinity.md п.14в). Работает потоком: .btp распаковывается кусками (окно 32К), JSON разбирается на
+// (doc/zx-trinity.md п.14в). Работает потоком: .btp распаковывается кусками (окно 32К), JSON разбирается на
 // лету (json.h), в памяти - только то, что идёт в FT2 (~60К). Вход читается ДВАЖДЫ:
 //   проход 1 - ордер, длины паттернов, таблицы (орнаменты), инструменты, заголовок;
 //   проход 2 - паттерны: каждый сразу в блоки PATT.
 // Что не легло в FT2 - строкой в лог (log_fn): «потеряно ...», «приближено ...».
-// Форматы: вход - FT2 doc/formats/btp.md, выход - doc/formats/ft2.md, команды - doc/commands.md.
+// Форматы: вход - FT2/doc/formats/btp.md, выход - FT2/doc/formats/ft2.md, команды - FT2/doc/commands.md.
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
@@ -21,13 +21,13 @@
 typedef void (*btp_out_fn)(void *user, const uint8_t *p, uint32_t n);   // байты .ft2 подряд
 typedef void (*btp_log_fn)(void *user, const char *line);               // строка лога
 
-typedef struct {                    // инструмент FT2 (строки по 5 байт - doc/instruments.md)
+typedef struct {                    // инструмент FT2 (строки по 5 байт - FT2/doc/instruments.md)
     uint8_t rows, loop;             // строк (0 - нет инструмента), цикл
     uint8_t row[64][5];
     char    name[17];
 } btp_ins_t;
 
-typedef struct {                    // FX FT2 (doc/fx-row.md): строки по 16 байт, заголовок
+typedef struct {                    // FX FT2 (FT2/doc/fx-row.md): строки по 16 байт, заголовок
     uint8_t rows, loop;             // строк (0 - нет FX), цикл
     uint8_t row[32][16];
     uint8_t shape, phase, keep;     // свип ШИМ: форма (таблица 1..5), стартовая фаза 0..255, не перезапускать

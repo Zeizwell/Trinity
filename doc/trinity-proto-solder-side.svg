@@ -1,0 +1,368 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1580" height="1120" viewBox="0 0 1580 1120" font-family="Segoe UI, Arial, sans-serif">
+<title>Макет Тринити со стороны пайки</title><rect width="1580" height="1120" fill="#ffffff"/>
+<text x="30" y="34" font-size="17" text-anchor="start" fill="#2C2C2A" font-weight="600">Макет: ВИД СЗАДИ (со стороны проводов). Панелька и разъём смотрят в разные стороны — нумерация зеркальная. RP — USB ВНИЗУ. Ножки нарисованы там, где они стоят.</text>
+<text x="30" y="58" font-size="13" text-anchor="start" fill="#5F5E5A">Цветом — куда идёт провод. Серым — не паять. Панелька: 1 справа вверху, 40 слева. Разъём: 1 слева вверху, 40 справа. Проверка: отверстие 1 панельки = 0 Ом до земли, 21 = +5VA, 18-20 = ~3.3 кОм до земли.</text>
+<text x="210" y="92" font-size="16" text-anchor="middle" fill="#2C2C2A" font-weight="600">Панелька YM2203 (чип сверху)</text>
+<text x="210" y="112" font-size="12" text-anchor="middle" fill="#5F5E5A">вид снизу: ножка 1 СПРАВА вверху</text>
+<rect x="140" y="125" width="280" height="860" rx="6" fill="#F7F6F2" stroke="#5F5E5A"/>
+<path d="M266 125 a14 14 0 0 0 28 0" fill="#fff" stroke="#5F5E5A"/>
+<text x="280" y="150" font-size="11" text-anchor="middle" fill="#5F5E5A">ключ</text>
+<circle cx="160" cy="156" r="7" fill="#0F6E56"/>
+<text x="174" y="160" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">40 D0</text>
+<text x="130" y="160" font-size="12" text-anchor="end" fill="#0F6E56">GP28</text>
+<circle cx="400" cy="156" r="7" fill="#0F6E56"/>
+<text x="386" y="160" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GND 1</text>
+<text x="418" y="160" font-size="12" text-anchor="start" fill="#0F6E56">разъём 1</text>
+<circle cx="160" cy="198" r="7" fill="#0F6E56"/>
+<text x="174" y="202" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">39 S</text>
+<text x="130" y="202" font-size="12" text-anchor="end" fill="#0F6E56">разъём 39</text>
+<circle cx="400" cy="198" r="7" fill="#0F6E56"/>
+<text x="386" y="202" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D1 2</text>
+<text x="418" y="202" font-size="12" text-anchor="start" fill="#0F6E56">GP29</text>
+<circle cx="160" cy="240" r="7" fill="#0F6E56"/>
+<text x="174" y="244" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">38 φM</text>
+<text x="130" y="244" font-size="12" text-anchor="end" fill="#0F6E56">разъём 38</text>
+<circle cx="400" cy="240" r="7" fill="#0F6E56"/>
+<text x="386" y="244" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D2 3</text>
+<text x="418" y="244" font-size="12" text-anchor="start" fill="#0F6E56">GP30</text>
+<circle cx="160" cy="282" r="7" fill="#0F6E56"/>
+<text x="174" y="286" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">37 A0</text>
+<text x="130" y="286" font-size="12" text-anchor="end" fill="#0F6E56">GP38</text>
+<circle cx="400" cy="282" r="7" fill="#0F6E56"/>
+<text x="386" y="286" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D3 4</text>
+<text x="418" y="286" font-size="12" text-anchor="start" fill="#0F6E56">GP31</text>
+<circle cx="160" cy="324" r="7" fill="#0F6E56"/>
+<text x="174" y="328" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">36 /RD</text>
+<text x="130" y="328" font-size="12" text-anchor="end" fill="#0F6E56">GP39</text>
+<circle cx="400" cy="324" r="7" fill="#0F6E56"/>
+<text x="386" y="328" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D4 5</text>
+<text x="418" y="328" font-size="12" text-anchor="start" fill="#0F6E56">GP32</text>
+<circle cx="160" cy="366" r="7" fill="#0F6E56"/>
+<text x="174" y="370" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">35 /WR</text>
+<text x="130" y="370" font-size="12" text-anchor="end" fill="#0F6E56">GP37</text>
+<circle cx="400" cy="366" r="7" fill="#0F6E56"/>
+<text x="386" y="370" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D5 6</text>
+<text x="418" y="370" font-size="12" text-anchor="start" fill="#0F6E56">GP33</text>
+<circle cx="160" cy="408" r="7" fill="#0F6E56"/>
+<text x="174" y="412" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">34 /CS</text>
+<text x="130" y="412" font-size="12" text-anchor="end" fill="#0F6E56">GP36</text>
+<circle cx="400" cy="408" r="7" fill="#0F6E56"/>
+<text x="386" y="412" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D6 7</text>
+<text x="418" y="412" font-size="12" text-anchor="start" fill="#0F6E56">GP34</text>
+<circle cx="160" cy="450" r="7" fill="#B4B2A9"/>
+<text x="174" y="454" font-size="13" text-anchor="start" fill="#2C2C2A">33 IOB7</text>
+<circle cx="400" cy="450" r="7" fill="#0F6E56"/>
+<text x="386" y="454" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D7 8</text>
+<text x="418" y="454" font-size="12" text-anchor="start" fill="#0F6E56">GP35</text>
+<circle cx="160" cy="492" r="7" fill="#B4B2A9"/>
+<text x="174" y="496" font-size="13" text-anchor="start" fill="#2C2C2A">32 IOB6</text>
+<circle cx="400" cy="492" r="7" fill="#B4B2A9"/>
+<text x="386" y="496" font-size="13" text-anchor="end" fill="#2C2C2A">IOA7 9</text>
+<circle cx="160" cy="534" r="7" fill="#B4B2A9"/>
+<text x="174" y="538" font-size="13" text-anchor="start" fill="#2C2C2A">31 IOB5</text>
+<circle cx="400" cy="534" r="7" fill="#B4B2A9"/>
+<text x="386" y="538" font-size="13" text-anchor="end" fill="#2C2C2A">IOA6 10</text>
+<circle cx="160" cy="576" r="7" fill="#B4B2A9"/>
+<text x="174" y="580" font-size="13" text-anchor="start" fill="#2C2C2A">30 IOB4</text>
+<circle cx="400" cy="576" r="7" fill="#B4B2A9"/>
+<text x="386" y="580" font-size="13" text-anchor="end" fill="#2C2C2A">IOA5 11</text>
+<circle cx="160" cy="618" r="7" fill="#B4B2A9"/>
+<text x="174" y="622" font-size="13" text-anchor="start" fill="#2C2C2A">29 IOB3</text>
+<circle cx="400" cy="618" r="7" fill="#B4B2A9"/>
+<text x="386" y="622" font-size="13" text-anchor="end" fill="#2C2C2A">IOA4 12</text>
+<circle cx="160" cy="660" r="7" fill="#B4B2A9"/>
+<text x="174" y="664" font-size="13" text-anchor="start" fill="#2C2C2A">28 IOB2</text>
+<circle cx="400" cy="660" r="7" fill="#B4B2A9"/>
+<text x="386" y="664" font-size="13" text-anchor="end" fill="#2C2C2A">IOA3 13</text>
+<circle cx="160" cy="702" r="7" fill="#B4B2A9"/>
+<text x="174" y="706" font-size="13" text-anchor="start" fill="#2C2C2A">27 IOB1</text>
+<circle cx="400" cy="702" r="7" fill="#B4B2A9"/>
+<text x="386" y="706" font-size="13" text-anchor="end" fill="#2C2C2A">IOA2 14</text>
+<circle cx="160" cy="744" r="7" fill="#B4B2A9"/>
+<text x="174" y="748" font-size="13" text-anchor="start" fill="#2C2C2A">26 IOB0</text>
+<circle cx="400" cy="744" r="7" fill="#B4B2A9"/>
+<text x="386" y="748" font-size="13" text-anchor="end" fill="#2C2C2A">IOA1 15</text>
+<circle cx="160" cy="786" r="7" fill="#B4B2A9"/>
+<text x="174" y="790" font-size="13" text-anchor="start" fill="#2C2C2A">25 /IRQ</text>
+<circle cx="400" cy="786" r="7" fill="#B4B2A9"/>
+<text x="386" y="790" font-size="13" text-anchor="end" fill="#2C2C2A">IOA0 16</text>
+<circle cx="160" cy="828" r="7" fill="#0F6E56"/>
+<text x="174" y="832" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">24 /IC</text>
+<text x="130" y="832" font-size="12" text-anchor="end" fill="#0F6E56">разъём 24</text>
+<circle cx="400" cy="828" r="7" fill="#0F6E56"/>
+<text x="386" y="832" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">AGND 17</text>
+<text x="418" y="832" font-size="12" text-anchor="start" fill="#0F6E56">разъём 17</text>
+<circle cx="160" cy="870" r="7" fill="#0F6E56"/>
+<text x="174" y="874" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">23 OP</text>
+<text x="130" y="874" font-size="12" text-anchor="end" fill="#0F6E56">разъём 23</text>
+<circle cx="400" cy="870" r="7" fill="#0F6E56"/>
+<text x="386" y="874" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">C 18</text>
+<text x="418" y="874" font-size="12" text-anchor="start" fill="#0F6E56">разъём 18</text>
+<circle cx="160" cy="912" r="7" fill="#0F6E56"/>
+<text x="174" y="916" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">22 SH</text>
+<text x="130" y="916" font-size="12" text-anchor="end" fill="#0F6E56">разъём 22</text>
+<circle cx="400" cy="912" r="7" fill="#0F6E56"/>
+<text x="386" y="916" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">B 19</text>
+<text x="418" y="916" font-size="12" text-anchor="start" fill="#0F6E56">разъём 19</text>
+<circle cx="160" cy="954" r="7" fill="#0F6E56"/>
+<text x="174" y="958" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">21 +5VA</text>
+<text x="130" y="958" font-size="12" text-anchor="end" fill="#0F6E56">разъём 21</text>
+<circle cx="400" cy="954" r="7" fill="#0F6E56"/>
+<text x="386" y="958" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">A 20</text>
+<text x="418" y="958" font-size="12" text-anchor="start" fill="#0F6E56">разъём 20</text>
+<text x="1150" y="92" font-size="16" text-anchor="middle" fill="#2C2C2A" font-weight="600">Разъём в слот U4 (смотрит вниз)</text>
+<text x="1150" y="112" font-size="12" text-anchor="middle" fill="#5F5E5A">ЗЕРКАЛЬНО панельке: ножка 1 СЛЕВА вверху</text>
+<rect x="1080" y="125" width="280" height="860" rx="6" fill="#F7F6F2" stroke="#5F5E5A"/>
+<path d="M1206 125 a14 14 0 0 0 28 0" fill="#fff" stroke="#5F5E5A"/>
+<text x="1220" y="150" font-size="11" text-anchor="middle" fill="#5F5E5A">ключ</text>
+<circle cx="1100" cy="156" r="7" fill="#993C1D"/>
+<text x="1114" y="160" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">1 GND</text>
+<text x="1070" y="160" font-size="12" text-anchor="end" fill="#993C1D">G RP, пан.1</text>
+<circle cx="1340" cy="156" r="7" fill="#993C1D"/>
+<text x="1326" y="160" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">D0 40</text>
+<text x="1358" y="160" font-size="12" text-anchor="start" fill="#993C1D">GP0</text>
+<circle cx="1100" cy="198" r="7" fill="#993C1D"/>
+<text x="1114" y="202" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">2 D1</text>
+<text x="1070" y="202" font-size="12" text-anchor="end" fill="#993C1D">GP1</text>
+<circle cx="1340" cy="198" r="7" fill="#993C1D"/>
+<text x="1326" y="202" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">S 39</text>
+<text x="1358" y="202" font-size="12" text-anchor="start" fill="#993C1D">пан.39</text>
+<circle cx="1100" cy="240" r="7" fill="#993C1D"/>
+<text x="1114" y="244" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">3 D2</text>
+<text x="1070" y="244" font-size="12" text-anchor="end" fill="#993C1D">GP2</text>
+<circle cx="1340" cy="240" r="7" fill="#993C1D"/>
+<text x="1326" y="244" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">φM 38</text>
+<text x="1358" y="244" font-size="12" text-anchor="start" fill="#993C1D">GP12, пан.38</text>
+<circle cx="1100" cy="282" r="7" fill="#993C1D"/>
+<text x="1114" y="286" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">4 D3</text>
+<text x="1070" y="286" font-size="12" text-anchor="end" fill="#993C1D">GP3</text>
+<circle cx="1340" cy="282" r="7" fill="#993C1D"/>
+<text x="1326" y="286" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">A0 37</text>
+<text x="1358" y="286" font-size="12" text-anchor="start" fill="#993C1D">GP11</text>
+<circle cx="1100" cy="324" r="7" fill="#993C1D"/>
+<text x="1114" y="328" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">5 D4</text>
+<text x="1070" y="328" font-size="12" text-anchor="end" fill="#993C1D">GP4</text>
+<circle cx="1340" cy="324" r="7" fill="#993C1D"/>
+<text x="1326" y="328" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">/RD 36</text>
+<text x="1358" y="328" font-size="12" text-anchor="start" fill="#993C1D">GP10</text>
+<circle cx="1100" cy="366" r="7" fill="#993C1D"/>
+<text x="1114" y="370" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">6 D5</text>
+<text x="1070" y="370" font-size="12" text-anchor="end" fill="#993C1D">GP5</text>
+<circle cx="1340" cy="366" r="7" fill="#993C1D"/>
+<text x="1326" y="370" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">/WR 35</text>
+<text x="1358" y="370" font-size="12" text-anchor="start" fill="#993C1D">GP9</text>
+<circle cx="1100" cy="408" r="7" fill="#993C1D"/>
+<text x="1114" y="412" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">7 D6</text>
+<text x="1070" y="412" font-size="12" text-anchor="end" fill="#993C1D">GP6</text>
+<circle cx="1340" cy="408" r="7" fill="#993C1D"/>
+<text x="1326" y="412" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">/CS 34</text>
+<text x="1358" y="412" font-size="12" text-anchor="start" fill="#993C1D">GP8</text>
+<circle cx="1100" cy="450" r="7" fill="#993C1D"/>
+<text x="1114" y="454" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">8 D7</text>
+<text x="1070" y="454" font-size="12" text-anchor="end" fill="#993C1D">GP7</text>
+<circle cx="1340" cy="450" r="7" fill="#B4B2A9"/>
+<text x="1326" y="454" font-size="13" text-anchor="end" fill="#2C2C2A">IOB7 33</text>
+<circle cx="1100" cy="492" r="7" fill="#B4B2A9"/>
+<text x="1114" y="496" font-size="13" text-anchor="start" fill="#2C2C2A">9 IOA7</text>
+<circle cx="1340" cy="492" r="7" fill="#B4B2A9"/>
+<text x="1326" y="496" font-size="13" text-anchor="end" fill="#2C2C2A">IOB6 32</text>
+<circle cx="1100" cy="534" r="7" fill="#B4B2A9"/>
+<text x="1114" y="538" font-size="13" text-anchor="start" fill="#2C2C2A">10 IOA6</text>
+<circle cx="1340" cy="534" r="7" fill="#B4B2A9"/>
+<text x="1326" y="538" font-size="13" text-anchor="end" fill="#2C2C2A">IOB5 31</text>
+<circle cx="1100" cy="576" r="7" fill="#B4B2A9"/>
+<text x="1114" y="580" font-size="13" text-anchor="start" fill="#2C2C2A">11 IOA5</text>
+<circle cx="1340" cy="576" r="7" fill="#B4B2A9"/>
+<text x="1326" y="580" font-size="13" text-anchor="end" fill="#2C2C2A">IOB4 30</text>
+<circle cx="1100" cy="618" r="7" fill="#B4B2A9"/>
+<text x="1114" y="622" font-size="13" text-anchor="start" fill="#2C2C2A">12 IOA4</text>
+<circle cx="1340" cy="618" r="7" fill="#B4B2A9"/>
+<text x="1326" y="622" font-size="13" text-anchor="end" fill="#2C2C2A">IOB3 29</text>
+<circle cx="1100" cy="660" r="7" fill="#B4B2A9"/>
+<text x="1114" y="664" font-size="13" text-anchor="start" fill="#2C2C2A">13 IOA3</text>
+<circle cx="1340" cy="660" r="7" fill="#B4B2A9"/>
+<text x="1326" y="664" font-size="13" text-anchor="end" fill="#2C2C2A">IOB2 28</text>
+<circle cx="1100" cy="702" r="7" fill="#B4B2A9"/>
+<text x="1114" y="706" font-size="13" text-anchor="start" fill="#2C2C2A">14 IOA2</text>
+<circle cx="1340" cy="702" r="7" fill="#B4B2A9"/>
+<text x="1326" y="706" font-size="13" text-anchor="end" fill="#2C2C2A">IOB1 27</text>
+<circle cx="1100" cy="744" r="7" fill="#B4B2A9"/>
+<text x="1114" y="748" font-size="13" text-anchor="start" fill="#2C2C2A">15 IOA1</text>
+<circle cx="1340" cy="744" r="7" fill="#B4B2A9"/>
+<text x="1326" y="748" font-size="13" text-anchor="end" fill="#2C2C2A">IOB0 26</text>
+<circle cx="1100" cy="786" r="7" fill="#B4B2A9"/>
+<text x="1114" y="790" font-size="13" text-anchor="start" fill="#2C2C2A">16 IOA0</text>
+<circle cx="1340" cy="786" r="7" fill="#B4B2A9"/>
+<text x="1326" y="790" font-size="13" text-anchor="end" fill="#2C2C2A">/IRQ 25</text>
+<circle cx="1100" cy="828" r="7" fill="#993C1D"/>
+<text x="1114" y="832" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">17 AGND</text>
+<text x="1070" y="832" font-size="12" text-anchor="end" fill="#993C1D">пан.17</text>
+<circle cx="1340" cy="828" r="7" fill="#993C1D"/>
+<text x="1326" y="832" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">/IC 24</text>
+<text x="1358" y="832" font-size="12" text-anchor="start" fill="#993C1D">GP13, пан.24</text>
+<circle cx="1100" cy="870" r="7" fill="#993C1D"/>
+<text x="1114" y="874" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">18 C</text>
+<text x="1070" y="874" font-size="12" text-anchor="end" fill="#993C1D">пан.18</text>
+<circle cx="1340" cy="870" r="7" fill="#993C1D"/>
+<text x="1326" y="874" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">OP 23</text>
+<text x="1358" y="874" font-size="12" text-anchor="start" fill="#993C1D">пан.23</text>
+<circle cx="1100" cy="912" r="7" fill="#993C1D"/>
+<text x="1114" y="916" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">19 B</text>
+<text x="1070" y="916" font-size="12" text-anchor="end" fill="#993C1D">пан.19</text>
+<circle cx="1340" cy="912" r="7" fill="#993C1D"/>
+<text x="1326" y="916" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">SH 22</text>
+<text x="1358" y="916" font-size="12" text-anchor="start" fill="#993C1D">пан.22</text>
+<circle cx="1100" cy="954" r="7" fill="#993C1D"/>
+<text x="1114" y="958" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">20 A</text>
+<text x="1070" y="958" font-size="12" text-anchor="end" fill="#993C1D">пан.20</text>
+<circle cx="1340" cy="954" r="7" fill="#993C1D"/>
+<text x="1326" y="958" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">+5VA 21</text>
+<text x="1358" y="958" font-size="12" text-anchor="start" fill="#993C1D">5V RP, пан.21</text>
+<text x="740" y="92" font-size="16" text-anchor="middle" fill="#2C2C2A" font-weight="600">Spotpear RP2350B</text>
+<text x="740" y="112" font-size="12" text-anchor="middle" fill="#5F5E5A">в центре, USB ВНИЗУ</text>
+<rect x="590" y="140" width="300" height="880" rx="6" fill="#EEEDFE" stroke="#534AB7"/>
+<circle cx="630" cy="150" r="6" fill="#B4B2A9"/>
+<text x="630" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">GP20</text>
+<circle cx="674" cy="150" r="6" fill="#B4B2A9"/>
+<text x="674" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">GP26</text>
+<circle cx="718" cy="150" r="6" fill="#B4B2A9"/>
+<text x="718" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">GP27</text>
+<circle cx="762" cy="150" r="6" fill="#B4B2A9"/>
+<text x="762" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">G</text>
+<circle cx="806" cy="150" r="6" fill="#B4B2A9"/>
+<text x="806" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">RST</text>
+<circle cx="850" cy="150" r="6" fill="#B4B2A9"/>
+<text x="850" y="134" font-size="10" text-anchor="middle" fill="#5F5E5A">G</text>
+<rect x="705" y="1008" width="70" height="26" rx="4" fill="#C9C7BE"/>
+<text x="740" y="1026" font-size="12" text-anchor="middle" fill="#2C2C2A">USB</text>
+<circle cx="604" cy="181" r="7" fill="#B4B2A9"/>
+<text x="618" y="185" font-size="13" text-anchor="start" fill="#2C2C2A">GP25</text>
+<circle cx="876" cy="181" r="7" fill="#534AB7"/>
+<text x="862" y="185" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP28</text>
+<text x="898" y="185" font-size="11" text-anchor="start" fill="#534AB7">панель 40 D0</text>
+<path d="M604 208 a7 7 0 0 0 0 14" fill="#B4B2A9"/>
+<text x="618" y="219" font-size="13" text-anchor="start" fill="#2C2C2A">GP24</text>
+<path d="M876 208 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="219" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP29</text>
+<text x="898" y="219" font-size="11" text-anchor="start" fill="#534AB7">панель 2 D1</text>
+<circle cx="604" cy="249" r="7" fill="#B4B2A9"/>
+<text x="618" y="253" font-size="13" text-anchor="start" fill="#2C2C2A">GP23</text>
+<circle cx="876" cy="249" r="7" fill="#534AB7"/>
+<text x="862" y="253" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP30</text>
+<text x="898" y="253" font-size="11" text-anchor="start" fill="#534AB7">панель 3 D2</text>
+<path d="M604 276 a7 7 0 0 0 0 14" fill="#B4B2A9"/>
+<text x="618" y="287" font-size="13" text-anchor="start" fill="#2C2C2A">GP22</text>
+<path d="M876 276 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="287" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP31</text>
+<text x="898" y="287" font-size="11" text-anchor="start" fill="#534AB7">панель 4 D3</text>
+<circle cx="604" cy="317" r="7" fill="#B4B2A9"/>
+<text x="618" y="321" font-size="13" text-anchor="start" fill="#2C2C2A">GP21</text>
+<circle cx="876" cy="317" r="7" fill="#534AB7"/>
+<text x="862" y="321" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP32</text>
+<text x="898" y="321" font-size="11" text-anchor="start" fill="#534AB7">панель 5 D4</text>
+<path d="M604 344 a7 7 0 0 0 0 14" fill="#B4B2A9"/>
+<text x="618" y="355" font-size="13" text-anchor="start" fill="#2C2C2A">GP19</text>
+<path d="M876 344 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="355" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP33</text>
+<text x="898" y="355" font-size="11" text-anchor="start" fill="#534AB7">панель 6 D5</text>
+<circle cx="604" cy="385" r="7" fill="#B4B2A9"/>
+<text x="618" y="389" font-size="13" text-anchor="start" fill="#2C2C2A">GP18</text>
+<circle cx="876" cy="385" r="7" fill="#534AB7"/>
+<text x="862" y="389" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP34</text>
+<text x="898" y="389" font-size="11" text-anchor="start" fill="#534AB7">панель 7 D6</text>
+<path d="M604 412 a7 7 0 0 0 0 14" fill="#B4B2A9"/>
+<text x="618" y="423" font-size="13" text-anchor="start" fill="#2C2C2A">GP17</text>
+<path d="M876 412 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="423" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP35</text>
+<text x="898" y="423" font-size="11" text-anchor="start" fill="#534AB7">панель 8 D7</text>
+<circle cx="604" cy="453" r="7" fill="#B4B2A9"/>
+<text x="618" y="457" font-size="13" text-anchor="start" fill="#2C2C2A">GP16</text>
+<circle cx="876" cy="453" r="7" fill="#534AB7"/>
+<text x="862" y="457" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP36</text>
+<text x="898" y="457" font-size="11" text-anchor="start" fill="#534AB7">панель 34 /CS</text>
+<path d="M604 480 a7 7 0 0 0 0 14" fill="#B4B2A9"/>
+<text x="618" y="491" font-size="13" text-anchor="start" fill="#2C2C2A">GP15</text>
+<path d="M876 480 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="491" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP37</text>
+<text x="898" y="491" font-size="11" text-anchor="start" fill="#534AB7">панель 35 /WR</text>
+<circle cx="604" cy="521" r="7" fill="#B4B2A9"/>
+<text x="618" y="525" font-size="13" text-anchor="start" fill="#2C2C2A">GP14</text>
+<circle cx="876" cy="521" r="7" fill="#534AB7"/>
+<text x="862" y="525" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP38</text>
+<text x="898" y="525" font-size="11" text-anchor="start" fill="#534AB7">панель 37 A0</text>
+<path d="M604 548 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="559" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP13</text>
+<text x="582" y="559" font-size="11" text-anchor="end" fill="#534AB7">разъём 24 /IC</text>
+<path d="M876 548 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="559" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">GP39</text>
+<text x="898" y="559" font-size="11" text-anchor="start" fill="#534AB7">панель 36 /RD</text>
+<circle cx="604" cy="589" r="7" fill="#534AB7"/>
+<text x="618" y="593" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP12</text>
+<text x="582" y="593" font-size="11" text-anchor="end" fill="#534AB7">разъём 38 φM</text>
+<circle cx="876" cy="589" r="7" fill="#B4B2A9"/>
+<text x="862" y="593" font-size="13" text-anchor="end" fill="#2C2C2A">GP40</text>
+<path d="M604 616 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="627" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP11</text>
+<text x="582" y="627" font-size="11" text-anchor="end" fill="#534AB7">разъём 37 A0</text>
+<path d="M876 616 a7 7 0 0 1 0 14" fill="#B4B2A9"/>
+<text x="862" y="627" font-size="13" text-anchor="end" fill="#2C2C2A">GP41</text>
+<circle cx="604" cy="657" r="7" fill="#534AB7"/>
+<text x="618" y="661" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP10</text>
+<text x="582" y="661" font-size="11" text-anchor="end" fill="#534AB7">разъём 36 /RD</text>
+<circle cx="876" cy="657" r="7" fill="#B4B2A9"/>
+<text x="862" y="661" font-size="13" text-anchor="end" fill="#2C2C2A">GP42</text>
+<path d="M604 684 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="695" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP9</text>
+<text x="582" y="695" font-size="11" text-anchor="end" fill="#534AB7">разъём 35 /WR</text>
+<path d="M876 684 a7 7 0 0 1 0 14" fill="#B4B2A9"/>
+<text x="862" y="695" font-size="13" text-anchor="end" fill="#2C2C2A">GP43</text>
+<circle cx="604" cy="725" r="7" fill="#534AB7"/>
+<text x="618" y="729" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP8</text>
+<text x="582" y="729" font-size="11" text-anchor="end" fill="#534AB7">разъём 34 /CS</text>
+<circle cx="876" cy="725" r="7" fill="#B4B2A9"/>
+<text x="862" y="729" font-size="13" text-anchor="end" fill="#2C2C2A">GP44</text>
+<path d="M604 752 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="763" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP7</text>
+<text x="582" y="763" font-size="11" text-anchor="end" fill="#534AB7">разъём 8 D7</text>
+<path d="M876 752 a7 7 0 0 1 0 14" fill="#B4B2A9"/>
+<text x="862" y="763" font-size="13" text-anchor="end" fill="#2C2C2A">GP45</text>
+<circle cx="604" cy="793" r="7" fill="#534AB7"/>
+<text x="618" y="797" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP6</text>
+<text x="582" y="797" font-size="11" text-anchor="end" fill="#534AB7">разъём 7 D6</text>
+<circle cx="876" cy="793" r="7" fill="#B4B2A9"/>
+<text x="862" y="797" font-size="13" text-anchor="end" fill="#2C2C2A">GP46</text>
+<path d="M604 820 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="831" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP5</text>
+<text x="582" y="831" font-size="11" text-anchor="end" fill="#534AB7">разъём 6 D5</text>
+<path d="M876 820 a7 7 0 0 1 0 14" fill="#B4B2A9"/>
+<text x="862" y="831" font-size="13" text-anchor="end" fill="#2C2C2A">GP47</text>
+<circle cx="604" cy="861" r="7" fill="#534AB7"/>
+<text x="618" y="865" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP4</text>
+<text x="582" y="865" font-size="11" text-anchor="end" fill="#534AB7">разъём 5 D4</text>
+<circle cx="876" cy="861" r="7" fill="#B4B2A9"/>
+<text x="862" y="865" font-size="13" text-anchor="end" fill="#2C2C2A">GND</text>
+<path d="M604 888 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="899" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP3</text>
+<text x="582" y="899" font-size="11" text-anchor="end" fill="#534AB7">разъём 4 D3</text>
+<path d="M876 888 a7 7 0 0 1 0 14" fill="#B4B2A9"/>
+<text x="862" y="899" font-size="13" text-anchor="end" fill="#2C2C2A">EN</text>
+<circle cx="604" cy="929" r="7" fill="#534AB7"/>
+<text x="618" y="933" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP2</text>
+<text x="582" y="933" font-size="11" text-anchor="end" fill="#534AB7">разъём 3 D2</text>
+<circle cx="876" cy="929" r="7" fill="#B4B2A9"/>
+<text x="862" y="933" font-size="13" text-anchor="end" fill="#2C2C2A">3V3</text>
+<path d="M604 956 a7 7 0 0 0 0 14" fill="#534AB7"/>
+<text x="618" y="967" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP1</text>
+<text x="582" y="967" font-size="11" text-anchor="end" fill="#534AB7">разъём 2 D1</text>
+<path d="M876 956 a7 7 0 0 1 0 14" fill="#534AB7"/>
+<text x="862" y="967" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">G</text>
+<text x="898" y="967" font-size="11" text-anchor="start" fill="#534AB7">разъём 1 GND</text>
+<circle cx="604" cy="997" r="7" fill="#534AB7"/>
+<text x="618" y="1001" font-size="13" text-anchor="start" fill="#2C2C2A" font-weight="600">GP0</text>
+<text x="582" y="1001" font-size="11" text-anchor="end" fill="#534AB7">разъём 40 D0</text>
+<circle cx="876" cy="997" r="7" fill="#534AB7"/>
+<text x="862" y="1001" font-size="13" text-anchor="end" fill="#2C2C2A" font-weight="600">5V</text>
+<text x="898" y="1001" font-size="11" text-anchor="start" fill="#534AB7">разъём 21 +5VA</text>
+<text x="30" y="1080" font-size="13" text-anchor="start" fill="#5F5E5A">RP: кружок — дырка, полукруг у края — площадка без дырки (нечётные ряды). /RD панельки (36) — ещё 10 кОм на +5VA (21), когда будет резистор.</text>
+<text x="30" y="1102" font-size="13" text-anchor="start" fill="#A32D2D">Не паять: GP19 (PSRAM), GP20 (светодиод), GP24 (VBUS), GP40–47 (АЦП, 5 В не терпят). Расположение RP — по фото распиновки, сверь с подписями на модуле.</text>
+</svg>
