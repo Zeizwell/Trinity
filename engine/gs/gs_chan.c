@@ -66,6 +66,13 @@ void gs_voice_set_pos(gs_voice_t *v, float pos) {
     v->rom_n = v->rom_k = 0, v->rom_quiet = 0;
 }
 
+void gs_voice_start(gs_voice_t *v, const int8_t *data, uint32_t len, float inc) {
+    v->data = data, v->len = len, v->loop_len = 0;
+    gs_voice_set_inc(v, inc);
+    gs_voice_set_pos(v, 0.0f);
+    v->idx = NO_IDX;
+}
+
 // Позиция вперёд, цикл, конец сэмпла. 1 - сэмпл ещё звучит
 static int voice_advance(gs_voice_t *v, uint64_t step) {
     if (!v->data || !v->on) return 0;
@@ -74,7 +81,14 @@ static int voice_advance(gs_voice_t *v, uint64_t step) {
         uint64_t end = (uint64_t)(v->loop_start + v->loop_len) << 32;
         if (v->pos >= end) v->pos -= (uint64_t)v->loop_len << 32;
     }
-    if ((uint32_t)(v->pos >> 32) >= v->len) { v->on = 0; return 0; }
+    if ((uint32_t)(v->pos >> 32) >= v->len) {
+        if (!v->next_data || !v->next_len) { v->on = 0; return 0; }
+        do {                                            // Паула: конец блока, встают AUDxLC и AUDxLEN
+            v->pos -= (uint64_t)v->len << 32;
+            v->data = v->next_data, v->len = v->next_len;
+        } while ((uint32_t)(v->pos >> 32) >= v->len);
+        v->idx = NO_IDX;
+    }
     return 1;
 }
 
@@ -209,6 +223,7 @@ static float voice_pwm(gs_voice_t *v, double p0, double d) {
 // Отсчёт сэмпла с учётом цикла, за краем - тишина
 static float smp_at(const gs_voice_t *v, int64_t i) {
     if (v->loop_len && i >= (int64_t)v->loop_start + v->loop_len) i -= v->loop_len;
+    if (i >= (int64_t)v->len && v->next_data && v->next_len) return v->next_data[(i - v->len) % v->next_len];
     return i >= 0 && i < (int64_t)v->len ? v->data[i] : 0.0f;
 }
 

@@ -335,6 +335,28 @@ int main(int argc, char **argv) {
     check("коре: код C4 -> OPL4", gs_core_port_peek(OPL4_CODE_C4), 0xFF);
     check("коре: чужой код", gs_core_port_peek(63), 0xFF);
 
+    {   // Блок как у Паулы: следующий встаёт в конце текущего, сменённый на лету - тоже не раньше
+        static const int8_t a[4] = { 40, 40, 40, 40 }, b[4] = { -40, -40, -40, -40 }, c[4] = { 20, 20, 20, 20 };
+        float mix[2];
+        gs_cfg_defaults();
+        gs_core_init();
+        gs_voice_t *v = &gs_voice[0];
+        v->vol = 64;
+        gs_voice_start(v, a, 4, 1.0f);
+        v->next_data = b, v->next_len = 4;
+        gs_chan_mix(mix, 1);
+        check("блок: в середине - текущий", v->data == a, 1);
+        v->next_data = c;
+        for (int i = 0; i < 2; i++) gs_chan_mix(mix, 1);
+        check("блок: смена следующего не рвёт", v->data == a, 1);
+        for (int i = 0; i < 2; i++) gs_chan_mix(mix, 1);
+        check("блок: в конце встал следующий", v->data == c && v->len == 4 && v->on, 1);
+        for (int i = 0; i < 20; i++) gs_chan_mix(mix, 1);
+        check("блок: крутится, не гаснет", v->data == c && v->on, 1);
+        gs_cfg_defaults();
+        gs_core_init();
+    }
+
     // Период как у Паулы: вступает на смене отсчёта, не раньше. Новая нота - сразу
     {
         static const int8_t tone[64] = { 40, -40, 40, -40, 40, -40, 40, -40 };

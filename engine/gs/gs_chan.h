@@ -12,6 +12,8 @@ typedef struct {
     uint32_t len;               // длина, байт
     uint32_t loop_start;
     uint32_t loop_len;          // 0 - без цикла
+    const int8_t *next_data;    // как AUDxLC / AUDxLEN Паулы: блок, который встанет после конца текущего. NULL - нет
+    uint32_t next_len;          // байт
     uint64_t pos;               // позиция 32.32
     uint64_t inc;               // шаг на отсчёт смешивания, 32.32
     uint64_t step;              // шаг на ступеньку GS_RS_STEP
@@ -44,6 +46,7 @@ void gs_chan_clear(int first, int n);        // только эти голоса
 void gs_voice_set_inc(gs_voice_t *v, float inc);   // шаг на отсчёт смешивания
 void gs_voice_period(gs_voice_t *v, float inc);    // шаг от плеера: при BLEP вступит на смене отсчёта, иначе сразу
 void gs_voice_set_pos(gs_voice_t *v, float pos);
+void gs_voice_start(gs_voice_t *v, const int8_t *data, uint32_t len, float inc);    // старт DMA: блок с начала, период сразу
 void gs_chan_rate(uint32_t from, uint32_t to);   // сменилась частота смешивания: пересчитать шаги голосов
 // Добавить звук каналов к буферу (L, R, L, R...), n отсчётов
 void gs_chan_mix(float *out, int n);
