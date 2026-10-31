@@ -1,0 +1,1 @@
+pocketmod.h - github.com/rombankzero/pocketmod, MIT (see README of the project). Copied unchanged.
