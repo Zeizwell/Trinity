@@ -62,11 +62,11 @@ static void chan_to_voice(int i) {
     v->loop_start = loop_start;
     v->loop_len = loop_len > 2 && loop_start + loop_len <= smp->length ? loop_len : 0;
     v->vol = (uint8_t)(ch->real_volume * vol_module / 64 * vol_master / 64);
-    gs_voice_set_inc(v, ch->increment);
-    if (ch->position >= 0.0f) {
+    if (ch->position >= 0.0f) {                         // новая нота: старт DMA, период сразу
+        gs_voice_set_inc(v, ch->increment);
         gs_voice_set_pos(v, ch->position);
         ch->position = POS_OURS;
-    }
+    } else gs_voice_period(v, ch->increment);
 }
 
 // Режим сменил частоту: темп и высота должны остаться те же

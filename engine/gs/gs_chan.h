@@ -16,6 +16,7 @@ typedef struct {
     uint64_t inc;               // шаг на отсчёт смешивания, 32.32
     uint64_t step;              // шаг на ступеньку GS_RS_STEP
     float    inc_f;             // тот же шаг в float: только для доли фронта BLEP
+    float    inc_next;          // GS_RS_BLEP: новый шаг ждёт смены отсчёта, как период Паулы. 0 - не ждёт
     uint8_t  on;                // 0 - сэмпл кончился
     uint8_t  vol;               // 0..64
     float    held;              // текущая ступенька, -1..1
@@ -41,6 +42,7 @@ extern gs_voice_t gs_voice[GS_VOICES_MAX];
 void gs_chan_reset(void);
 void gs_chan_clear(int first, int n);        // только эти голоса: модуль не трогает эффекты
 void gs_voice_set_inc(gs_voice_t *v, float inc);   // шаг на отсчёт смешивания
+void gs_voice_period(gs_voice_t *v, float inc);    // шаг от плеера: при BLEP вступит на смене отсчёта, иначе сразу
 void gs_voice_set_pos(gs_voice_t *v, float pos);
 void gs_chan_rate(uint32_t from, uint32_t to);   // сменилась частота смешивания: пересчитать шаги голосов
 // Добавить звук каналов к буферу (L, R, L, R...), n отсчётов

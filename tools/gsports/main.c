@@ -335,6 +335,35 @@ int main(int argc, char **argv) {
     check("коре: код C4 -> OPL4", gs_core_port_peek(OPL4_CODE_C4), 0xFF);
     check("коре: чужой код", gs_core_port_peek(63), 0xFF);
 
+    // Период как у Паулы: вступает на смене отсчёта, не раньше. Новая нота - сразу
+    {
+        static const int8_t tone[64] = { 40, -40, 40, -40, 40, -40, 40, -40 };
+        float mix[2];
+        gs_cfg_defaults();
+        gs_core_init();
+        gs_voice_t *v = &gs_voice[0];
+        v->data = tone, v->len = 64, v->vol = 64;
+        gs_voice_set_inc(v, 0.1f);
+        gs_voice_set_pos(v, 0.0f);
+        gs_chan_mix(mix, 1);
+        gs_voice_period(v, 0.2f);
+        check("период: сразу не вступил", v->inc_f == 0.1f, 1);
+        gs_chan_mix(mix, 1);
+        check("период: посреди отсчёта ждёт", v->inc_f == 0.1f, 1);
+        for (int i = 0; i < 12; i++) gs_chan_mix(mix, 1);
+        check("период: на смене отсчёта вступил", v->inc_f == 0.2f && v->inc_next == 0.0f, 1);
+        gs_voice_period(v, 0.3f);
+        gs_voice_set_inc(v, 0.4f);
+        gs_voice_set_pos(v, 0.0f);
+        check("период: новая нота отменяет ожидание", v->inc_f == 0.4f && v->inc_next == 0.0f, 1);
+        gs_cfg_mode(GS_MODE_GS);
+        gs_voice_set_inc(v, 0.1f);
+        gs_voice_period(v, 0.2f);
+        check("период: GS - сразу", v->inc_f == 0.2f, 1);
+        gs_cfg_defaults();
+        gs_core_init();
+    }
+
     // Кривая для драйвера: дБ x10 при 48 кГц. Эталон - RC 4421 Гц и LED 3091 Гц со схемы
     gs_cfg_defaults();
     gs_filter_init(48000.0f);

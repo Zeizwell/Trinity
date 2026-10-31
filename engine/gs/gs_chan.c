@@ -46,14 +46,23 @@ void gs_voice_set_inc(gs_voice_t *v, float inc) {
     v->ratio = inc > 0.0f ? (uint32_t)(65536.0 * hold / ((double)inc * mix)) : 0;
 }
 
+void gs_voice_period(gs_voice_t *v, float inc) {
+    if (inc == v->inc_f) { v->inc_next = 0.0f; return; }
+    if (gs_cfg.resample == GS_RS_BLEP && v->inc && v->on) v->inc_next = inc;
+    else gs_voice_set_inc(v, inc), v->inc_next = 0.0f;
+}
+
 void gs_chan_rate(uint32_t from, uint32_t to) {
-    for (int i = 0; i < GS_VOICES_MAX; i++)
+    for (int i = 0; i < GS_VOICES_MAX; i++) {
+        gs_voice[i].inc_next = 0.0f;
         if (gs_voice[i].inc) gs_voice_set_inc(&gs_voice[i], gs_voice[i].inc_f * (float)from / (float)to);
+    }
 }
 
 void gs_voice_set_pos(gs_voice_t *v, float pos) {
     v->pos = (uint64_t)((double)pos * Q_ONE);
     v->on = 1;
+    v->inc_next = 0.0f;
     v->rom_n = v->rom_k = 0, v->rom_quiet = 0;
 }
 
@@ -161,6 +170,10 @@ static float voice_pwm(gs_voice_t *v, double p0, double d) {
             if (o >= 1.0f) o = 0.0f;
             s_new = v->data[i] * (1.0f / 128.0f), vol_new = v->vol;
             v->idx = i;
+            if (v->inc_next != 0.0f) {
+                gs_voice_set_inc(v, v->inc_next);
+                v->inc_next = 0.0f;
+            }
             te = d * (1.0 - o);
             ev[n++] = te;
         }
@@ -275,6 +288,10 @@ static void voice_block(gs_voice_t *v, int c, int n) {
                 offset = v->inc_f > 0.0f ? (float)(uint32_t)v->pos * (1.0f / 4294967296.0f) / v->inc_f : 0.0f;
                 if (offset >= 1.0f) offset = 0.0f;
                 v->idx = i;
+                if (v->inc_next != 0.0f) {              // Паула берёт период здесь, на смене отсчёта
+                    gs_voice_set_inc(v, v->inc_next);
+                    v->inc_next = 0.0f;
+                }
             }
         } else v->idx = NO_IDX;
         if (level != b->last) {
