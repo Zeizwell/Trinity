@@ -23,7 +23,13 @@ static uint8_t ring[RING_SIZE];
 static volatile uint32_t ring_wr, ring_rd;
 
 static uint8_t *ram;
-static uint32_t ram_size;
+static uint32_t ram_cap;                           // сколько есть на самом деле
+
+// Сколько видит GS: глобальная настройка, но не больше, чем есть. Читаем каждый раз - драйвер меняет на лету
+static uint32_t ram_size(void) {
+    uint32_t want = gs_cfg.gs_ram_kb * 1024u;
+    return want < ram_cap ? want : ram_cap;
+}
 static volatile uint32_t ram_used;
 static volatile uint8_t stream, stream_xor;        // xor: беззнаковый сэмпл эффекта -> со знаком
 
@@ -161,10 +167,10 @@ static void cmd_run(uint8_t c) {
     case 0x00: case 0x08:                           // сброс флагов
         bit_data = 0;
         break;
-    case 0x20: send_ram(ram_size); break;
-    case 0x21: send_ram(ram_size - ram_used); break;
+    case 0x20: send_ram(ram_size()); break;
+    case 0x21: send_ram(ram_size() > ram_used ? ram_size() - ram_used : 0); break;
     case 0x23: {                                    // номер последней страницы: база 128К - 3
-        uint32_t pages = ram_size / PAGE_SIZE;
+        uint32_t pages = ram_size() / PAGE_SIZE;
         data_out(pages > 255 ? 255 : pages ? (uint8_t)(pages - 1) : 0);
         break;
     }
@@ -309,7 +315,7 @@ static uint8_t dev_port_read(uint8_t code) {
 static void ring_drain(void) {
     while (ring_rd != ring_wr) {
         uint8_t v = ring[ring_rd & (RING_SIZE - 1)];
-        if (ram_used < ram_size) ram[ram_used] = v, ram_used++;
+        if (ram_used < ram_size()) ram[ram_used] = v, ram_used++;
         ring_rd++;
     }
     if (stream) bit_data = 0;                       // Z80 ждал места
@@ -347,7 +353,7 @@ const gs_dev_t gs_dev_gs = {
 };
 
 void gs_gs_set_ram(void *mem, uint32_t size) {
-    ram = (uint8_t *)mem, ram_size = size;
+    ram = (uint8_t *)mem, ram_cap = size;
     ram_used = 0;
 }
 

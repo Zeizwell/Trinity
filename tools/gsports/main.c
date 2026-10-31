@@ -129,6 +129,11 @@ int main(int argc, char **argv) {
     // Память
     sc(0x20);
     check("#20 всего", gd3(), RAM_SIZE);
+    gs_cfg.gs_ram_kb = 64;                          // настройка меняется на лету
+    sc(0x20);
+    check("#20 по настройке", gd3(), 65536);
+    gs_cfg_defaults();
+
     sc(0x21);
     check("#21 свободно", gd3(), RAM_SIZE);
     sc(0x23);
