@@ -46,6 +46,7 @@ extern gs_cfg_t gs_cfg;
 void gs_cfg_defaults(void);
 uint32_t gs_cfg_mix_hz(void);            // частота смешивания
 void gs_cfg_mode(gs_mode_t mode);       // выставить переменные режима
+void gs_cfg_set_resample(gs_resample_t r);  // выбор пересчёта, частота вывода следует за ним
 const char *gs_cfg_mode_name(gs_mode_t mode);
 
 #endif
