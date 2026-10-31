@@ -16,6 +16,12 @@ static volatile uint8_t reg_cmd, reg_in, reg_out;
 static volatile uint8_t bit_cmd, bit_data;
 
 // Память модулей. Поток пишет шина, пока stream = 1
+// Поток: шина кладёт в кольцо в ОЗУ, ядро 0 перекладывает в память. Почти полно - бит данных в 1, Z80 ждёт по протоколу
+#define RING_SIZE 16384u
+#define RING_HIGH (RING_SIZE - 64u)
+static uint8_t ring[RING_SIZE];
+static volatile uint32_t ring_wr, ring_rd;
+
 static uint8_t *ram;
 static uint32_t ram_size;
 static volatile uint32_t ram_used;
@@ -58,7 +64,7 @@ static uint8_t mark_changed(uint8_t v, uint8_t *old) {
 static void vol_apply(void) { gs_mod_set_vol(vol_master, vol_module); }
 
 static void vars_reset(void) {
-    stream = 0, stream_xor = 0, ram_used = 0, mod_base = 0, mod_size = 0;
+    stream = 0, stream_xor = 0, ring_wr = ring_rd = 0, ram_used = 0, mod_base = 0, mod_size = 0;
     fx_cur = fx_loading = 0;
     fx_vol_a = fx_vol_b = VOL_MAX;
     arg_need = arg_k = 0;
@@ -280,28 +286,54 @@ static void dev_port_write(uint8_t code, uint8_t v) {
     if (code == GS_PORT_BB) {
         reg_cmd = v, bit_cmd = 1;
     } else if (stream) {
-        if (ram_used < ram_size) ram[ram_used++] = v ^ stream_xor;
+        uint32_t fill = ring_wr - ring_rd;
+        if (fill < RING_SIZE) ring[ring_wr & (RING_SIZE - 1)] = v ^ stream_xor, ring_wr++;
+        if (fill >= RING_HIGH) bit_data = 1;
     } else {
         reg_in = v, bit_data = 1;
     }
 }
 
-static uint8_t dev_port_read(uint8_t code) {
+static uint8_t dev_port_peek(uint8_t code) {
     if (code == GS_PORT_BB) return (uint8_t)(bit_data << 7 | 0x7E | bit_cmd);   // биты 1..6 на GS не определены
-    bit_data = 0;
     return reg_out;
 }
 
+static uint8_t dev_port_read(uint8_t code) {
+    uint8_t v = dev_port_peek(code);
+    if (code != GS_PORT_BB) bit_data = 0;
+    return v;
+}
+
+// Поток из кольца в память
+static void ring_drain(void) {
+    while (ring_rd != ring_wr) {
+        uint8_t v = ring[ring_rd & (RING_SIZE - 1)];
+        if (ram_used < ram_size) ram[ram_used] = v, ram_used++;
+        ring_rd++;
+    }
+    if (stream) bit_data = 0;                       // Z80 ждал места
+}
+
 static void dev_work(void) {
+    if (ring_rd != ring_wr) ring_drain();
     if (bit_cmd) {
+        ring_drain();                               // до команды: #D2 должен видеть все байты
+        gs_core_lock();
         send_n = send_k = 0;                        // новая команда отменяет недосланный ответ, как HSEND в ROM
         arg_need = arg_k = 0;
         cmd_run(reg_cmd);
+        gs_core_unlock();
         bit_cmd = 0;                                // после выполнения: по этому биту Спектрум читает ответ
     } else if (arg_k < arg_need) {
         if (bit_data) {
             arg_buf[arg_k++] = data_in();
-            if (arg_k == arg_need) arg_need = arg_k = 0, args_done();
+            if (arg_k == arg_need) {
+                arg_need = arg_k = 0;
+                gs_core_lock();
+                args_done();
+                gs_core_unlock();
+            }
         }
     } else if (send_k < send_n && !bit_data) {
         data_out(send_buf[send_k++]);
@@ -311,7 +343,7 @@ static void dev_work(void) {
 static void dev_audio(float *out, int n) { gs_mod_audio(out, n); }
 
 const gs_dev_t gs_dev_gs = {
-    "GS", dev_enabled, dev_reset, dev_sound_stop, dev_port_write, dev_port_read, dev_work, dev_audio
+    "GS", dev_enabled, dev_reset, dev_sound_stop, dev_port_write, dev_port_read, dev_port_peek, dev_work, dev_audio
 };
 
 void gs_gs_set_ram(void *mem, uint32_t size) {

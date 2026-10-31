@@ -6,11 +6,11 @@
 
 #define PIN_PSRAM_CS 19
 
-// Сроки при 150 МГц, CLKDIV 2 = 75 МГц (APS6404: до 84 МГц на страницах 1 КБ)
-#define CLKDIV     2
-#define RXDELAY    2
-#define MAX_SELECT 18           // 8 мкс (обновление чипа), в единицах 64 такта
-#define MIN_DESEL  7            // 50 нс, в тактах
+// Сроки при 250 МГц, CLKDIV 3 = 83 МГц (APS6404: до 84 МГц на страницах 1 КБ)
+#define CLKDIV     3
+#define RXDELAY    3
+#define MAX_SELECT 31           // 8 мкс (обновление чипа), в единицах 64 такта
+#define MIN_DESEL  13            // 50 нс, в тактах
 
 // Один байт команды, прямым режимом
 static uint32_t direct(uint32_t tx) {

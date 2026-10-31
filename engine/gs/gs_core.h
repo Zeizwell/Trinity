@@ -12,11 +12,16 @@ typedef struct {
     void (*sound_stop)(void);               // замолчать: его вытеснил другой
     void (*port_write)(uint8_t code, uint8_t v);    // шина: только быстро
     uint8_t (*port_read)(uint8_t code);     // шина: только быстро
+    uint8_t (*port_peek)(uint8_t code);     // что отдаст чтение, без последствий: для образа в PIO
     void (*work)(void);                     // ядро 0: команды, загрузка
     void (*audio)(float *out, int n);       // ядро 1: добавить звук к буферу
 } gs_dev_t;
 
 void gs_core_init(void);
+// Замок ядра 0 (меняет голоса, модуль) и ядра 1 (считает звук). Шина его не берёт. На ПК - нет
+void gs_core_set_lock(void (*lock)(void), void (*unlock)(void));
+void gs_core_lock(void);
+void gs_core_unlock(void);
 void gs_core_claim(const gs_dev_t *dev);    // устройство начало играть: последний выключает мешающего (п.37)
 const gs_dev_t *gs_core_active(void);       // кто звучит, NULL - никто
 void gs_core_work(void);                     // ядро 0: команды всех устройств

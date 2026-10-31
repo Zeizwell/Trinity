@@ -54,7 +54,9 @@ static void render(int i) {
         rate_now = gs_cfg.rate_hz;
         pio_sm_set_clkdiv(pio, sm_out, (float)clock_get_hz(clk_sys) / (float)(rate_now * 64u * 2u));
     }
+    gs_core_lock();
     gs_core_audio(mix, AUDIO_FRAMES);
+    gs_core_unlock();
     for (int s = 0; s < AUDIO_FRAMES * 2; s++) out[s] = (int32_t)(mix[s] * FLOAT_TO_I32);
 }
 

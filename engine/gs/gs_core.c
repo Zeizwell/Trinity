@@ -13,6 +13,11 @@ static const gs_dev_t *const dev_list[] = { &gs_dev_gs, &gs_dev_opl4 };
 
 static const gs_dev_t *active;
 static uint32_t rate_now;
+static void (*lock_fn)(void), (*unlock_fn)(void);
+
+void gs_core_set_lock(void (*lock)(void), void (*unlock)(void)) { lock_fn = lock, unlock_fn = unlock; }
+void gs_core_lock(void) { if (lock_fn) lock_fn(); }
+void gs_core_unlock(void) { if (unlock_fn) unlock_fn(); }
 
 void gs_core_init(void) {
     gs_cfg_defaults();

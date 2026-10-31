@@ -49,13 +49,16 @@ static int gd(void) {
 
 static int gd3(void) { int a = gd(), b = gd(), c = gd(); return a | b << 8 | c << 16; }
 
-// Как пример в FULGSCOM: #30, #D1, байты, #D2. Между байтами ядро 0 не работает: поток идёт по шине
+// Как пример в FULGSCOM: #30, #D1, байты, #D2. Ядро 0 работает, только когда Z80 ждёт: самый плохой случай для кольца
 static int load(const uint8_t *m, int size) {
     sc(0x30);
     int h = gs_dev_gs.port_read(GS_PORT_B3);
     sc(0xD1);
     for (int i = 0; i < size; i++) {
-        if (st() & 0x80) { printf("бит данных в потоке\n"); fails++; }
+        for (int w = 0; st() & 0x80; w++) {      // WD: кольцо почти полно - Z80 ждёт
+            if (w > 16) { printf("бит данных завис\n"); fails++; break; }
+            gs_dev_gs.work();
+        }
         sd(m[i]);
     }
     sc(0xD2);

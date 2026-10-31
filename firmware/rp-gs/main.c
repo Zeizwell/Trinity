@@ -5,7 +5,11 @@
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "psram.h"
+#include "config.h"
 #include "audio.h"
+#include "bus.h"
+#include "hardware/sync.h"
+#include "hardware/vreg.h"
 #include "hardware/gpio.h"
 #include "gs/gs_core.h"
 #include "gs/gs_cfg.h"
@@ -105,15 +109,58 @@ static void live_stat(void) {
            (unsigned long)audio_stat.top_us, (unsigned long)(audio_stat.top_us * 100 / budget), (unsigned long)audio_stat.late);
 }
 
+#define GS_RAM_SIZE (4u << 20)       // рабочее значение, п.60 не решён
+static spin_lock_t *engine_lock;
+static void lock_on(void) { spin_lock_unsafe_blocking(engine_lock); }
+static void lock_off(void) { spin_unlock_unsafe(engine_lock); }
+
+// Обмен как у Z80 с настоящей RP: те же действия шины, ядро 0 работает между ними, звук идёт на ядре 1
+static void gs_wait_cmd(void) { while (gs_dev_gs.port_peek(GS_PORT_BB) & 1) { gs_core_work(); bus_answer(); } }
+static void z80_sc(uint8_t c) { bus_inject_wr(0, c); gs_wait_cmd(); }
+static void z80_sd(uint8_t v) { bus_inject_wr(1, v); }
+static int z80_gd(void) { while (!(gs_dev_gs.port_peek(GS_PORT_BB) & 0x80)) { gs_core_work(); bus_answer(); } return bus_inject_rd(1); }
+
+static void exchange(const uint8_t *mod, int size) {
+    uint32_t late0 = audio_stat.late;
+    z80_sc(0x30);
+    int h = bus_inject_rd(1);
+    z80_sc(0xD1);
+    uint64_t t = time_us_64();
+    uint32_t waits = 0;
+    for (int i = 0; i < size; i++) {
+        while (gs_dev_gs.port_peek(GS_PORT_BB) & 0x80) { waits++; gs_core_work(); bus_answer(); }
+        z80_sd(mod[i]);
+        if ((i & 255) == 255) { gs_core_work(); bus_answer(); }
+    }
+    z80_sc(0xD2);
+    uint32_t us = (uint32_t)(time_us_64() - t);
+    int bad = 0;
+    for (int i = 0; i < size; i++) if (PSRAM_BASE[i] != mod[i]) bad++;
+    printf("загрузка: номер %d, %d байт за %lu мс (%lu нс на байт), ждал %lu раз, не совпало %d\n", h, size,
+           (unsigned long)(us / 1000), (unsigned long)((uint64_t)us * 1000 / (unsigned)size), (unsigned long)waits, bad);
+    z80_sd(0);
+    z80_sc(0x31);
+    printf("#31 ответ %d\n", bus_inject_rd(1));
+    sleep_ms(1500);
+    z80_sc(0x60); int song = z80_gd();
+    z80_sc(0x61); int row = z80_gd();
+    z80_sc(0x20); int r0 = z80_gd(), r1 = z80_gd(), r2 = z80_gd();
+    printf("позиция %d, строка %d, память %d, блоков %lu, опозданий %lu\n", song, row, r0 | r1 << 8 | r2 << 16,
+           (unsigned long)audio_stat.blocks, (unsigned long)(audio_stat.late - late0));
+    printf("обработчик шины: самый долгий %lu тактов (%lu нс), бюджет 850 нс\n", (unsigned long)bus_irq_top(), (unsigned long)(bus_irq_top() * 1000 / (SYS_KHZ / 1000)));
+}
+
 // Модуль из PSRAM на двух ядрах. Назад в замеры - только перезапуск
 static void live(const uint8_t *mod, int size) {
-    printf("PSRAM id %06lX\n", (unsigned long)psram_init());
-    memcpy(PSRAM_BASE, mod, (size_t)size);
+    printf("PSRAM id %06lX, тест %lu\n", (unsigned long)psram_init(), (unsigned long)psram_test(1u << 20));
     gs_core_init();
-    gs_gs_play_mod(PSRAM_BASE, size);
+    gs_core_set_lock(lock_on, lock_off);
+    gs_gs_set_ram(PSRAM_BASE, GS_RAM_SIZE);
     audio_start();
-    sleep_ms(100);
+    bus_start();
+    sleep_ms(50);
     check_format();
+    exchange(mod, size);
     for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) {
         gs_cfg_mode((gs_mode_t)m);
         sleep_ms(100);
@@ -121,11 +168,19 @@ static void live(const uint8_t *mod, int size) {
     }
     gs_cfg_mode(GS_MODE_A1200);
     printf("готово\n");
-    for (;;) { live_stat(); sleep_ms(4000); }
+    for (;;) {                                      // рабочий цикл ядра 0: спит, будит шина
+        gs_core_work();
+        bus_answer();
+        __wfe();
+    }
 }
 
 int main(void) {
+    vreg_set_voltage(VREG_VOLTAGE_1_15);            // под 250 МГц, как RP-AY
+    sleep_ms(2);
+    set_sys_clock_khz(SYS_KHZ, true);
     stdio_init_all();
+    engine_lock = spin_lock_init(spin_lock_claim_unused(true));
     int size = (int)(mod_end - mod_bin);
     for (;;) {
         int c = getchar_timeout_us(1000000);
