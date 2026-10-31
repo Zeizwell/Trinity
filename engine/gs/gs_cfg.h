@@ -7,7 +7,12 @@
 
 typedef enum { GS_MODE_GS, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
 typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM, GS_RS_CUBIC } gs_resample_t;     // пересчёт: ступеньки / BLEP / линейная / как ROM GS / кубическая
-typedef enum { GS_LP_OFF, GS_LP_A500, GS_LP_A1200 } gs_lp_t;             // ФНЧ платы
+enum { GS_ST_RC, GS_ST_LP, GS_ST_LED, GS_ST_HP, GS_ST_COUNT };           // ступени цепочки фильтров, в порядке звука (п.48г)
+typedef struct {
+    double  hz;                 // срез, Гц
+    double  q;                  // добротность: только GS_ST_LED
+    uint8_t on;                 // 0 / 1. У GS_ST_LED вместо этого gs_cfg.led
+} gs_stage_t;
 typedef enum { GS_LED_OFF, GS_LED_MODULE, GS_LED_ON } gs_led_t;          // LED-фильтр: выкл / по команде E0x / всегда
 
 typedef struct {
@@ -28,10 +33,8 @@ typedef struct {
     uint8_t  pwm;               // GS_RS_BLEP: громкость ШИМ, как Paula (0 - умножение)
     uint8_t  ramp;              // плавность громкости 1-2 мс: 0 / 1
     uint8_t  stereo_pct;        // ширина стерео, %: 100 - жёстко L R R L, 0 - моно
-    gs_lp_t  lp;                // ФНЧ платы
+    gs_stage_t st[GS_ST_COUNT]; // фильтры: числа со схем, пресет их выставляет, менять можно на лету
     gs_led_t led;               // LED-фильтр
-    uint8_t  hp;                // ФВЧ ~5 Гц: 0 / 1
-    uint8_t  rc16k;             // RC после ЦАП GS (1 кОм + 10 нФ, схема MultiSound): 0 / 1
     // --- общие ручки: на все режимы, смена режима их не меняет. Сумма с окраской режима - в пределах -12..12 дБ
     int8_t   bass_db;           // НЧ, -12..12 дБ, 0 - не трогать
     int8_t   treble_db;         // ВЧ, -12..12 дБ, 0 - не трогать

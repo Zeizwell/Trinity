@@ -8,7 +8,7 @@
 
 #define STORE_OFF   (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)     // последний сектор
 #define STORE_MAGIC 0x53474654u
-#define STORE_VER   2u
+#define STORE_VER   3u
 
 typedef struct {
     uint32_t magic, ver, size, sum;

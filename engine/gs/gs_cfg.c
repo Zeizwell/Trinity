@@ -1,3 +1,5 @@
+#include <math.h>
+#include <string.h>
 #include "gs_cfg.h"
 
 #ifndef GS_RATE_GS
@@ -20,6 +22,21 @@ void gs_cfg_defaults(void) {
 
 uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
 
+// Числа со схем, все ступени выключены: включает пресет
+#define GS_PI 3.14159265358979
+#define RC_HZ(r, c) (1.0 / (2.0 * GS_PI * (r) * (c)))
+static void stages_schematic(void) {
+    double r1 = 1e4, r2 = 1e4, c1 = 6.8e-9, c2 = 3.9e-9;        // LED, Саллен-Ки: одинаков на A500 и A1200
+    double sq = sqrt(r1 * r2 * c1 * c2);
+    gs_stage_t *st = gs_cfg.st;
+    memset(st, 0, sizeof gs_cfg.st);
+    st[GS_ST_RC].hz = RC_HZ(1000.0, 1e-8);                      // ~15.9 кГц: R45/C32, R50/C47 MultiSound
+    st[GS_ST_LP].hz = RC_HZ(360.0, 1e-7);                       // ~4421 Гц: A500
+    st[GS_ST_LED].hz = 1.0 / (2.0 * GS_PI * sq);                // ~3091 Гц
+    st[GS_ST_LED].q = sq / (c2 * (r1 + r2));                    // ~0.66
+    st[GS_ST_HP].hz = RC_HZ(1360.0, 2.2e-5);                    // ~5.3 Гц: A1200
+}
+
 // Пересчёт руками: уже не канон. Частота вывода - не настройка, следует за пересчётом: ROM GS - свой ЦАП, остальные 48 кГц
 void gs_cfg_set_resample(gs_resample_t r) {
     gs_cfg.resample = r;
@@ -31,24 +48,25 @@ void gs_cfg_set_resample(gs_resample_t r) {
 void gs_cfg_mode(gs_mode_t mode) {
     gs_cfg.mode = mode;
     if (mode == GS_MODE_CUSTOM) return;         // переменные - как есть
-    gs_cfg.rc16k = 0;
+    stages_schematic();
     gs_cfg.color_bass_db = gs_cfg.color_treble_db = 0, gs_cfg.comp = 0;
     switch (mode) {
     case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц прямо в ЦАП, RC после ЦАП
         gs_cfg.resample = GS_RS_ROM, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
-        gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 0, gs_cfg.rc16k = 1;
+        gs_cfg.led = GS_LED_OFF, gs_cfg.st[GS_ST_RC].on = 1;
         break;
     case GS_MODE_A500:
         gs_cfg.resample = GS_RS_BLEP, gs_cfg.pwm = 0, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
-        gs_cfg.lp = GS_LP_A500, gs_cfg.led = GS_LED_MODULE, gs_cfg.hp = 1;
+        gs_cfg.led = GS_LED_MODULE, gs_cfg.st[GS_ST_LP].on = 1, gs_cfg.st[GS_ST_HP].on = 1;
+        gs_cfg.st[GS_ST_HP].hz = RC_HZ(1390.0, 2.233e-5);    // ~5.1 Гц
         break;
     case GS_MODE_A1200:
         gs_cfg.resample = GS_RS_BLEP, gs_cfg.pwm = 0, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
-        gs_cfg.lp = GS_LP_A1200, gs_cfg.led = GS_LED_MODULE, gs_cfg.hp = 1;
+        gs_cfg.led = GS_LED_MODULE, gs_cfg.st[GS_ST_HP].on = 1;     // ФНЧ A1200 ~34 кГц: не слышно, не считаем (как pt2-clone)
         break;
     case GS_MODE_HIFI:
         gs_cfg.resample = GS_RS_CUBIC, gs_cfg.ramp = 1, gs_cfg.stereo_pct = 70;
-        gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 1;
+        gs_cfg.led = GS_LED_OFF, gs_cfg.st[GS_ST_HP].on = 1;
         gs_cfg.color_bass_db = 4, gs_cfg.color_treble_db = 5, gs_cfg.comp = 1;
         break;
     default:

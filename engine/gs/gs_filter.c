@@ -6,10 +6,10 @@
 
 #define GS_PI 3.14159265358979
 
-typedef struct { float a0, b1, s[2]; } pole1_t;
-typedef struct { float a1, a2, b1, b2, s[2][4]; } pole2_t;
+typedef struct { float a0, b1, s[2]; double hz; } pole1_t;
+typedef struct { float b0, b1, a1, a2, s[2][4]; double hz, q; } pole2_t;
 
-static pole1_t lp_a500, hp_a500, hp_a1200, rc16k;
+static pole1_t rc, lp, hp;
 static pole2_t led;
 int gs_led_module;
 
@@ -39,31 +39,71 @@ static float shelf_run(shelf_t *f, int c, float x) {
     return y;
 }
 
-static void pole1_set(pole1_t *f, double rate, double cut) {
-    double b = exp(-2.0 * GS_PI * cut / rate);
-    f->b1 = (float)b, f->a0 = (float)(1.0 - b), f->s[0] = f->s[1] = 0.0f;
+// Только коэффициенты: состояние не трогаем, ручка крутится на ходу без щелчка
+static void pole1_set(pole1_t *f, double cut) {
+    double b = exp(-2.0 * GS_PI * cut / filter_rate);
+    f->b1 = (float)b, f->a0 = (float)(1.0 - b), f->hz = cut;
 }
 
-static void pole2_set(pole2_t *f, double rate, double cut, double q) {
-    double a = 1.0 / tan(GS_PI * cut / rate), r = 1.0 / q;
-    double a1 = 1.0 / (1.0 + r * a + a * a);
-    f->a1 = (float)a1, f->a2 = (float)(2.0 * a1);
-    f->b1 = (float)(2.0 * (1.0 - a * a) * a1), f->b2 = (float)((1.0 - r * a + a * a) * a1);
-    for (int c = 0; c < 2; c++) for (int i = 0; i < 4; i++) f->s[c][i] = 0.0f;
+// ФНЧ 2-го порядка, совпадающий с аналоговым и у Найквиста (Vicanek, Matched Second Order Digital Filters).
+// Билинейный на 48 кГц прижимает верх к 24 кГц: LED выходил темнее схемы (-3.8 дБ на 10 кГц)
+static void pole2_set(pole2_t *f, double cut, double q) {
+    double w = 2.0 * GS_PI * cut / filter_rate, k = 0.5 / q, e = exp(-k * w);
+    double a1 = -2.0 * e * (k <= 1.0 ? cos(sqrt(1.0 - k * k) * w) : cosh(sqrt(k * k - 1.0) * w)), a2 = e * e;
+    double s2 = sin(w * 0.5) * sin(w * 0.5), p0 = 1.0 - s2, p1 = s2, p2 = 4.0 * p0 * p1;
+    double A0 = (1.0 + a1 + a2) * (1.0 + a1 + a2), A1 = (1.0 - a1 + a2) * (1.0 - a1 + a2), A2 = -4.0 * a2;
+    double R1 = (A0 * p0 + A1 * p1 + A2 * p2) * q * q;
+    double B1 = (R1 - A0 * p0) / p1;
+    double b0 = 0.5 * (sqrt(A0) + sqrt(B1 > 0.0 ? B1 : 0.0));
+    f->b0 = (float)b0, f->b1 = (float)(sqrt(A0) - b0), f->a1 = (float)a1, f->a2 = (float)a2;
+    f->hz = cut, f->q = q;
+}
+
+// Настройка поменялась - новые коэффициенты
+static void stages_update(void) {
+    const gs_stage_t *st = gs_cfg.st;
+    if (rc.hz != st[GS_ST_RC].hz) pole1_set(&rc, st[GS_ST_RC].hz);
+    if (lp.hz != st[GS_ST_LP].hz) pole1_set(&lp, st[GS_ST_LP].hz);
+    if (hp.hz != st[GS_ST_HP].hz) pole1_set(&hp, st[GS_ST_HP].hz);
+    if (led.hz != st[GS_ST_LED].hz || led.q != st[GS_ST_LED].q) pole2_set(&led, st[GS_ST_LED].hz, st[GS_ST_LED].q);
 }
 
 void gs_filter_init(float rate) {
-    double r1 = 1e4, r2 = 1e4, c1 = 6.8e-9, c2 = 3.9e-9;                // LED: одинаков на A500 и A1200
-    double sq = sqrt(r1 * r2 * c1 * c2);
-    pole1_set(&lp_a500, rate, 1.0 / (2.0 * GS_PI * 360.0 * 1e-7));      // ~4421 Гц
-    pole1_set(&hp_a500, rate, 1.0 / (2.0 * GS_PI * 1390.0 * 2.233e-5)); // ~5.1 Гц
-    pole1_set(&hp_a1200, rate, 1.0 / (2.0 * GS_PI * 1360.0 * 2.2e-5));  // ~5.3 Гц
-    pole1_set(&rc16k, rate, 1.0 / (2.0 * GS_PI * 1000.0 * 1e-8));       // ~15.9 кГц: R45/C32, R50/C47 MultiSound
-    pole2_set(&led, rate, 1.0 / (2.0 * GS_PI * sq), sq / (c2 * (r1 + r2)));
+    memset(&rc, 0, sizeof rc), memset(&lp, 0, sizeof lp), memset(&hp, 0, sizeof hp), memset(&led, 0, sizeof led);
     gs_led_module = 0;
     filter_rate = rate;
     memset(&bass, 0, sizeof bass);
     memset(&treble, 0, sizeof treble);
+}
+
+// --- кривая для драйвера: те же коэффициенты, что звучат ---
+static double abs2(double re, double im) { return re * re + im * im; }
+
+static double pole1_lp2(const pole1_t *f, double w) {
+    return f->a0 * f->a0 / abs2(1.0 - f->b1 * cos(w), f->b1 * sin(w));
+}
+
+static double shelf_db(const shelf_t *f, double w) {
+    double c = cos(w), s = sin(w), c2 = cos(2.0 * w), s2 = sin(2.0 * w);
+    return 10.0 * log10(abs2(f->b0 + f->b1 * c + f->b2 * c2, f->b1 * s + f->b2 * s2) / abs2(1.0 + f->a1 * c + f->a2 * c2, f->a1 * s + f->a2 * s2));
+}
+
+float gs_filter_db(float hz) {
+    const gs_stage_t *st = gs_cfg.st;
+    double w = 2.0 * GS_PI * hz / filter_rate, c = cos(w), s = sin(w), p = 1.0, db;
+    stages_update();
+    if (st[GS_ST_RC].on) p *= pole1_lp2(&rc, w);
+    if (st[GS_ST_LP].on) p *= pole1_lp2(&lp, w);
+    if (gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module))
+        p *= abs2(led.b0 + led.b1 * c, led.b1 * s) / abs2(1.0 + led.a1 * c + led.a2 * cos(2.0 * w), led.a1 * s + led.a2 * sin(2.0 * w));
+    if (st[GS_ST_HP].on) {                          // ФВЧ: вход минус ФНЧ. H = 1 - a0 / (1 - b1 z^-1)
+        double dr = 1.0 - hp.b1 * c, di = hp.b1 * s, d = abs2(dr, di);
+        p *= abs2(1.0 - hp.a0 * dr / d, hp.a0 * di / d);
+    }
+    db = 10.0 * log10(p);
+    if (bass.db) db += shelf_db(&bass, w);
+    if (treble.db) db += shelf_db(&treble, w);
+    return (float)db;
 }
 
 // Компрессор (общий на L и R, чтобы не гуляла панорама) и мягкий ограничитель. Порог, степень и подъём - здесь
@@ -108,14 +148,14 @@ void gs_comp_run(float *buf, int n, float rate) {
 static int tone_db(int db) { return db > 12 ? 12 : db < -12 ? -12 : db; }
 
 void gs_filter_run(float *buf, int n) {
-    int use_lp = gs_cfg.lp == GS_LP_A500;           // ФНЧ A1200 ~34 кГц: не слышно, не считаем (как pt2-clone)
+    int use_lp = gs_cfg.st[GS_ST_LP].on, use_hp = gs_cfg.st[GS_ST_HP].on, use_rc = gs_cfg.st[GS_ST_RC].on;
     int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module);
-    pole1_t *hp = gs_cfg.hp ? (gs_cfg.lp == GS_LP_A500 ? &hp_a500 : &hp_a1200) : 0;
+    stages_update();
     int bass_db = tone_db(gs_cfg.bass_db + gs_cfg.color_bass_db), treble_db = tone_db(gs_cfg.treble_db + gs_cfg.color_treble_db);
-    int use_rc = gs_cfg.rc16k, use_bass = bass_db != 0, use_treble = treble_db != 0;
+    int use_bass = bass_db != 0, use_treble = treble_db != 0;
     if (use_bass && bass.db != bass_db) shelf_set(&bass, BASS_HZ, bass_db, 0);
     if (use_treble && treble.db != treble_db) shelf_set(&treble, TREBLE_HZ, treble_db, 1);
-    if (!use_lp && !use_led && !hp && !use_rc && !use_bass && !use_treble) return;
+    if (!use_lp && !use_led && !use_hp && !use_rc && !use_bass && !use_treble) return;
     int up = bass_db > treble_db ? bass_db : treble_db;
     static int head_up;
     static float head = 1.0f;  // запас под подъём ручками: иначе пики режутся
@@ -123,17 +163,17 @@ void gs_filter_run(float *buf, int n) {
     for (int i = 0; i < n * 2; i += 2) {
         for (int c = 0; c < 2; c++) {
             float x = buf[i + c];
-            if (use_rc) x = rc16k.s[c] = x * rc16k.a0 + rc16k.s[c] * rc16k.b1;
-            if (use_lp) x = lp_a500.s[c] = x * lp_a500.a0 + lp_a500.s[c] * lp_a500.b1;
+            if (use_rc) x = rc.s[c] = x * rc.a0 + rc.s[c] * rc.b1;
+            if (use_lp) x = lp.s[c] = x * lp.a0 + lp.s[c] * lp.b1;
             if (use_led) {
                 float *s = led.s[c];
-                float y = x * led.a1 + s[0] * led.a2 + s[1] * led.a1 - s[2] * led.b1 - s[3] * led.b2;
-                s[1] = s[0], s[0] = x, s[3] = s[2], s[2] = y;
+                float y = x * led.b0 + s[0] * led.b1 - s[1] * led.a1 - s[2] * led.a2;
+                s[0] = x, s[2] = s[1], s[1] = y;
                 x = y;
             }
-            if (hp) {
-                hp->s[c] = x * hp->a0 + hp->s[c] * hp->b1;
-                x -= hp->s[c];
+            if (use_hp) {
+                hp.s[c] = x * hp.a0 + hp.s[c] * hp.b1;
+                x -= hp.s[c];
             }
             x *= head;
             if (use_bass) x = shelf_run(&bass, c, x);

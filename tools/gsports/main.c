@@ -1,12 +1,14 @@
 // Тест портов GS на ПК: обмен Z80 по FULGSCOM.TXT, звук сверяется с прямым запуском модуля
 // gsports файл.mod
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../../engine/gs/gs_core.h"
 #include "../../engine/gs/gs_dev_gs.h"
 #include "../../engine/gs/gs_mod.h"
 #include "../../engine/gs/gs_cfg.h"
+#include "../../engine/gs/gs_filter.h"
 #include "../../engine/gs/gs_fx.h"
 #include "../../engine/gs/gs_chan.h"
 
@@ -332,6 +334,22 @@ int main(int argc, char **argv) {
     check("коре: код BB -> GS", gs_core_port_read(GS_CODE_B3), 0xFF);
     check("коре: код C4 -> OPL4", gs_core_port_peek(OPL4_CODE_C4), 0xFF);
     check("коре: чужой код", gs_core_port_peek(63), 0xFF);
+
+    // Кривая для драйвера: дБ x10 при 48 кГц. Эталон - RC 4421 Гц и LED 3091 Гц со схемы
+    gs_cfg_defaults();
+    gs_filter_init(48000.0f);
+    gs_cfg_mode(GS_MODE_A500);
+    gs_cfg.led = GS_LED_OFF;
+    check("кривая A500 6 кГц в пределах 0.5 дБ", fabs(gs_filter_db(6000.0f) + 4.5) < 0.5, 1);
+    check("кривая A500 1 кГц", fabs(gs_filter_db(1000.0f) + 0.2) < 0.2, 1);
+    gs_cfg_mode(GS_MODE_A1200);
+    gs_cfg.led = GS_LED_ON;
+    check("кривая LED 10 кГц в пределах 1 дБ", fabs(gs_filter_db(10000.0f) + 20.6) < 1.0, 1);
+    gs_cfg.led = GS_LED_OFF;
+    check("кривая A1200 10 кГц: плоско", fabs(gs_filter_db(10000.0f)) < 0.1, 1);
+    gs_cfg.st[GS_ST_LP].on = 1;                     // ручка: ступень включилась, кривая за ней
+    check("кривая: ступень руками", fabs(gs_filter_db(6000.0f) + 4.5) < 0.5, 1);
+    gs_cfg_defaults();
 
     printf(fails ? "ОШИБОК: %d\n" : "ВСЁ OK\n", fails);
     return fails != 0;
