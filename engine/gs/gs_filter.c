@@ -88,7 +88,8 @@ static float soft_limit(float x) {
 
 void gs_comp_run(float *buf, int n, float rate) {
     if (!gs_cfg.comp) return;
-    float atk = 1.0f - expf(-1000.0f / (COMP_ATK_MS * rate)), rel = 1.0f - expf(-1000.0f / (COMP_REL_MS * rate));
+    static float atk, rel, atk_rate;
+    if (rate != atk_rate) atk_rate = rate, atk = 1.0f - expf(-1000.0f / (COMP_ATK_MS * rate)), rel = 1.0f - expf(-1000.0f / (COMP_REL_MS * rate));
     for (int i = 0; i < n * 2; i += 2) {
         float a = fabsf(buf[i]), b = fabsf(buf[i + 1]), x = a > b ? a : b;
         comp_env += (x - comp_env) * (x > comp_env ? atk : rel);
@@ -116,7 +117,9 @@ void gs_filter_run(float *buf, int n) {
     if (use_treble && treble.db != treble_db) shelf_set(&treble, TREBLE_HZ, treble_db, 1);
     if (!use_lp && !use_led && !hp && !use_rc && !use_bass && !use_treble) return;
     int up = bass_db > treble_db ? bass_db : treble_db;
-    float head = up > 0 ? (float)pow(10.0, -up / 20.0) : 1.0f;  // запас под подъём ручками: иначе пики режутся
+    static int head_up;
+    static float head = 1.0f;  // запас под подъём ручками: иначе пики режутся
+    if (up != head_up) head_up = up, head = up > 0 ? (float)pow(10.0, -up / 20.0) : 1.0f;
     for (int i = 0; i < n * 2; i += 2) {
         for (int c = 0; c < 2; c++) {
             float x = buf[i + c];

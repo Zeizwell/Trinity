@@ -1,5 +1,5 @@
 // RP-GS, шаг 1: замер движка. Ножки шины не трогаем: все входы, на плате макета они заняты RP-AY
-// Клавиши в консоли: b - замер, модуль в ОЗУ; p - PSRAM (ID, тест, замер, модуль там)
+// Клавиши в консоли: b - замер, модуль в ОЗУ; p - PSRAM (ID, тест, замер, модуль там), v - голоса, ОЗУ и PSRAM
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
@@ -9,9 +9,11 @@
 #include "gs/gs_cfg.h"
 #include "gs/gs_dev_gs.h"
 #include "gs/gs_filter.h"
+#include "gs/gs_chan.h"
 
 __asm__(".section .rodata\n.global mod_bin\nmod_bin:\n.incbin \"" TEST_MOD "\"\n.global mod_end\nmod_end:\n.text\n");
 extern const uint8_t mod_bin[], mod_end[];
+extern const gs_dev_t gs_dev_gs;
 
 #define FRAMES 256              // блок DMA: 5.33 мс при 48 кГц
 #define BLOCKS 400
@@ -37,6 +39,32 @@ static void bench(const void *mod, int size, gs_mode_t mode) {
            (unsigned long)avg, (unsigned long)(avg * 100 / budget), (unsigned long)top, (unsigned long)(top * 100 / budget), (unsigned long)budget);
 }
 
+// Голоса без модуля: сэмпл по кругу, ~16.8 кГц, худший случай по фронтам и выборке
+static void bench_voices(const uint8_t *src, uint32_t len, int mode) {
+    for (int voices = 4; voices <= 32; voices *= 2) {
+        gs_core_init();
+        gs_cfg_mode((gs_mode_t)mode);
+        gs_cfg.voices = voices;
+        gs_core_claim(&gs_dev_gs);
+        for (int c = 0; c < voices; c++) {
+            gs_voice_t *v = &gs_voice[c];
+            v->len = len, v->loop_start = 0, v->loop_len = len;
+            v->vol = 40;
+            gs_voice_set_inc(v, 0.35f + c * 0.001f);
+            gs_voice_set_pos(v, (float)(c * 3001 % (len / 2)));
+            v->data = (const int8_t *)src;
+        }
+        uint64_t sum = 0;
+        for (int i = 0; i < 200; i++) {
+            uint64_t t = time_us_64();
+            gs_core_audio(block, FRAMES);
+            sum += time_us_64() - t;
+        }
+        uint32_t avg = (uint32_t)(sum / 200);
+        printf("%-12s %2d голосов: %5lu мкс (%3lu%%)\n", gs_cfg_mode_name((gs_mode_t)mode), voices, (unsigned long)avg, (unsigned long)(avg * 100 / (FRAMES * 1000000u / gs_cfg.rate_hz)));
+    }
+}
+
 static void bench_all(const void *mod, int size) {
     printf("частота %lu МГц, модуль %d байт\n", (unsigned long)(clock_get_hz(clk_sys) / 1000000), size);
     for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench(mod, size, (gs_mode_t)m);
@@ -49,11 +77,19 @@ int main(void) {
     for (;;) {
         int c = getchar_timeout_us(1000000);
         if (c == 'b') bench_all(mod_bin, size);
+        else if (c == 'v') {
+            int s0 = size > 90000 ? 90000 : size;
+            for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench_voices(mod_bin + 1084, (uint32_t)s0, m);
+            printf("PSRAM id %06lX\n", (unsigned long)psram_init());
+            memcpy(PSRAM_BASE, mod_bin, (size_t)size);
+            for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench_voices(PSRAM_BASE + 1084, (uint32_t)s0, m);
+            printf("готово\n");
+        }
         else if (c == 'p') {
             printf("PSRAM id %06lX\n", (unsigned long)psram_init());
             printf("тест 1 МБ: не совпало %lu\n", (unsigned long)psram_test(1u << 20));
             memcpy(PSRAM_BASE, mod_bin, (size_t)size);
             bench_all(PSRAM_BASE, size);
-        } else if (c == PICO_ERROR_TIMEOUT) printf("rp-gs: b, p\n");
+        } else if (c == PICO_ERROR_TIMEOUT) printf("rp-gs: b, p, v\n");
     }
 }

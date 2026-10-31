@@ -195,23 +195,6 @@ static float smp_at(const gs_voice_t *v, int64_t i) {
 }
 
 // Интерполяция (линейная или кубическая Catmull-Rom) + плавная громкость (HiFi)
-static float voice_interp(gs_voice_t *v, float ramp_k, int cubic) {
-    float target = 0.0f, x = 0.0f;
-    if (v->data && v->on && (uint32_t)(v->pos >> 32) < v->len) {    // сначала читаем, потом шаг: первый отсчёт ноты не теряем
-        int64_t i = (int64_t)(v->pos >> 32);
-        float t = (float)(uint32_t)v->pos * (1.0f / 4294967296.0f);
-        float a = smp_at(v, i), b = smp_at(v, i + 1);
-        if (cubic) {
-            float p = smp_at(v, i - 1), q = smp_at(v, i + 2);
-            x = a + 0.5f * t * (b - p + t * (2.0f * p - 5.0f * a + 4.0f * b - q + t * (3.0f * (a - b) + q - p)));
-        } else x = a + (b - a) * t;
-        x *= 1.0f / 128.0f;
-        target = v->vol * (1.0f / 64.0f);
-        voice_advance(v, v->inc);
-    } else v->on = 0;
-    v->vol_now = ramp_k > 0.0f ? v->vol_now + (target - v->vol_now) * ramp_k : target;
-    return x * v->vol_now;
-}
 
 // Сведение: каналы L R R L, как Amiga. Ширина: 100 % - жёстко, 0 - моно. На сторону два канала: половина, чтобы не вылезти за 1.
 // Шина: фронты всех голосов в одном кольце. Цена - от числа фронтов, а не каналов и отсчётов
@@ -239,6 +222,38 @@ static void bus_edge(int c, int s, float offset, float amp) {
         if (g == 0.0f) continue;
         gs_blep_ring(bus_corr[k], BUS_MASK, p, offset, amp * g);
         bus_step[k][p] -= amp * g;
+    }
+}
+
+// Голос за блок, кубика / линейная: многочлен считается один раз на отсчёт сэмпла, на выход - только Хорнер
+static void voice_interp_block(gs_voice_t *v, int c, float *out, int n, float ramp_k, int cubic) {
+    float gl = gain[c][0], gr = gain[c][1];
+    for (int s = 0; s < n; s++) {
+        float target = 0.0f, x = 0.0f;
+        if (v->data && v->on && (uint32_t)(v->pos >> 32) < v->len) {    // сначала читаем, потом шаг: первый отсчёт ноты не теряем
+            uint32_t i32 = (uint32_t)(v->pos >> 32);
+            if (i32 != v->idx) {
+                int64_t i = i32;
+                float a = smp_at(v, i), b = smp_at(v, i + 1);
+                if (cubic) {
+                    float p = smp_at(v, i - 1), q = smp_at(v, i + 2);
+                    v->cf[0] = a, v->cf[1] = 0.5f * (b - p), v->cf[2] = 0.5f * (2.0f * p - 5.0f * a + 4.0f * b - q);
+                    v->cf[3] = 0.5f * (3.0f * (a - b) + q - p);
+                } else v->cf[0] = a, v->cf[1] = b - a, v->cf[2] = v->cf[3] = 0.0f;
+                v->idx = i32;
+            }
+            float t = (float)(uint32_t)v->pos * (1.0f / 4294967296.0f);
+            x = (v->cf[0] + t * (v->cf[1] + t * (v->cf[2] + t * v->cf[3]))) * (1.0f / 128.0f);
+            target = v->vol * (1.0f / 64.0f);
+            uint32_t was = (uint32_t)v->pos;
+            uint64_t inc = v->inc;
+            if (inc >> 32 || was + (uint32_t)inc < was) voice_advance(v, inc);  // отсчёт сменился: цикл, конец
+            else v->pos += inc;
+        } else v->on = 0, v->idx = NO_IDX;
+        v->vol_now = ramp_k > 0.0f ? v->vol_now + (target - v->vol_now) * ramp_k : target;
+        x *= v->vol_now;
+        out[s * 2] += x * gl;
+        out[s * 2 + 1] += x * gr;
     }
 }
 
@@ -340,18 +355,23 @@ void gs_chan_mix(float *out, int n) {
         double cck = CCK_HZ / rate;                     // тактов CCK на отсчёт
         for (int c = 0; c < voices; c++)                // пришли из режима с фронтами: уровни на шине снять
             if (gs_voice[c].blep.last != 0.0f) bus_edge(c, 0, 0.0f, gs_voice[c].blep.last), gs_voice[c].blep.last = 0.0f;
-        for (int s = 0; s < n; s++) {
-            float l = 0.0f, r = 0.0f;
+        if (use_pwm) {
+            for (int s = 0; s < n; s++) {
+                float l = 0.0f, r = 0.0f;
+                for (int c = 0; c < voices; c++) {
+                    float x = voice_pwm(&gs_voice[c], pwm_phase, cck);
+                    l += x * gain[c][0];
+                    r += x * gain[c][1];
+                }
+                pwm_phase = fmod(pwm_phase + cck, 64.0);
+                out[s * 2] += l;
+                out[s * 2 + 1] += r;
+            }
+        } else {
             for (int c = 0; c < voices; c++) {
                 gs_voice_t *v = &gs_voice[c];
-                if (!v->data && v->vol_now == 0.0f && !use_pwm) continue;
-                float x = use_pwm ? voice_pwm(v, pwm_phase, cck) : voice_interp(v, ramp_k, rs == GS_RS_CUBIC);
-                l += x * gain[c][0];
-                r += x * gain[c][1];
+                if (v->data || v->vol_now != 0.0f) voice_interp_block(v, c, out, n, ramp_k, rs == GS_RS_CUBIC);
             }
-            if (use_pwm) pwm_phase = fmod(pwm_phase + cck, 64.0);
-            out[s * 2] += l;
-            out[s * 2 + 1] += r;
         }
     }
     bus_out(out, n, voices);

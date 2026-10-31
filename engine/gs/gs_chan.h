@@ -22,6 +22,7 @@ typedef struct {
     uint32_t idx;               // GS_RS_BLEP: какой отсчёт сэмпла звучит
     gs_blep_t blep;             // GS_RS_BLEP
     float    vol_now;           // GS_RS_INTERP: громкость с рампой, 0..1
+    float    cf[4];             // GS_RS_INTERP, GS_RS_CUBIC: многочлен текущего отсчёта
     float    pwm_s;             // gs_cfg.pwm: текущий отсчёт, -1..1
     uint8_t  pwm_v;             // gs_cfg.pwm: громкость, взятая на смене отсчёта
     // GS_RS_ROM: генератор SGEN из ROM GS (неизменяемые на квант - rom_ratio, rom_vol)

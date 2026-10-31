@@ -17,7 +17,7 @@ add_executable(rp_gs main.c psram.c
     ${E}/gs_fx.c ${E}/gs_blep.c ${E}/gs_filter.c ${E}/gs_down.c)
 target_compile_definitions(rp_gs PRIVATE TEST_MOD="${TEST_MOD}")
 target_include_directories(rp_gs PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../engine)
-target_compile_options(rp_gs PRIVATE -O2)
+target_compile_options(rp_gs PRIVATE -O3)
 target_link_libraries(rp_gs pico_stdlib hardware_clocks)
 pico_enable_stdio_usb(rp_gs 1)
 pico_enable_stdio_uart(rp_gs 0)
