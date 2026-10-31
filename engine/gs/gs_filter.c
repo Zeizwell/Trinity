@@ -8,7 +8,7 @@
 typedef struct { float a0, b1, s[2]; } pole1_t;
 typedef struct { float a1, a2, b1, b2, s[2][4]; } pole2_t;
 
-static pole1_t lp_a500, hp_a500, hp_a1200;
+static pole1_t lp_a500, hp_a500, hp_a1200, rc16k;
 static pole2_t led;
 int gs_led_module;
 
@@ -31,6 +31,7 @@ void gs_filter_init(float rate) {
     pole1_set(&lp_a500, rate, 1.0 / (2.0 * GS_PI * 360.0 * 1e-7));      // ~4421 Гц
     pole1_set(&hp_a500, rate, 1.0 / (2.0 * GS_PI * 1390.0 * 2.233e-5)); // ~5.1 Гц
     pole1_set(&hp_a1200, rate, 1.0 / (2.0 * GS_PI * 1360.0 * 2.2e-5));  // ~5.3 Гц
+    pole1_set(&rc16k, rate, 1.0 / (2.0 * GS_PI * 1000.0 * 1e-8));       // ~15.9 кГц: R45/C32, R50/C47 MultiSound
     pole2_set(&led, rate, 1.0 / (2.0 * GS_PI * sq), sq / (c2 * (r1 + r2)));
     gs_led_module = 0;
 }
@@ -39,10 +40,12 @@ void gs_filter_run(float *buf, int n) {
     int use_lp = gs_cfg.lp == GS_LP_A500;           // ФНЧ A1200 ~34 кГц: не слышно, не считаем (как pt2-clone)
     int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module);
     pole1_t *hp = gs_cfg.hp ? (gs_cfg.lp == GS_LP_A500 ? &hp_a500 : &hp_a1200) : 0;
-    if (!use_lp && !use_led && !hp) return;
+    int use_rc = gs_cfg.rc16k;
+    if (!use_lp && !use_led && !hp && !use_rc) return;
     for (int i = 0; i < n * 2; i += 2) {
         for (int c = 0; c < 2; c++) {
             float x = buf[i + c];
+            if (use_rc) x = rc16k.s[c] = x * rc16k.a0 + rc16k.s[c] * rc16k.b1;
             if (use_lp) x = lp_a500.s[c] = x * lp_a500.a0 + lp_a500.s[c] * lp_a500.b1;
             if (use_led) {
                 float *s = led.s[c];

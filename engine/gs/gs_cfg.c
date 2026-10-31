@@ -16,17 +16,18 @@ uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
 // Режим - только значения переменных
 void gs_cfg_mode(gs_mode_t mode) {
     gs_cfg.mode = mode;
+    gs_cfg.rc16k = 0;
     switch (mode) {
-    case GS_MODE_GS:                            // оригинальный GS: ступеньки 37500 Гц, без фильтров
-        gs_cfg.resample = GS_RS_STEP, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
-        gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 0;
+    case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц, RC после ЦАП
+        gs_cfg.resample = GS_RS_ROM, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
+        gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 0, gs_cfg.rc16k = 1;
         break;
     case GS_MODE_A500:
-        gs_cfg.resample = GS_RS_BLEP, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
+        gs_cfg.resample = GS_RS_BLEP, gs_cfg.pwm = 1, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
         gs_cfg.lp = GS_LP_A500, gs_cfg.led = GS_LED_MODULE, gs_cfg.hp = 1;
         break;
     case GS_MODE_A1200:
-        gs_cfg.resample = GS_RS_BLEP, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
+        gs_cfg.resample = GS_RS_BLEP, gs_cfg.pwm = 1, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
         gs_cfg.lp = GS_LP_A1200, gs_cfg.led = GS_LED_MODULE, gs_cfg.hp = 1;
         break;
     case GS_MODE_HIFI:

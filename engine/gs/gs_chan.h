@@ -22,6 +22,17 @@ typedef struct {
     uint32_t idx;               // GS_RS_BLEP: какой отсчёт сэмпла звучит
     gs_blep_t blep;             // GS_RS_BLEP
     float    vol_now;           // GS_RS_INTERP: громкость с рампой, 0..1
+    float    pwm_s;             // gs_cfg.pwm: текущий отсчёт, -1..1
+    uint8_t  pwm_v;             // gs_cfg.pwm: громкость, взятая на смене отсчёта
+    // GS_RS_ROM: генератор SGEN из ROM GS (неизменяемые на квант - rom_ratio, rom_vol)
+    uint32_t ratio;             // тиков ЦАП на отсчёт сэмпла, 8.16
+    uint32_t rom_ratio;
+    uint8_t  rom_vol;
+    uint16_t rom_acc;           // накопитель лишнего тика
+    uint8_t  rom_buf[10];       // тики текущего отсчёта
+    uint8_t  rom_n, rom_k;
+    uint8_t  rom_old;           // последний выход (CHOLDV)
+    uint8_t  rom_quiet;         // спад к 0x80 после конца сэмпла уже был
 } gs_voice_t;
 
 extern gs_voice_t gs_voice[GS_VOICES_MAX];

@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 typedef enum { GS_MODE_GS, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
-typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP } gs_resample_t;     // пересчёт: ступеньки / BLEP / интерполяция
+typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM } gs_resample_t;     // пересчёт: ступеньки / BLEP / интерполяция / как ROM GS
 typedef enum { GS_LP_OFF, GS_LP_A500, GS_LP_A1200 } gs_lp_t;             // ФНЧ платы
 typedef enum { GS_LED_OFF, GS_LED_MODULE, GS_LED_ON } gs_led_t;          // LED-фильтр: выкл / по команде E0x / всегда
 
@@ -21,12 +21,14 @@ typedef struct {
     // --- звук (цепочка: пересчёт -> громкость -> сведение -> фильтры)
     gs_mode_t     mode;         // какой режим выставлен последним (GS_MODE_CUSTOM - руками)
     gs_resample_t resample;     // пересчёт
-    uint32_t hold_hz;           // GS_RS_STEP: частота ступенек, Гц (настоящий GS - 37500, прерывание его Z80)
+    uint32_t hold_hz;           // GS_RS_STEP, GS_RS_ROM: частота тиков, Гц (настоящий GS - 37500, прерывание его Z80)
+    uint8_t  pwm;               // GS_RS_BLEP: громкость ШИМ, как Paula (0 - умножение)
     uint8_t  ramp;              // плавность громкости 1-2 мс: 0 / 1
     uint8_t  stereo_pct;        // ширина стерео, %: 100 - жёстко L R R L, 0 - моно
     gs_lp_t  lp;                // ФНЧ платы
     gs_led_t led;               // LED-фильтр
     uint8_t  hp;                // ФВЧ ~5 Гц: 0 / 1
+    uint8_t  rc16k;             // RC после ЦАП GS (1 кОм + 10 нФ, схема MultiSound): 0 / 1
 } gs_cfg_t;
 
 extern gs_cfg_t gs_cfg;
