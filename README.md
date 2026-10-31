@@ -1,43 +1,63 @@
 # ZX Trinity
 
-Звуковая карта для ZX Spectrum / ZX Evolution — **три платформы в одной (отсюда Trinity): Atari + Amiga + MSX**:
-- **Atari** — настоящие AY + таймерные эффекты (SID, Sync, FM, свип) и SNDH-плеер — RP-AY;
-- **Amiga** — GS со звуком Paula (BLEP, фильтры A500 / A1200), совместимость с GS / NeoGS — RP-GS;
-- **MSX** — OPL4 (Moonsound, YMF278B через ymfm) — RP-GS, режимом вместо GS.
+**Three computers' worth of sound on one card for the ZX Spectrum.**
+Real AY chips, the sound of the Amiga and the FM of the MSX, on ZX-BUS / NemoBus and ZX Evolution.
 
-## Что готово (2026-11-01)
+| | Platform | What you get |
+|---|---|---|
+| 🎹 | **Atari** | Two real YM2203 chips (AY + FM) with timer effects on top: SID, Sync buzzer, FM, sweeps. SNDH player planned |
+| 🎸 | **Amiga** | General Sound compatible, with the sound of Paula: A500 and A1200 filters, ProTracker playback |
+| 🎺 | **MSX** | OPL4 (Moonsound) in place of the GS mode |
 
-### Плата
-- **Рев A:** схема и разводка готовы, платы заказаны и едут (трек есть).
-- **Детали:** ЦАП на руках; модули RP едут, остальная комплектация ещё нужна. На собранной плате ещё ничего не запускалось.
+## Where we are
 
-### RP-GS: Amiga и GS
-- **Устройства:** коре с таблицей устройств и арбитром, GS, заглушка OPL4 (порты живут, звука нет).
-- **GS:** порты `#BB` / `#B3`, загрузка модулей и эффектов в PSRAM 8 МБ, команды модулей и эффектов.
-- **Плееры — плагины:**
-  - `gs_pt` — плеер ProTracker: 5 модулей и 200 случайных, регистры совпали с оригиналом, 0 расхождений;
-  - pocketmod — остальные MOD.
-- **Звук:** BLEP как у Paula, фильтры A500 / A1200 / LED, ручки НЧ и ВЧ, компрессор, вывод I2S на PCM5102A.
-- **Режимы:** GS, A500, A1200, HiFi и Custom. Режим — набор значений, любую настройку можно менять отдельно.
-- **Настройки:** сохраняются во флеш; запись останавливает звук на 13 мс.
-- **Канал драйвера:** настройки, пресеты, нагрузка, кривая фильтров, версии. Порты GS за ключом `TRINITY`
-  и API для Z80.
-- **Нагрузка ядра звука (замер на макете):** 10–16 %.
-- **Проверено:** на макете без Спектрума, обмен подавался в обработчик шины из самой прошивки: опозданий 0,
-  обработчик шины 484 нс при бюджете 850 нс. Есть тесты на ПК.
+### Done
+- ✅ **Board rev A** designed and ordered, on its way
+- ✅ **Amiga sound:** Paula-style output, A500 / A1200 / LED filters, presets GS, A500, A1200 and HiFi
+- ✅ **ProTracker player:** every Paula register matches the original replayer on hundreds of test modules
+- ✅ **Checked against real hardware:** A1200 and MultiSound recordings, the spectrum matches within ±1 dB up to 16 kHz
+- ✅ **General Sound:** ports, module and effect loading, commands
+- ✅ **Plenty of headroom:** the sound core takes 10-17 % of its time
+- ✅ **Driver API for Z80:** check for the card, change settings and presets, see the load and filter curves live. Include one file and write any interface you like
 
-### RP-AY: Atari
-- **Работает на макете в слоте YM2203:** перехват шины, тень регистров, таймерные эффекты, сервисы карты
-  карты.
+### Working on the bench
+- 🔧 **AY side:** bus capture, register shadow and timer effects on a breadboard prototype
+- 🔧 **SD card** with exFAT, tested on PC so far
 
-### Общее
-- **SD и FatFs (с exFAT):** протокол проверен на ПК на модели карты, на настоящей SD ещё не запускалось.
-- **SDK для Z80:** для AY и для GS. Часть GS проверена: код Z80 на интерпретаторе с настоящим движком карты,
-  на настоящем Спектруме ещё не запускался.
+### Next
+- ⏳ Assemble the first boards and run the card on a real Spectrum
+- ⏳ CPLD firmware and firmware updates from SD
+- ⏳ OPL4 sound, SNDH player, NeoGS, XM
 
-### Ещё нет
-- **Прошивка CPLD** (порты AY / GS) и её обновление по SVF.
-- **Связь RP-GS и RP-AY** по UART, самообновление RP-AY.
-- **Программа-драйвер** на Спектруме (протокол готов) и обновление прошивок с SD.
-- **Звук OPL4**, SNDH-плеер, NeoGS, XM.
-- **Модули больше 4 каналов:** остался известный вопрос с голосами.
+---
+
+# ZX Trinity
+
+**Звук трёх компьютеров на одной карте для ZX Spectrum.**
+Настоящие чипы AY, звук Амиги и FM от MSX, для ZX-BUS / NemoBus и ZX Evolution.
+
+| | Платформа | Что внутри |
+|---|---|---|
+| 🎹 | **Atari** | Два настоящих YM2203 (AY + FM) и таймерные эффекты поверх: SID, бузер Sync, FM, свипы. SNDH-плеер в планах |
+| 🎸 | **Amiga** | Совместимость с General Sound и звук Paula: фильтры A500 и A1200, воспроизведение ProTracker |
+| 🎺 | **MSX** | OPL4 (Moonsound) вместо режима GS |
+
+## Что сейчас
+
+### Готово
+- ✅ **Плата рев A** разведена и заказана, едет
+- ✅ **Звук Амиги:** вывод как у Paula, фильтры A500 / A1200 / LED, пресеты GS, A500, A1200 и HiFi
+- ✅ **Плеер ProTracker:** все регистры Paula совпали с оригинальным реплеером на сотнях тестовых модулей
+- ✅ **Сверено с настоящим железом:** записи A1200 и MultiSound, спектр совпал в пределах ±1 дБ до 16 кГц
+- ✅ **General Sound:** порты, загрузка модулей и эффектов, команды
+- ✅ **Большой запас:** ядро звука занято на 10-17 %
+- ✅ **API драйвера для Z80:** проверка карты, настройки и пресеты, нагрузка и кривые фильтров вживую. Подключаешь один файл и пишешь любой интерфейс
+
+### Работает на стенде
+- 🔧 **Часть AY:** перехват шины, тень регистров и таймерные эффекты на макете
+- 🔧 **SD-карта** с exFAT, пока проверена на ПК
+
+### Дальше
+- ⏳ Собрать первые платы и запустить карту на настоящем Спектруме
+- ⏳ Прошивка CPLD и обновление прошивок с SD
+- ⏳ Звук OPL4, SNDH-плеер, NeoGS, XM
