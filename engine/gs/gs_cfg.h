@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 typedef enum { GS_MODE_GS, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
-typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM } gs_resample_t;     // пересчёт: ступеньки / BLEP / интерполяция / как ROM GS
+typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM, GS_RS_CUBIC } gs_resample_t;     // пересчёт: ступеньки / BLEP / линейная / как ROM GS / кубическая
 typedef enum { GS_LP_OFF, GS_LP_A500, GS_LP_A1200 } gs_lp_t;             // ФНЧ платы
 typedef enum { GS_LED_OFF, GS_LED_MODULE, GS_LED_ON } gs_led_t;          // LED-фильтр: выкл / по команде E0x / всегда
 
@@ -29,6 +29,9 @@ typedef struct {
     gs_led_t led;               // LED-фильтр
     uint8_t  hp;                // ФВЧ ~5 Гц: 0 / 1
     uint8_t  rc16k;             // RC после ЦАП GS (1 кОм + 10 нФ, схема MultiSound): 0 / 1
+    // --- ручки: режим их не меняет
+    int8_t   bass_db;           // НЧ, -12..12 дБ, 0 - не трогать
+    int8_t   treble_db;         // ВЧ, -12..12 дБ, 0 - не трогать
 } gs_cfg_t;
 
 extern gs_cfg_t gs_cfg;

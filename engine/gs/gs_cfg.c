@@ -31,7 +31,7 @@ void gs_cfg_mode(gs_mode_t mode) {
         gs_cfg.lp = GS_LP_A1200, gs_cfg.led = GS_LED_MODULE, gs_cfg.hp = 1;
         break;
     case GS_MODE_HIFI:
-        gs_cfg.resample = GS_RS_INTERP, gs_cfg.ramp = 1, gs_cfg.stereo_pct = 70;
+        gs_cfg.resample = GS_RS_CUBIC, gs_cfg.ramp = 1, gs_cfg.stereo_pct = 70;
         gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 1;
         break;
     case GS_MODE_CUSTOM:                        // переменные - как есть

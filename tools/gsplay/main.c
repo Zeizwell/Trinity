@@ -54,7 +54,7 @@ static int to_wav(const char *name, int secs) {
 }
 
 static void show(int paused) {
-    printf("\rmode %-12s PWM %-3s %-7s   ", gs_cfg_mode_name(gs_cfg.mode), gs_cfg.pwm ? "on" : "off", paused ? "pause" : "play");
+    printf("\rmode %-12s PWM %-3s treble %+3d bass %+3d %-7s   ", gs_cfg_mode_name(gs_cfg.mode), gs_cfg.pwm ? "on" : "off", gs_cfg.treble_db, gs_cfg.bass_db, paused ? "pause" : "play");
     fflush(stdout);
 }
 
@@ -75,7 +75,7 @@ static int live(const unsigned char *mod, int size) {
         waveOutPrepareHeader(wo, &hdr[i], sizeof hdr[i]);
         hdr[i].dwFlags |= WHDR_DONE;
     }
-    printf("1 GS  2 Paula A500  3 Paula A1200  4 HiFi  |  p PWM on/off  space pause  s stop/start  q quit\n");
+    printf("1 GS  2 Paula A500  3 Paula A1200  4 HiFi  |  p PWM on/off  t/g treble +/-  b/v bass +/-  space pause  s stop/start  q quit\n");
     int paused = 0, run = 1;
     show(paused);
     for (;;) {
@@ -84,6 +84,10 @@ static int live(const unsigned char *mod, int size) {
             if (k == 'q' || k == 27) goto done;
             if (k >= '1' && k <= '4') gs_cfg_mode((gs_mode_t)(k - '1'));
             if (k == 'p') gs_cfg.pwm = !gs_cfg.pwm;
+            if (k == 't' && gs_cfg.treble_db < 12) gs_cfg.treble_db++;
+            if (k == 'g' && gs_cfg.treble_db > -12) gs_cfg.treble_db--;
+            if (k == 'b' && gs_cfg.bass_db < 12) gs_cfg.bass_db++;
+            if (k == 'v' && gs_cfg.bass_db > -12) gs_cfg.bass_db--;
             if (k == ' ') paused = !paused;
             if (k == 's') {
                 run = !run;

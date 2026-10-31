@@ -195,14 +195,24 @@ static float voice_pwm(gs_voice_t *v, double p0, double d) {
     return b->left > 0 ? gs_blep_run(b, b->last) : b->last;
 }
 
-// Линейная интерполяция + плавная громкость (HiFi)
-static float voice_interp(gs_voice_t *v, float ramp_k) {
+// Отсчёт сэмпла с учётом цикла, за краем - тишина
+static float smp_at(const gs_voice_t *v, int64_t i) {
+    if (v->loop_len && i >= (int64_t)v->loop_start + v->loop_len) i -= v->loop_len;
+    return i >= 0 && i < (int64_t)v->len ? v->data[i] : 0.0f;
+}
+
+// Интерполяция (линейная или кубическая Catmull-Rom) + плавная громкость (HiFi)
+static float voice_interp(gs_voice_t *v, float ramp_k, int cubic) {
     float target = 0.0f, x = 0.0f;
     if (v->data && v->on && (uint32_t)(v->pos >> 32) < v->len) {    // сначала читаем, потом шаг: первый отсчёт ноты не теряем
-        uint32_t i = (uint32_t)(v->pos >> 32), j = i + 1;
-        if (v->loop_len && j >= v->loop_start + v->loop_len) j = v->loop_start;
-        float a = v->data[i], b = j < v->len ? v->data[j] : 0.0f;
-        x = (a + (b - a) * ((float)(uint32_t)v->pos * (1.0f / 4294967296.0f))) * (1.0f / 128.0f);
+        int64_t i = (int64_t)(v->pos >> 32);
+        float t = (float)(uint32_t)v->pos * (1.0f / 4294967296.0f);
+        float a = smp_at(v, i), b = smp_at(v, i + 1);
+        if (cubic) {
+            float p = smp_at(v, i - 1), q = smp_at(v, i + 2);
+            x = a + 0.5f * t * (b - p + t * (2.0f * p - 5.0f * a + 4.0f * b - q + t * (3.0f * (a - b) + q - p)));
+        } else x = a + (b - a) * t;
+        x *= 1.0f / 128.0f;
         target = v->vol * (1.0f / 64.0f);
         voice_advance(v, v->inc);
     } else v->on = 0;
@@ -234,7 +244,7 @@ void gs_chan_mix(float *out, int n) {
             gs_voice_t *v = &gs_voice[c];
             float x;
             if (rs == GS_RS_BLEP) x = gs_cfg.pwm ? voice_pwm(v, pwm_phase, cck) : voice_blep(v);
-            else if (rs == GS_RS_INTERP) x = voice_interp(v, ramp_k);
+            else if (rs == GS_RS_INTERP || rs == GS_RS_CUBIC) x = voice_interp(v, ramp_k, rs == GS_RS_CUBIC);
             else {                                      // ступеньки GS: фронт - точно в свой момент, без лишней грязи от частоты вывода
                 gs_blep_t *b = &v->blep;
                 if (tick) {
