@@ -95,3 +95,15 @@ float gs_blep_run(gs_blep_t *b, float in) {
     b->left--;
     return out;
 }
+
+void gs_blep_ring(float *buf, unsigned mask, unsigned pos, float offset, float amp) {
+    float f = offset * BLEP_SP;
+    int fi = (int)f;
+    const float *src = blep_tab + fi;
+    f -= (float)fi;
+    for (int n = 0; n < GS_BLEP_NS; n++) {
+        buf[pos & mask] += amp * (src[0] + (src[1] - src[0]) * f);
+        src += BLEP_SP;
+        pos++;
+    }
+}

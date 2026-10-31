@@ -12,5 +12,6 @@ typedef struct {
 
 void  gs_blep_add(gs_blep_t *b, float offset, float amp);   // фронт: offset 0..1 - где внутри отсчёта, amp - прошлый минус новый
 float gs_blep_run(gs_blep_t *b, float in);
+void  gs_blep_ring(float *buf, unsigned mask, unsigned pos, float offset, float amp);  // поправка фронта в общее кольцо
 
 #endif

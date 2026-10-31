@@ -13,7 +13,10 @@ static float hold_acc;          // счёт ступенек GS_RS_STEP, GS_RS_R
 static uint32_t rom_tick_n;     // GS_RS_ROM: счёт тиков кванта
 static double pwm_phase;        // счётчик ШИМ Paula, такты CCK, 0..64
 
+static void bus_reset(void);
+
 void gs_chan_reset(void) {
+    bus_reset();
     memset(gs_voice, 0, sizeof gs_voice);
     hold_acc = 1.0f;            // первая ступенька - сразу
     rom_tick_n = 0;
@@ -23,7 +26,11 @@ void gs_chan_reset(void) {
     }
 }
 
+static void bus_edge(int c, int s, float offset, float amp);
+
 void gs_chan_clear(int first, int n) {
+    for (int i = first; i < first + n; i++)
+        if (gs_voice[i].blep.last != 0.0f) bus_edge(i, 0, 0.0f, gs_voice[i].blep.last);
     memset(&gs_voice[first], 0, (size_t)n * sizeof gs_voice[0]);
     for (int i = first; i < first + n; i++) {
         gs_voice[i].idx = NO_IDX;
@@ -132,28 +139,6 @@ static uint8_t rom_tick(gs_voice_t *v) {
     return v->rom_old = v->rom_buf[v->rom_k++];
 }
 
-// BLEP (как pt2-clone): ступенька на своей частоте канала, фронт - с поправкой. Громкость берётся на смене отсчёта, как у Paula
-static float voice_blep(gs_voice_t *v) {
-    float level = 0.0f, offset = 0.0f;
-    if (voice_advance(v, v->inc)) {
-        uint32_t i = (uint32_t)(v->pos >> 32);
-        if (i == v->idx) level = v->held;
-        else {
-            level = v->data[i] * (1.0f / 128.0f) * v->vol * (1.0f / 64.0f);
-            offset = v->inc_f > 0.0f ? (float)(uint32_t)v->pos * (1.0f / 4294967296.0f) / v->inc_f : 0.0f;
-            if (offset >= 1.0f) offset = 0.0f;
-            v->idx = i;
-        }
-    } else v->idx = NO_IDX;
-    gs_blep_t *b = &v->blep;
-    if (level != b->last) {
-        gs_blep_add(b, offset, b->last - level);
-        b->last = level;
-    }
-    v->held = level;
-    return b->left > 0 ? gs_blep_run(b, level) : level;
-}
-
 // ШИМ громкости Paula: канал открыт vol тактов CCK из 64 (счётчик общий, 64 - открыт всегда), отсчёт и громкость меняются
 // на смене отсчёта. Каждый фронт - и отсчёта, и ШИМ - через BLEP. d - тактов CCK на отсчёт смешивания
 static float pwm_level(float s, int vol, double phase) {
@@ -229,52 +214,152 @@ static float voice_interp(gs_voice_t *v, float ramp_k, int cubic) {
 }
 
 // Сведение: каналы L R R L, как Amiga. Ширина: 100 % - жёстко, 0 - моно. На сторону два канала: половина, чтобы не вылезти за 1.
+// Шина: фронты всех голосов в одном кольце. Цена - от числа фронтов, а не каналов и отсчётов
+#define BUS_MASK 2047
+static float bus_corr[2][BUS_MASK + 1];     // поправки BLEP
+static float bus_step[2][BUS_MASK + 1];     // скачки уровня
+static float bus_lvl[2];
+static uint32_t bus_pos;
+static float gain[GS_VOICES_MAX][2];        // панорама голоса
+
+static void gains_set(int voices) {
+    float side = 0.5f + gs_cfg.stereo_pct * 0.005f;     // 0.5..1 - своя сторона
+    for (int c = 0; c < voices; c++) {
+        int right = ((c + 1) >> 1) & 1;                 // 0 L, 1 R, 2 R, 3 L
+        gain[c][0] = 0.5f * (right ? 1.0f - side : side);
+        gain[c][1] = 0.5f * (right ? side : 1.0f - side);
+    }
+}
+
+// Фронт голоса в отсчёте s блока: amp - прошлый уровень минус новый
+static void bus_edge(int c, int s, float offset, float amp) {
+    uint32_t p = (bus_pos + (uint32_t)s) & BUS_MASK;
+    for (int k = 0; k < 2; k++) {
+        float g = gain[c][k];
+        if (g == 0.0f) continue;
+        gs_blep_ring(bus_corr[k], BUS_MASK, p, offset, amp * g);
+        bus_step[k][p] -= amp * g;
+    }
+}
+
+// Голос за блок: считаем только на смене отсчёта сэмпла, между ними - один шаг умножением
+static void voice_block(gs_voice_t *v, int c, int n) {
+    gs_blep_t *b = &v->blep;
+    for (int s = 0; s < n; s++) {
+        float level = 0.0f, offset = 0.0f;
+        if (voice_advance(v, v->inc)) {
+            uint32_t i = (uint32_t)(v->pos >> 32);
+            if (i == v->idx) level = v->held;
+            else {
+                level = v->data[i] * (1.0f / 128.0f) * v->vol * (1.0f / 64.0f);
+                offset = v->inc_f > 0.0f ? (float)(uint32_t)v->pos * (1.0f / 4294967296.0f) / v->inc_f : 0.0f;
+                if (offset >= 1.0f) offset = 0.0f;
+                v->idx = i;
+            }
+        } else v->idx = NO_IDX;
+        if (level != b->last) {
+            bus_edge(c, s, offset, b->last - level);
+            b->last = level;
+        }
+        v->held = level;
+        if (!v->data || !v->on) {                       // молчит: до конца блока ничего не будет
+            if (level == 0.0f) return;
+            continue;
+        }
+        if (v->inc >> 32 || !v->inc) {                  // быстрее отсчёта на шаг или стоит на месте
+            if (!v->inc) return;
+            continue;
+        }
+        uint32_t inc = (uint32_t)v->inc;
+        uint32_t skip = (0xFFFFFFFFu - (uint32_t)v->pos) / inc;     // шагов без смены отсчёта
+        if (skip > (uint32_t)(n - 1 - s)) skip = (uint32_t)(n - 1 - s);
+        v->pos += (uint64_t)skip * inc;
+        s += (int)skip;
+    }
+}
+
+// Тики генератора GS: фронт - только где выход изменился
+static void ticks_block(int voices, int n, gs_resample_t rs, float hold_add, float rate, float hold) {
+    for (int s = 0; s < n; s++) {
+        hold_acc += hold_add;
+        if (hold_acc < 1.0f) continue;
+        hold_acc -= 1.0f;
+        int quantum = (rom_tick_n++ & 255) == 0;        // GS: громкость и шаг - раз в квант 256 тиков
+        for (int c = 0; c < voices; c++) {
+            gs_voice_t *v = &gs_voice[c];
+            gs_blep_t *b = &v->blep;
+            if (rs == GS_RS_ROM) {
+                if (quantum) v->rom_vol = v->vol, v->rom_ratio = v->ratio;
+                if (!v->data && v->rom_quiet && v->rom_k >= v->rom_n && b->last == 0.0f) continue;  // молчит
+                v->held = ((int)rom_tick(v) - 128) * (1.0f / 128.0f) * v->rom_vol * (1.0f / 64.0f);
+            } else voice_step(v);
+            if (v->held != b->last) {
+                float offset = hold < rate ? hold_acc / hold_add : 0.0f;
+                bus_edge(c, s, offset < 1.0f ? offset : 0.0f, b->last - v->held);
+                b->last = v->held;
+            }
+        }
+    }
+}
+
+// Шину - в буфер. В конце блока уровень - точно по голосам: ошибка float не копится
+static void bus_out(float *out, int n, int voices) {
+    for (int k = 0; k < 2; k++) {
+        float *corr = bus_corr[k], *step = bus_step[k], lvl = bus_lvl[k];
+        uint32_t p = bus_pos;
+        for (int s = 0; s < n; s++) {
+            lvl += step[p];
+            out[s * 2 + k] += lvl + corr[p];
+            step[p] = 0.0f, corr[p] = 0.0f;
+            p = (p + 1) & BUS_MASK;
+        }
+        float exact = 0.0f;
+        for (int c = 0; c < voices; c++) exact += gs_voice[c].blep.last * gain[c][k];
+        bus_lvl[k] = exact;
+    }
+    bus_pos = (bus_pos + (uint32_t)n) & BUS_MASK;
+}
+
 // n отсчётов на частоте смешивания (gs_cfg_mix_hz)
 void gs_chan_mix(float *out, int n) {
     int voices = gs_cfg.voices < GS_VOICES_MAX ? gs_cfg.voices : GS_VOICES_MAX;
-    float side = 0.5f + gs_cfg.stereo_pct * 0.005f;     // 0.5..1 - своя сторона
     float rate = (float)gs_cfg_mix_hz();
     float hold = gs_cfg.hold_hz && (float)gs_cfg.hold_hz < rate ? (float)gs_cfg.hold_hz : rate;
-    float hold_add = hold / rate;                       // доля ступеньки на отсчёт
-    float ramp_k = gs_cfg.ramp ? 1000.0f / (1.5f * rate) : 0.0f;    // рампа ~1.5 мс
     gs_resample_t rs = gs_cfg.resample;
-    double cck = CCK_HZ / rate;                         // тактов CCK на отсчёт
-    for (int s = 0; s < n; s++) {
-        int tick = 0;
-        int quantum = 0;
-        if (rs == GS_RS_STEP || rs == GS_RS_ROM) {
-            hold_acc += hold_add;
-            if (hold_acc >= 1.0f) hold_acc -= 1.0f, tick = 1;
-            if (tick) quantum = (rom_tick_n++ & 255) == 0;  // GS: громкость и шаг - раз в квант 256 тиков
-        }
-        float l = 0.0f, r = 0.0f;
+    int use_pwm = rs == GS_RS_BLEP && gs_cfg.pwm;
+    gains_set(voices);
+    if (rs == GS_RS_BLEP && !use_pwm) {
         for (int c = 0; c < voices; c++) {
             gs_voice_t *v = &gs_voice[c];
-            float x;
-            if (rs == GS_RS_BLEP) x = gs_cfg.pwm ? voice_pwm(v, pwm_phase, cck) : voice_blep(v);
-            else if (rs == GS_RS_INTERP || rs == GS_RS_CUBIC) x = voice_interp(v, ramp_k, rs == GS_RS_CUBIC);
-            else {                                      // ступеньки GS: фронт - точно в свой момент, без лишней грязи от частоты вывода
-                gs_blep_t *b = &v->blep;
-                if (tick) {
-                    if (rs == GS_RS_ROM) {
-                        if (quantum) v->rom_vol = v->vol, v->rom_ratio = v->ratio;
-                        v->held = ((int)rom_tick(v) - 128) * (1.0f / 128.0f) * v->rom_vol * (1.0f / 64.0f);
-                    } else voice_step(v);
-                    if (v->held != b->last) {
-                        float offset = hold < rate ? hold_acc / hold_add : 0.0f;
-                        gs_blep_add(b, offset < 1.0f ? offset : 0.0f, b->last - v->held);
-                        b->last = v->held;
-                    }
-                }
-                x = b->left > 0 ? gs_blep_run(b, v->held) : v->held;
-            }
-            x *= 0.5f;
-            int right = ((c + 1) >> 1) & 1;             // 0 L, 1 R, 2 R, 3 L
-            l += x * (right ? 1.0f - side : side);
-            r += x * (right ? side : 1.0f - side);
+            if (v->data || v->blep.last != 0.0f) voice_block(v, c, n);
         }
-        pwm_phase = fmod(pwm_phase + cck, 64.0);
-        *out++ += l;
-        *out++ += r;
+    } else if (rs == GS_RS_STEP || rs == GS_RS_ROM) {
+        ticks_block(voices, n, rs, hold / rate, rate, hold);
+    } else {                                            // на каждый отсчёт: кубика, рампа, ШИМ
+        float ramp_k = gs_cfg.ramp ? 1000.0f / (1.5f * rate) : 0.0f;    // рампа ~1.5 мс
+        double cck = CCK_HZ / rate;                     // тактов CCK на отсчёт
+        for (int c = 0; c < voices; c++)                // пришли из режима с фронтами: уровни на шине снять
+            if (gs_voice[c].blep.last != 0.0f) bus_edge(c, 0, 0.0f, gs_voice[c].blep.last), gs_voice[c].blep.last = 0.0f;
+        for (int s = 0; s < n; s++) {
+            float l = 0.0f, r = 0.0f;
+            for (int c = 0; c < voices; c++) {
+                gs_voice_t *v = &gs_voice[c];
+                if (!v->data && v->vol_now == 0.0f && !use_pwm) continue;
+                float x = use_pwm ? voice_pwm(v, pwm_phase, cck) : voice_interp(v, ramp_k, rs == GS_RS_CUBIC);
+                l += x * gain[c][0];
+                r += x * gain[c][1];
+            }
+            if (use_pwm) pwm_phase = fmod(pwm_phase + cck, 64.0);
+            out[s * 2] += l;
+            out[s * 2 + 1] += r;
+        }
     }
+    bus_out(out, n, voices);
+}
+
+static void bus_reset(void) {
+    memset(bus_corr, 0, sizeof bus_corr);
+    memset(bus_step, 0, sizeof bus_step);
+    bus_lvl[0] = bus_lvl[1] = 0.0f;
+    bus_pos = 0;
 }
