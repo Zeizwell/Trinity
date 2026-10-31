@@ -4,23 +4,39 @@
 #include "gs_chan.h"
 #include "gs_cfg.h"
 #include "gs_filter.h"
+#include <math.h>
 
 static pocketmod_context pm;
-static int playing;
+static int playing, loaded;
+static int vol_master = 64, vol_module = 64;
 
 int gs_mod_load(const void *data, int size) {
-    playing = 0;
+    playing = loaded = 0;
     gs_chan_reset();
     gs_led_module = 0;
     if (!pocketmod_init(&pm, data, size, (int)gs_cfg_mix_hz())) return 0;
     if (pm.num_channels > GS_VOICES_MAX) return 0;
-    playing = 1;
+    playing = loaded = 1;
+    return 1;
+}
+
+int gs_mod_play(const void *data, int size, uint8_t pos) {
+    if (!gs_mod_load(data, size)) return 0;
+    pm.pattern = (signed char)(pos < pm.length ? pos : 0);
     return 1;
 }
 
 void gs_mod_stop(void) {
     playing = 0;
     gs_chan_reset();
+}
+
+void gs_mod_pause(void) { playing = 0; }
+
+int gs_mod_resume(void) {
+    if (!loaded) return 0;
+    playing = 1;
+    return 1;
 }
 
 int gs_mod_playing(void) { return playing; }
@@ -40,7 +56,7 @@ static void chan_to_voice(int i) {
     v->len = smp->length;
     v->loop_start = loop_start;
     v->loop_len = loop_len > 2 && loop_start + loop_len <= smp->length ? loop_len : 0;
-    v->vol = ch->real_volume;
+    v->vol = (uint8_t)(ch->real_volume * vol_module / 64 * vol_master / 64);
     gs_voice_set_inc(v, ch->increment);
     if (ch->position >= 0.0f) {
         gs_voice_set_pos(v, ch->position);
@@ -67,4 +83,30 @@ void gs_mod_audio(float *out, int n) {
                     if (pm.channels[i].effect == 0xE0) gs_led_module = !(pm.channels[i].param & 1);
         }
     }
+}
+
+void gs_mod_set_vol(uint8_t master, uint8_t module) { vol_master = master, vol_module = module; }
+
+void gs_mod_set_speed(uint8_t v) {
+    if (!loaded || !v) return;
+    if (v < 0x20) pm.ticks_per_line = v;
+    else pm.samples_per_tick = pm.samples_per_second / (0.4f * v);
+}
+
+uint8_t gs_mod_song_pos(void) { return loaded ? (uint8_t)pm.pattern : 0; }
+uint8_t gs_mod_pat_pos(void) { return loaded && pm.line >= 0 ? (uint8_t)pm.line : 0; }
+uint8_t gs_mod_speed(void) { return loaded ? (uint8_t)pm.ticks_per_line : 0; }
+uint8_t gs_mod_tempo(void) { return loaded ? (uint8_t)(pm.samples_per_second / (0.4f * pm.samples_per_tick) + 0.5f) : 0; }
+
+uint8_t gs_mod_note(int chan) {
+    if (!playing || chan >= pm.num_channels) return 127;
+    _pocketmod_chan *ch = &pm.channels[chan];
+    if (!ch->sample || !ch->period || !gs_voice[chan].on) return 127;
+    int n = 48 + (int)lround(12.0 * log2(428.0 / ch->period));
+    return (uint8_t)(n < 0 ? 0 : n > 95 ? 95 : n);
+}
+
+uint8_t gs_mod_vol(int chan) {
+    if (!playing || chan >= pm.num_channels) return 0;
+    return pm.channels[chan].real_volume;
 }
