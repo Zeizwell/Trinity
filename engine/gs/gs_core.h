@@ -19,6 +19,7 @@ typedef struct {
 void gs_core_init(void);
 void gs_core_claim(const gs_dev_t *dev);    // устройство начало играть: последний выключает мешающего (п.37)
 const gs_dev_t *gs_core_active(void);       // кто звучит, NULL - никто
+void gs_core_work(void);                     // ядро 0: команды всех устройств
 void gs_core_audio(float *out, int n);      // ядро 1: буфер L, R, L, R...: звук, цепочка, громкость
 
 #endif

@@ -23,6 +23,14 @@ void gs_chan_reset(void) {
     }
 }
 
+void gs_chan_clear(int first, int n) {
+    memset(&gs_voice[first], 0, (size_t)n * sizeof gs_voice[0]);
+    for (int i = first; i < first + n; i++) {
+        gs_voice[i].idx = NO_IDX;
+        gs_voice[i].rom_old = 0x80, gs_voice[i].rom_quiet = 1;
+    }
+}
+
 void gs_voice_set_inc(gs_voice_t *v, float inc) {
     uint32_t mix = gs_cfg_mix_hz(), hold = gs_cfg.hold_hz && gs_cfg.hold_hz < mix ? gs_cfg.hold_hz : mix;
     v->inc_f = inc;

@@ -4,10 +4,10 @@
 #include "gs_filter.h"
 #include "gs_down.h"
 
-extern const gs_dev_t gs_dev_gs;
+extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
 
 // Устройства прошивки: новое - строка здесь
-static const gs_dev_t *const dev_list[] = { &gs_dev_gs };
+static const gs_dev_t *const dev_list[] = { &gs_dev_gs, &gs_dev_opl4 };
 #define DEV_N ((int)(sizeof dev_list / sizeof dev_list[0]))
 
 static const gs_dev_t *active;
@@ -26,6 +26,10 @@ void gs_core_claim(const gs_dev_t *dev) {
 }
 
 const gs_dev_t *gs_core_active(void) { return active; }
+
+void gs_core_work(void) {
+    for (int i = 0; i < DEV_N; i++) dev_list[i]->work();
+}
 
 // Кусок на частоте смешивания: звук устройства и фильтры
 static void render(float *buf, int n) {

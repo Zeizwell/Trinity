@@ -6,7 +6,7 @@ void gs_cfg_defaults(void) {
     gs_cfg.gs_on = 1;
     gs_cfg.rate_hz = 48000;
     gs_cfg.oversample = 2;
-    gs_cfg.voices = 4;
+    gs_cfg.voices = 8;                          // 4 модуль, 4 эффекты
     gs_cfg.master_pct = 80;                     // запас: выбросы BLEP на громких модулях шли за 16 бит
     gs_cfg_mode(GS_MODE_A1200);
 }

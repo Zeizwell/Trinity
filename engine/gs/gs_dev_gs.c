@@ -2,6 +2,8 @@
 #include "gs_core.h"
 #include "gs_cfg.h"
 #include "gs_mod.h"
+#include "gs_fx.h"
+#include "gs_chan.h"
 #include "gs_dev_gs.h"
 
 const gs_dev_t gs_dev_gs;
@@ -17,12 +19,17 @@ static volatile uint8_t bit_cmd, bit_data;
 static uint8_t *ram;
 static uint32_t ram_size;
 static volatile uint32_t ram_used;
-static volatile uint8_t stream;
+static volatile uint8_t stream, stream_xor;        // xor: беззнаковый сэмпл эффекта -> со знаком
 
-static uint32_t mod_size;
+static uint32_t mod_base, mod_size, fx_base;
+static int fx_cur, fx_loading;                      // текущий (#2E), грузится сейчас
+static uint8_t fx_vol_a, fx_vol_b;                  // #2B, #3D
 static uint8_t mod_count, mod_cur, mod_playing;     // один модуль: номер 1, 0 - нет
 static uint8_t vol_master, vol_module;              // #2A, #35
 static uint8_t notes_old[4], vols_old[4];           // для бита 7 в #63, #64
+
+// Команда с несколькими байтами данных: следующие приходят после снятия бита команды
+static uint8_t arg_cmd, arg_first, arg_buf[2], arg_need, arg_k;
 
 // Ответ из нескольких байт: следующий - когда Спектрум прочёл предыдущий
 static uint8_t send_buf[4], send_n, send_k;
@@ -51,7 +58,11 @@ static uint8_t mark_changed(uint8_t v, uint8_t *old) {
 static void vol_apply(void) { gs_mod_set_vol(vol_master, vol_module); }
 
 static void vars_reset(void) {
-    stream = 0, ram_used = 0, mod_size = 0;
+    stream = 0, stream_xor = 0, ram_used = 0, mod_base = 0, mod_size = 0;
+    fx_cur = fx_loading = 0;
+    fx_vol_a = fx_vol_b = VOL_MAX;
+    arg_need = arg_k = 0;
+    gs_fx_reset();
     mod_count = mod_cur = mod_playing = 0;
     vol_master = vol_module = VOL_MAX;
     send_n = send_k = 0;
@@ -62,7 +73,7 @@ static void vars_reset(void) {
 // #31, #65: запуск. В ответе - номер модуля, 0 - не запустился
 static void play(uint8_t handle, uint8_t pos) {
     if (!handle) handle = mod_cur;
-    if (!handle || handle > mod_count || !gs_mod_play(ram, (int)mod_size, pos)) {
+    if (!handle || handle > mod_count || !gs_mod_play(ram + mod_base, (int)mod_size, pos)) {
         mod_cur = 0;
         data_out(0);
         return;
@@ -74,7 +85,72 @@ static void play(uint8_t handle, uint8_t pos) {
     data_out(handle);
 }
 
+static uint8_t vol_limit(uint8_t v) { return v > VOL_MAX ? VOL_MAX : v; }
+
+static void fx_master_apply(void) { gs_fx_set_master((uint8_t)(fx_vol_a * fx_vol_b / VOL_MAX)); }
+
+// #38, #3E: в регистр вывода номер, следующие байты данных - сэмпл
+static void fx_load(uint8_t xor_v) {
+    int h = gs_fx_new(ram + ram_used);
+    reg_out = (uint8_t)h, bit_data = 0;
+    if (!h) return;
+    fx_cur = fx_loading = h;
+    fx_base = ram_used;
+    stream_xor = xor_v;
+    stream = 1;
+}
+
+// #39
+static void fx_play(uint8_t h) {
+    if (!h) h = (uint8_t)fx_cur;
+    fx_cur = h;
+    if (!gs_fx_get(h)) { data_out(0xFF); return; }
+    data_out(0);
+    gs_fx_play(h);
+    gs_core_claim(&gs_dev_gs);
+}
+
+// Параметр текущего эффекта: как в ROM, старое значение в регистр вывода
+static void fx_param(uint8_t c) {
+    gs_fx_t *f = gs_fx_get(fx_cur);
+    uint8_t dummy = 0;
+    uint8_t *p = !f ? &dummy : c == 0x40 ? &f->note : c == 0x41 ? &f->vol : c == 0x42 ? &f->finetune
+               : c == 0x45 ? &f->prio : c == 0x46 ? &f->seek_first : &f->seek_last;
+    *p = data_swap(*p);
+}
+
+// #80..#9B: номер канала в битах 0..1, бит 3 - нота, бит 4 - громкость
+static void fx_direct(uint8_t c, uint8_t h, int note, int vol) {
+    gs_fx_play_chan(h, c & 3, note, vol);
+    gs_core_claim(&gs_dev_gs);
+}
+
+// Пришли все байты команды
+static void args_done(void) {
+    uint8_t c = arg_cmd;
+    if (c == 0x48 || c == 0x49) {
+        gs_fx_t *f = gs_fx_get(fx_cur);
+        uint32_t v = (uint32_t)arg_first | (uint32_t)arg_buf[0] << 8 | (uint32_t)arg_buf[1] << 16;
+        if (f) { if (c == 0x48) f->loop_begin = v; else f->loop_end = v; }
+    } else {
+        int note = c & 8 ? arg_buf[0] : -1;
+        int vol = c & 0x10 ? arg_buf[c & 8 ? 1 : 0] : -1;
+        fx_direct(c, arg_first, note, vol);
+    }
+}
+
+static void args_wait(uint8_t c, uint8_t first, int n) { arg_cmd = c, arg_first = first, arg_need = (uint8_t)n, arg_k = 0; }
+
 static void cmd_run(uint8_t c) {
+    if ((c & 0xE4) == 0x80) {                       // #80..#83, #88..#8B, #90..#93, #98..#9B
+        uint8_t h = data_in();
+        int n = (c >> 3 & 1) + (c >> 4 & 1);
+        if (!h) h = (uint8_t)fx_cur;
+        fx_cur = h;
+        if (!gs_fx_get(h)) { data_out(0xFF); return; }
+        if (n) args_wait(c, h, n); else fx_direct(c, h, -1, -1);
+        return;
+    }
     switch (c) {
     case 0x00: case 0x08:                           // сброс флагов
         bit_data = 0;
@@ -92,10 +168,23 @@ static void cmd_run(uint8_t c) {
         vol_apply();
         break;
     }
+    case 0x2B: {
+        uint8_t v = data_swap(fx_vol_a);
+        fx_vol_a = vol_limit(v);
+        fx_master_apply();
+        break;
+    }
+    case 0x2E: {
+        uint8_t v = data_swap((uint8_t)fx_cur);
+        if (gs_fx_get(v)) fx_cur = v;
+        break;
+    }
     case 0x30:                                      // загрузка: следующие байты данных - модуль
-        gs_mod_stop();                              // данные старого сейчас затрём
-        ram_used = 0, mod_size = 0;
+        gs_mod_stop();
+        if (mod_count) vars_reset();                // как в ROM: второй модуль стирает всё, эффекты тоже
+        mod_base = ram_used, mod_size = 0;
         mod_count = mod_cur = 1, mod_playing = 0;
+        fx_loading = 0, stream_xor = 0;
         reg_out = 1, bit_data = 0;
         stream = 1;
         break;
@@ -119,6 +208,27 @@ static void cmd_run(uint8_t c) {
         gs_mod_stop();
         vars_reset();
         break;
+    case 0x38: fx_load(0x80); break;
+    case 0x39: fx_play(data_in()); break;
+    case 0x3A: {                                    // как в ROM: бит 7 - канал 0, бит 6 - канал 1...
+        uint8_t m = data_in(), chans = 0;
+        for (int i = 0; i < GS_FX_CHANS; i++) if (m >> (7 - i) & 1) chans |= (uint8_t)(1 << i);
+        gs_fx_stop(chans);
+        break;
+    }
+    case 0x3D: {
+        uint8_t v = data_swap(fx_vol_b);
+        fx_vol_b = vol_limit(v);
+        fx_master_apply();
+        break;
+    }
+    case 0x3E: {                                    // 0 - беззнаковый, 1 - со знаком
+        uint8_t v = data_in();
+        if (v <= 1) fx_load(v ? 0 : 0x80); else reg_out = 0;
+        break;
+    }
+    case 0x40: case 0x41: case 0x42: case 0x45: case 0x46: case 0x47: fx_param(c); break;
+    case 0x48: case 0x49: args_wait(c, data_in(), 2); break;
     case 0x60: data_out(gs_mod_song_pos()); break;
     case 0x61: data_out(gs_mod_pat_pos()); break;
     case 0x62: data_out((uint8_t)((gs_mod_song_pos() << 6) | (gs_mod_pat_pos() & 0x3F))); break;
@@ -137,34 +247,40 @@ static void cmd_run(uint8_t c) {
     case 0xD1: break;                               // поток и так открыт с #30
     case 0xD2:                                      // конец потока
         stream = 0;
-        mod_size = ram_used;
+        if (fx_loading) gs_fx_end(fx_loading, ram_used - fx_base), fx_loading = 0;
+        else mod_size = ram_used - mod_base;
+        stream_xor = 0;
         break;
     case 0xF3: case 0xF4:                           // перезапуск
         gs_mod_stop();
         vars_reset();
         bit_data = 0;
         break;
-    default: break;                                 // эффекты (#38..) - следующий шаг
+    default: break;
     }
 }
 
 static int  dev_enabled(void) { return gs_cfg.gs_on; }
 
 static void dev_reset(void) {
+    gs_chan_reset();
     gs_mod_stop();
     reg_cmd = reg_in = reg_out = 0;
     bit_cmd = bit_data = 0;
     vars_reset();
 }
 
-static void dev_sound_stop(void) { gs_mod_stop(); }
+static void dev_sound_stop(void) {
+    gs_mod_stop();
+    gs_fx_stop(0x0F);
+}
 
 // Шина: только быстро. Команды выполняет dev_work; поток - здесь, Спектрум ждать не должен
 static void dev_port_write(uint8_t code, uint8_t v) {
     if (code == GS_PORT_BB) {
         reg_cmd = v, bit_cmd = 1;
     } else if (stream) {
-        if (ram_used < ram_size) ram[ram_used++] = v;
+        if (ram_used < ram_size) ram[ram_used++] = v ^ stream_xor;
     } else {
         reg_in = v, bit_data = 1;
     }
@@ -179,8 +295,14 @@ static uint8_t dev_port_read(uint8_t code) {
 static void dev_work(void) {
     if (bit_cmd) {
         send_n = send_k = 0;                        // новая команда отменяет недосланный ответ, как HSEND в ROM
+        arg_need = arg_k = 0;
         cmd_run(reg_cmd);
         bit_cmd = 0;                                // после выполнения: по этому биту Спектрум читает ответ
+    } else if (arg_k < arg_need) {
+        if (bit_data) {
+            arg_buf[arg_k++] = data_in();
+            if (arg_k == arg_need) arg_need = arg_k = 0, args_done();
+        }
     } else if (send_k < send_n && !bit_data) {
         data_out(send_buf[send_k++]);
     }

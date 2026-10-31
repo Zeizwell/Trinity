@@ -6,8 +6,10 @@
 #include "../../engine/gs/gs_core.h"
 #include "../../engine/gs/gs_dev_gs.h"
 #include "../../engine/gs/gs_mod.h"
+#include "../../engine/gs/gs_fx.h"
+#include "../../engine/gs/gs_chan.h"
 
-extern const gs_dev_t gs_dev_gs;
+extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
 
 #define RAM_SIZE (4u << 20)
 #define BLOCK 1024
@@ -235,6 +237,83 @@ int main(int argc, char **argv) {
     sd(1);
     sc(0x31);
     check("#31 без модуля", gs_dev_gs.port_read(GS_PORT_B3), 0);
+
+    // Эффекты: память свободна после #F3
+    {
+        static uint8_t tone[8000];
+        for (int i = 0; i < (int)sizeof tone; i++) tone[i] = (i % 8) < 4 ? 0xC0 : 0x40;   // беззнаковый меандр
+        static float w[BLOCK * 2 * 40];
+        sc(0x38);
+        check("#38 номер", gs_dev_gs.port_read(GS_PORT_B3), 1);
+        sc(0xD1);
+        for (int i = 0; i < (int)sizeof tone; i++) sd(tone[i]);
+        sc(0xD2);
+        check("в памяти со знаком", (int8_t)ram[0], 0x40);
+        // Нота C-2 Амиги: 8287 отсчётов/с, меандр из 8 - 1036 Гц
+        sd(48); sc(0x40);
+        sd(1); sc(0x39);
+        check("#39 ответ", gs_dev_gs.port_read(GS_PORT_B3), 0);
+        check("канал 0 занят", gs_voice[4].data != 0, 1);
+        check("арбитр: звучит GS", gs_core_active() == &gs_dev_gs, 1);
+        render(w, 40, &peak);
+        check("эффект звучит без модуля", peak > 0.05, 1);
+        int cross = 0, skip = 2000;
+        for (int i = skip; i + 2 < 20000; i += 2) if ((w[i] < 0) != (w[i + 2] < 0)) cross++;
+        double hz = cross / 2.0 / ((20000 - skip) / 2 / 48000.0);
+        printf("частота меандра %.0f Гц\n", hz);
+        check("частота 1036 +-2%", hz > 1015 && hz < 1057, 1);
+        render(0, 100, &peak);
+        check("без цикла: кончился", gs_voice[4].on, 0);
+
+        // Цикл #48, #49
+        sc(0x38); sc(0xD1);
+        for (int i = 0; i < (int)sizeof tone; i++) sd(tone[i]);
+        sc(0xD2);
+        sd(0); sc(0x48); sd(0); gs_dev_gs.work(); sd(0); gs_dev_gs.work();
+        sd(0x40); sc(0x49); sd(0); gs_dev_gs.work(); sd(0); gs_dev_gs.work();
+        check("#48 начало", gs_fx_get(2)->loop_begin, 0);
+        check("#49 конец", gs_fx_get(2)->loop_end, 0x40);
+        sd(2); sc(0x39);
+        render(0, 300, &peak);
+        check("с циклом: звучит дальше", gs_voice[4].on, 1);
+
+        // #3A: бит 7 - канал 0
+        sd(0x80); sc(0x3A);
+        check("#3A канал 0 снят", gs_voice[4].data != 0, 0);
+
+        // Прямой запуск #9A: канал 2, нота, громкость
+        sd(2); sc(0x9A); sd(60); gs_dev_gs.work(); sd(0x20); gs_dev_gs.work();
+        check("#9A канал 2", gs_voice[6].data != 0, 1);
+        check("#9A громкость", gs_voice[6].vol, 0x20);
+
+        // Приоритет: все заняты, младший вытесняется, равный нет
+        gs_fx_stop(0x0F);
+        for (int c = 0; c < 4; c++) gs_fx_play_chan(2, c, 60, 0x40);
+        gs_fx_t *f1 = gs_fx_get(1);
+        f1->prio = 0x80;
+        gs_fx_play(1);
+        check("равный приоритет не вытесняет", gs_voice[4].data == gs_fx_get(2)->data, 1);
+        f1->prio = 0x90;
+        gs_fx_play(1);
+        check("старший вытесняет", gs_voice[4].data == f1->data, 1);
+
+        // Модуль после эффектов, потом второй модуль стирает эффекты
+        check("#30 первый модуль", load(mod, size), 1);
+        check("эффекты живы", gs_fx_count(), 2);
+        sd(1); sc(0x31);
+        check("#31 ответ", gs_dev_gs.port_read(GS_PORT_B3), 1);
+        render(0, 200, &peak);
+        check("модуль и эффекты звучат", peak > 0.01, 1);
+        load(mod, size);
+        check("второй #30 стёр эффекты", gs_fx_count(), 0);
+
+        // Арбитр: OPL4 начал - GS замолчал
+        sd(1); sc(0x31);
+        gs_core_claim(&gs_dev_opl4);
+        check("арбитр: GS вытеснен", gs_mod_playing(), 0);
+        check("арбитр: звучит OPL4", gs_core_active() == &gs_dev_opl4, 1);
+        check("порты OPL4 живут", gs_dev_opl4.port_read(0), 0xFF);
+    }
 
     printf(fails ? "ОШИБОК: %d\n" : "ВСЁ OK\n", fails);
     return fails != 0;

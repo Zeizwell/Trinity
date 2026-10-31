@@ -6,13 +6,15 @@
 #include "gs_filter.h"
 #include <math.h>
 
+#define MOD_VOICES 4    // дальше - голоса эффектов
+
 static pocketmod_context pm;
 static int playing, loaded;
 static int vol_master = 64, vol_module = 64;
 
 int gs_mod_load(const void *data, int size) {
     playing = loaded = 0;
-    gs_chan_reset();
+    gs_chan_clear(0, MOD_VOICES);
     gs_led_module = 0;
     if (!pocketmod_init(&pm, data, size, (int)gs_cfg_mix_hz())) return 0;
     if (pm.num_channels > GS_VOICES_MAX) return 0;
@@ -28,10 +30,13 @@ int gs_mod_play(const void *data, int size, uint8_t pos) {
 
 void gs_mod_stop(void) {
     playing = 0;
-    gs_chan_reset();
+    gs_chan_clear(0, MOD_VOICES);
 }
 
-void gs_mod_pause(void) { playing = 0; }
+void gs_mod_pause(void) {
+    playing = 0;
+    for (int i = 0; i < MOD_VOICES; i++) gs_voice[i].data = 0;  // позицию держим, вернёт chan_to_voice
+}
 
 int gs_mod_resume(void) {
     if (!loaded) return 0;
@@ -65,7 +70,7 @@ static void chan_to_voice(int i) {
 }
 
 void gs_mod_audio(float *out, int n) {
-    if (!playing) return;
+    if (!playing) { gs_chan_mix(out, n); return; }  // эффекты звучат и без модуля
     while (n > 0) {
         int num = (int)(pm.samples_per_tick - pm.sample);   // до конца тика
         if (num < 1) num = 1;
