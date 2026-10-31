@@ -11,7 +11,8 @@ typedef struct { float b0, b1, a1, a2, s[2][4]; double hz, q; } pole2_t;
 
 static pole1_t rc, lp, hp;
 static pole2_t led;
-int gs_led_module;
+static int led_module;
+void gs_filter_led_set(int on) { led_module = on; }
 
 // Ручки НЧ и ВЧ: полки (RBJ, наклон 1)
 #define BASS_HZ   200.0
@@ -70,14 +71,14 @@ static void stages_update(void) {
 
 void gs_filter_init(float rate) {
     memset(&rc, 0, sizeof rc), memset(&lp, 0, sizeof lp), memset(&hp, 0, sizeof hp), memset(&led, 0, sizeof led);
-    gs_led_module = 0;
+    led_module = 0;
     filter_rate = rate;
     memset(&bass, 0, sizeof bass);
     memset(&treble, 0, sizeof treble);
 }
 
 // Ручка плюс окраска режима: в пределах -12..12 дБ
-static int tone_db(int db) { return db > 12 ? 12 : db < -12 ? -12 : db; }
+static int tone_db(int db) { return db > GS_TONE_DB_MAX ? GS_TONE_DB_MAX : db < -GS_TONE_DB_MAX ? -GS_TONE_DB_MAX : db; }
 
 // --- кривая для драйвера: те же коэффициенты, что звучат ---
 static double abs2(double re, double im) { return re * re + im * im; }
@@ -96,6 +97,15 @@ static double hp_p(double c, double s) {             // ФВЧ: вход мин�
     return abs2(1.0 - hp.a0 * dr / d, hp.a0 * di / d);
 }
 
+// Полка для кривой: свои коэффициенты. Звуковые обновятся только на следующем блоке, а кривую просят сразу после ручки
+static float tone_curve_db(int db, double cut, int high, double w) {
+    shelf_t f;
+    db = tone_db(db);
+    if (!db) return 0.0f;
+    shelf_set(&f, cut, db, high);
+    return (float)shelf_db(&f, w);
+}
+
 float gs_filter_stage_db(int stage, float hz) {
     const gs_stage_t *st = gs_cfg.st;
     double w = 2.0 * GS_PI * hz / filter_rate, c = cos(w), s = sin(w), p = 1.0;
@@ -104,12 +114,12 @@ float gs_filter_stage_db(int stage, float hz) {
     case GS_ST_RC: if (st[GS_ST_RC].on) p = pole1_lp2(&rc, w); break;
     case GS_ST_LP: if (st[GS_ST_LP].on) p = pole1_lp2(&lp, w); break;
     case GS_ST_LED:
-        if (gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module))
+        if (gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && led_module))
             p = abs2(led.b0 + led.b1 * c, led.b1 * s) / abs2(1.0 + led.a1 * c + led.a2 * cos(2.0 * w), led.a1 * s + led.a2 * sin(2.0 * w));
         break;
     case GS_ST_HP: if (st[GS_ST_HP].on) p = hp_p(c, s); break;
-    case GS_CURVE_BASS: return tone_db(gs_cfg.bass_db + gs_cfg.color_bass_db) ? (float)shelf_db(&bass, w) : 0.0f;
-    case GS_CURVE_TREBLE: return tone_db(gs_cfg.treble_db + gs_cfg.color_treble_db) ? (float)shelf_db(&treble, w) : 0.0f;
+    case GS_CURVE_BASS: return tone_curve_db(gs_cfg.bass_db + gs_cfg.color_bass_db, BASS_HZ, 0, w);
+    case GS_CURVE_TREBLE: return tone_curve_db(gs_cfg.treble_db + gs_cfg.color_treble_db, TREBLE_HZ, 1, w);
     default: break;
     }
     return (float)(10.0 * log10(p));
@@ -161,7 +171,7 @@ void gs_comp_run(float *buf, int n, float rate) {
 
 void gs_filter_run(float *buf, int n) {
     int use_lp = gs_cfg.st[GS_ST_LP].on, use_hp = gs_cfg.st[GS_ST_HP].on, use_rc = gs_cfg.st[GS_ST_RC].on;
-    int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module);
+    int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && led_module);
     stages_update();
     int bass_db = tone_db(gs_cfg.bass_db + gs_cfg.color_bass_db), treble_db = tone_db(gs_cfg.treble_db + gs_cfg.color_treble_db);
     int use_bass = bass_db != 0, use_treble = treble_db != 0;

@@ -7,8 +7,6 @@
 #include "gs_dev_gs.h"
 #include "gs_dev_opl4.h"
 
-extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
-
 // Устройства прошивки: новое - строка здесь
 static const gs_dev_t *const dev_list[] = { &gs_dev_gs, &gs_dev_opl4 };
 #define DEV_N ((int)(sizeof dev_list / sizeof dev_list[0]))
@@ -31,12 +29,6 @@ void gs_core_set_lock(void (*lock)(void), void (*unlock)(void)) { lock_fn = lock
 void gs_core_set_mode(int mode) {
     gs_core_lock();
     gs_cfg_mode((gs_mode_t)mode);
-    gs_core_unlock();
-}
-
-void gs_core_set_tone(int bass_db, int treble_db) {
-    gs_core_lock();
-    gs_cfg.bass_db = (int8_t)bass_db, gs_cfg.treble_db = (int8_t)treble_db;
     gs_core_unlock();
 }
 

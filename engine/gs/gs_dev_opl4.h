@@ -2,6 +2,10 @@
 #ifndef GS_DEV_OPL4_H
 #define GS_DEV_OPL4_H
 
+#include "gs_core.h"
+
+extern const gs_dev_t gs_dev_opl4;
+
 // Коды портов для port_write / port_read
 #define OPL4_PORT_C4 0
 #define OPL4_PORT_C5 1

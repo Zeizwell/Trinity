@@ -23,8 +23,8 @@ static const item_t items[] = {
     { "SYSK", &gs_cfg.sys_khz, T_U32, F_RO, 0, 0 },
     { "OVER", &gs_cfg.oversample, T_U8, F_RO, 0, 0 },
     { "MAST", &gs_cfg.master_pct, T_U8, F_KNOB, 0, 100 },
-    { "BASS", &gs_cfg.bass_db, T_I8, F_KNOB, -12, 12 },
-    { "TREB", &gs_cfg.treble_db, T_I8, F_KNOB, -12, 12 },
+    { "BASS", &gs_cfg.bass_db, T_I8, F_KNOB, -GS_TONE_DB_MAX, GS_TONE_DB_MAX },
+    { "TREB", &gs_cfg.treble_db, T_I8, F_KNOB, -GS_TONE_DB_MAX, GS_TONE_DB_MAX },
     { "RAMK", &gs_cfg.gs_ram_kb, T_U32, F_KNOB, 128, 8192 },
     { "GSON", &gs_cfg.gs_on, T_U8, F_KNOB, 0, 1 },
     { "VOIC", &gs_cfg.voices, T_U8, 0, 4, 32 },
@@ -35,8 +35,8 @@ static const item_t items[] = {
     { "STER", &gs_cfg.stereo_pct, T_U8, 0, 0, 100 },
     { "LED ", &gs_cfg.led, T_LED, 0, 0, 2 },
     { "COMP", &gs_cfg.comp, T_U8, 0, 0, 1 },
-    { "CBAS", &gs_cfg.color_bass_db, T_I8, 0, -12, 12 },
-    { "CTRE", &gs_cfg.color_treble_db, T_I8, 0, -12, 12 },
+    { "CBAS", &gs_cfg.color_bass_db, T_I8, 0, -GS_TONE_DB_MAX, GS_TONE_DB_MAX },
+    { "CTRE", &gs_cfg.color_treble_db, T_I8, 0, -GS_TONE_DB_MAX, GS_TONE_DB_MAX },
     { "RCHZ", &gs_cfg.st[GS_ST_RC].hz, T_HZ, 0, 100, 2400000 },
     { "RCON", &gs_cfg.st[GS_ST_RC].on, T_U8, 0, 0, 1 },
     { "LPHZ", &gs_cfg.st[GS_ST_LP].hz, T_HZ, 0, 100, 2400000 },
@@ -49,8 +49,9 @@ static const item_t items[] = {
 #define ITEM_N ((int)(sizeof items / sizeof items[0]))
 
 static int (*save_fn)(void);
+static uint16_t fw_ver;
 
-void gs_ctl_set_save(int (*save)(void)) { save_fn = save; }
+void gs_ctl_init(int (*save)(void), uint16_t fw_version) { save_fn = save, fw_ver = fw_version; }
 
 static const item_t *item_find(const uint8_t *tag) {
     for (int i = 0; i < ITEM_N; i++)
@@ -123,15 +124,15 @@ static int preset(const uint8_t *in, int len, uint8_t *out) {
 static int stat(uint8_t *out) {
     const gs_dev_t *d = gs_core_active();
     const char *name = d ? d->name : "";
-    put16(out, gs_stat.load_x10), put16(out + 2, gs_stat.top_x10);
-    put32(out + 4, gs_stat.late), put32(out + 8, gs_stat.blocks);
-    put32(out + 12, gs_cfg.rate_hz), put32(out + 16, gs_cfg.sys_khz);
-    out[20] = (uint8_t)gs_cfg.mode;
+    put16(out + GS_CTL_ST_LOAD, gs_stat.load_x10), put16(out + GS_CTL_ST_TOP, gs_stat.top_x10);
+    put32(out + GS_CTL_ST_LATE, gs_stat.late), put32(out + GS_CTL_ST_BLOCKS, gs_stat.blocks);
+    put32(out + GS_CTL_ST_RATE, gs_cfg.rate_hz), put32(out + GS_CTL_ST_SYSK, gs_cfg.sys_khz);
+    out[GS_CTL_ST_MODE] = (uint8_t)gs_cfg.mode;
     for (int i = 0, end = 0; i < 4; i++) {              // имя устройства, 4 знака, дополнено пробелами
         if (!name[i]) end = 1;
-        out[21 + i] = end ? ' ' : (uint8_t)name[i];
+        out[GS_CTL_ST_DEV + i] = end ? ' ' : (uint8_t)name[i];
     }
-    return 25;
+    return GS_CTL_ST_SIZE;
 }
 
 // Каждая точка под своим замком: звук ждёт не дольше одной точки
@@ -160,7 +161,7 @@ int gs_ctl_packet(uint8_t code, const uint8_t *in, int len, uint8_t *out) {
     case GS_CTL_CURVE: return curve(in, len, out);
     case GS_CTL_VERSION:
         out[0] = GS_CTL_PROTO;
-        put16(out + 1, GS_CTL_FW);
+        put16(out + 1, fw_ver);
         return 3;
     default: return answer(out, GS_CTL_ERR);
     }

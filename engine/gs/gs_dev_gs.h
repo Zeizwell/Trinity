@@ -3,7 +3,10 @@
 #define GS_DEV_GS_H
 
 #include <stdint.h>
+#include "gs_core.h"
 #include "gs_mod.h"
+
+extern const gs_dev_t gs_dev_gs;
 
 // Коды портов для port_write / port_read
 #define GS_PORT_B3 0    // запись: данные, чтение: вывод

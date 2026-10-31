@@ -2,6 +2,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define FW_VERSION 1            // версия прошивки: поднимать при выпуске, драйвер показывает
+
 #define PIN_SLOT_D0 0           // D0..D7 = GP0..GP7
 #define PIN_SLOT_CS 8
 #define PIN_SLOT_WR 9

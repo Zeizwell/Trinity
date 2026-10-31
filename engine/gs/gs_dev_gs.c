@@ -7,8 +7,6 @@
 #include "gs_dev_gs.h"
 #include "gs_ctl.h"
 
-const gs_dev_t gs_dev_gs;
-
 #define PAGE_SIZE 32768u
 #define VOL_MAX   0x40
 
@@ -217,7 +215,7 @@ static void cmd_run(uint8_t c) {
     }
     case 0x2A: {
         uint8_t v = data_swap(vol_master);
-        vol_master = v > VOL_MAX ? VOL_MAX : v;
+        vol_master = vol_limit(v);
         vol_apply();
         break;
     }
@@ -252,7 +250,7 @@ static void cmd_run(uint8_t c) {
         break;
     case 0x35: {
         uint8_t v = data_swap(vol_module);
-        vol_module = v > VOL_MAX ? VOL_MAX : v;
+        vol_module = vol_limit(v);
         vol_apply();
         break;
     }

@@ -6,6 +6,7 @@
 #include <string.h>
 #include "../../engine/gs/gs_core.h"
 #include "../../engine/gs/gs_dev_gs.h"
+#include "../../engine/gs/gs_dev_opl4.h"
 #include "../../engine/gs/gs_mod.h"
 #include "../../engine/gs/gs_cfg.h"
 #include "../../engine/gs/gs_filter.h"
@@ -14,7 +15,6 @@
 #include "../../engine/gs/gs_ctl.h"
 #include "../../engine/gs/gs_stat.h"
 
-extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
 
 #define RAM_SIZE (4u << 20)
 #define BLOCK 1024
@@ -460,21 +460,32 @@ int main(int argc, char **argv) {
         for (p = 0; p < GS_CURVE_COUNT; p++) { ctl(GS_CTL_CURVE, &p, 1, o); sum += (int16_t)(o[50] | o[51] << 8); }
         check("канал: итог = сумма ступеней", abs(all - sum) <= GS_CURVE_COUNT, 1);
         check("канал: итог A500 завален", all < -100, 1);
+        uint8_t s4[8] = { 'B', 'A', 'S', 'S', 6, 0, 0, 0 };    // кривая сразу после ручки: блока ещё не было
+        ctl(GS_CTL_CFG_SET, s4, 8, o);
+        p = GS_CURVE_BASS;
+        ctl(GS_CTL_CURVE, &p, 1, o);
+        check("канал: НЧ +6 сразу видно", (int16_t)(o[0] | o[1] << 8), 600);
+        s4[4] = 0;
+        ctl(GS_CTL_CFG_SET, s4, 8, o);
+        ctl(GS_CTL_CURVE, &p, 1, o);
+        check("канал: НЧ 0 сразу видно", (int16_t)(o[0] | o[1] << 8), 0);
         gs_stat_reset();
         gs_stat_block(100, 1000);                   // сброс выполняет блок
         gs_stat_block(500, 1000);
         gs_stat_late();
         ctl(GS_CTL_STAT, 0, 0, o);
-        check("канал: пик 50.0%", o[2] | o[3] << 8, 500);
-        check("канал: опоздание", o[4], 1);
+        check("канал: пик 50.0%", o[GS_CTL_ST_TOP] | o[GS_CTL_ST_TOP + 1] << 8, 500);
+        check("канал: опоздание", o[GS_CTL_ST_LATE], 1);
         ctl(GS_CTL_STAT_RESET, 0, 0, o);
         gs_stat_block(100, 1000);
         ctl(GS_CTL_STAT, 0, 0, o);
-        check("канал: после сброса пик 10.0%", (o[2] | o[3] << 8) == 100 && o[4] == 0, 1);
+        check("канал: после сброса пик 10.0%", (o[GS_CTL_ST_TOP] | o[GS_CTL_ST_TOP + 1] << 8) == 100 && o[GS_CTL_ST_LATE] == 0, 1);
         check("канал: без записи - отказ", ctl(GS_CTL_CFG_SAVE, 0, 0, o) == 1 && o[0] == GS_CTL_ERR, 1);
-        gs_ctl_set_save(save_stub);
+        gs_ctl_init(save_stub, 7);
         check("канал: запись", ctl(GS_CTL_CFG_SAVE, 0, 0, o) == 1 && !o[0] && saves == 1, 1);
-        gs_ctl_set_save(0);
+        ctl(GS_CTL_VERSION, 0, 0, o);
+        check("канал: версия прошивки", o[1] | o[2] << 8, 7);
+        gs_ctl_init(0, 0);
         sc(0x60);                                   // обычная команда закрывает канал и работает
         check("канал: команда GS работает", gd(), 0);
         sd(0x55); sc(GS_CTL_CMD_BYTE);

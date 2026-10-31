@@ -1,7 +1,6 @@
 #include "gs_core.h"
 #include "gs_dev_opl4.h"
 
-const gs_dev_t gs_dev_opl4;
 
 static int  dev_enabled(void) { return 1; }
 static void dev_reset(void) { }

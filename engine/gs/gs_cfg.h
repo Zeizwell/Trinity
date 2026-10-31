@@ -8,6 +8,7 @@
 typedef enum { GS_MODE_GS, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
 typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM, GS_RS_CUBIC } gs_resample_t;     // пересчёт: ступеньки / BLEP / линейная / как ROM GS / кубическая
 enum { GS_ST_RC, GS_ST_LP, GS_ST_LED, GS_ST_HP, GS_ST_COUNT };           // ступени цепочки фильтров, в порядке звука (п.48г)
+#define GS_TONE_DB_MAX 12       // ручки НЧ и ВЧ: -12..12 дБ, и сумма с окраской режима тоже
 typedef struct {
     double  hz;                 // срез, Гц
     double  q;                  // добротность: только GS_ST_LED
@@ -20,7 +21,7 @@ typedef struct {
     uint32_t sys_khz;           // такт RP, кГц
     uint32_t gs_ram_kb;         // память GS в PSRAM, КБ (п.60: вся, у активного устройства)
     // --- устройства
-    uint8_t  gs_on;             // GS отвечает на порты и звучит
+    uint8_t  gs_on;             // GS звучит. На порты отвечает всегда: маска портов - в CPLD (п.38)
     // --- вывод
     uint32_t rate_hz;           // частота вывода, Гц (I2S)
     uint8_t  oversample;        // смешивание: 1 - на частоте вывода, 2 - вдвое выше + понижение FIR (как pt2-clone). Действует с gs_core_init

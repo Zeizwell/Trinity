@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define PSRAM_BASE ((uint8_t *)0x11000000)
+#define PSRAM_SIZE (8u * 1024u * 1024u)
 
 uint32_t psram_init(void);      // ID чипа. После него окно читается и пишется
 uint32_t psram_test(uint32_t size);     // сколько байт не совпало

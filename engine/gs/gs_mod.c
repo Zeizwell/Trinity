@@ -19,7 +19,7 @@ int gs_mod_play(const void *data, int size, uint8_t pos, gs_mod_mem_t mem) {
     playing = 0;
     player = 0;
     gs_chan_clear(0, MOD_VOICES);
-    gs_led_module = 0;
+    gs_filter_led_set(0);
     for (unsigned i = 0; i < sizeof players / sizeof players[0]; i++) {
         if (!players[i]->accepts(data, size)) continue;
         if (!players[i]->load(data, size, pos, mem == GS_MOD_RAM)) return 0;

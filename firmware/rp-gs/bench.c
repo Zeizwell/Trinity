@@ -19,7 +19,6 @@
 
 __asm__(".section .rodata\n.global mod_bin\nmod_bin:\n.incbin \"" TEST_MOD "\"\n.global mod_end\nmod_end:\n.text\n");
 extern const uint8_t mod_bin[], mod_end[];
-extern const gs_dev_t gs_dev_gs;
 
 static float block[AUDIO_FRAMES * 2];
 #define BLOCKS 400
@@ -166,6 +165,8 @@ static int ctl_call(uint8_t code, const uint8_t *in, int len, uint8_t *out) {
     return n;
 }
 
+static int ctl_16(const uint8_t *o) { return (int16_t)(o[0] | o[1] << 8); }
+
 static int32_t ctl_get(const char *tag, uint8_t *o) {
     ctl_call(GS_CTL_CFG_GET, (const uint8_t *)tag, 4, o);
     return (int32_t)(o[0] | o[1] << 8 | o[2] << 16 | (uint32_t)o[3] << 24);
@@ -173,7 +174,6 @@ static int32_t ctl_get(const char *tag, uint8_t *o) {
 
 static void ctl_test(void) {
     static uint8_t o[GS_CTL_OUT_MAX + 2];
-    uint32_t late0 = gs_stat.late;
     for (const char *k = GS_CTL_SIGN; *k; k++) { z80_sd((uint8_t)*k); z80_sc(GS_CTL_CMD_KEY); }
     printf("ключ: протокол %d\n", z80_gd());
     ctl_call(GS_CTL_VERSION, 0, 0, o);
@@ -186,16 +186,16 @@ static void ctl_test(void) {
     uint64_t t0 = time_us_64();
     p = 0xFF;
     ctl_call(GS_CTL_CURVE, &p, 1, o);
-    printf("кривая: %lu мкс, 3.4 кГц %d, 10 кГц %d (0.01 дБ)\n", (unsigned long)(time_us_64() - t0), (int16_t)(o[46] | o[47] << 8), (int16_t)(o[56] | o[57] << 8));
+    printf("кривая: %lu мкс, 3.4 кГц %d, 10 кГц %d (0.01 дБ)\n", (unsigned long)(time_us_64() - t0), ctl_16(o + 23 * 2), ctl_16(o + 28 * 2));
     sleep_ms(1500);
     ctl_call(GS_CTL_STAT, 0, 0, o);
-    printf("нагрузка %d.%d%%, пик %d.%d%%, опозданий %lu, устройство %.4s\n", (o[0] | o[1] << 8) / 10, (o[0] | o[1] << 8) % 10, (o[2] | o[3] << 8) / 10, (o[2] | o[3] << 8) % 10,
-           (unsigned long)(o[4] | o[5] << 8 | o[6] << 16 | (uint32_t)o[7] << 24), o + 21);
+    int load = ctl_16(o + GS_CTL_ST_LOAD), top = ctl_16(o + GS_CTL_ST_TOP);
+    printf("нагрузка %d.%d%%, пик %d.%d%%, опозданий %d, устройство %.4s\n", load / 10, load % 10, top / 10, top % 10, ctl_16(o + GS_CTL_ST_LATE), (const char *)o + GS_CTL_ST_DEV);
     p = 2;
     ctl_call(GS_CTL_PRESET, &p, 1, o);
     t0 = time_us_64();
     ctl_call(GS_CTL_CFG_SAVE, 0, 0, o);
-    printf("сохранение: ответ %d, %lu мс, опозданий за всё время %lu\n", o[0], (unsigned long)((time_us_64() - t0) / 1000), (unsigned long)(gs_stat.late - late0));
+    printf("сохранение: ответ %d, %lu мс, опозданий с последнего сброса %lu\n", o[0], (unsigned long)((time_us_64() - t0) / 1000), (unsigned long)gs_stat.late);
     z80_sc(GS_CTL_CMD_CLOSE);
     printf("готово\n");
 }

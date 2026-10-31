@@ -35,8 +35,8 @@ int main(void) {
     engine_lock = spin_lock_init(spin_lock_claim_unused(true));
     gs_core_set_lock(lock_on, lock_off);
     psram_init();
-    gs_gs_set_ram(PSRAM_BASE, gs_cfg.gs_ram_kb * 1024u);
-    gs_ctl_set_save(cfgstore_save);
+    gs_gs_set_ram(PSRAM_BASE, PSRAM_SIZE);
+    gs_ctl_init(cfgstore_save, FW_VERSION);
     gs_core_init();
 #if BOARD_HAS_SD
     sdport_init();

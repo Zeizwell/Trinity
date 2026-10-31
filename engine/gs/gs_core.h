@@ -37,6 +37,5 @@ uint8_t gs_core_port_peek(uint8_t code);
 
 // Настройки на лету с ядра 0: под замком, звук не застанет их наполовину
 void gs_core_set_mode(int mode);
-void gs_core_set_tone(int bass_db, int treble_db);
 
 #endif

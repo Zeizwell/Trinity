@@ -66,7 +66,7 @@ static int audio(float *out, int n) {
             _pocketmod_next_tick(&pm);
             if (pm.tick == 0)                               // E0x: LED-фильтр, 0 - вкл, 1 - выкл
                 for (int i = 0; i < pm.num_channels; i++)
-                    if (pm.channels[i].effect == 0xE0) gs_led_module = !(pm.channels[i].param & 1);
+                    if (pm.channels[i].effect == 0xE0) gs_filter_led_set(!(pm.channels[i].param & 1));
         }
     }
     return 1;

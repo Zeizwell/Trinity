@@ -13,7 +13,6 @@
 #define GS_CTL_CMD_CLOSE 0xFD       // закрыть канал
 
 #define GS_CTL_PROTO   1
-#define GS_CTL_FW      1        // версия прошивки RP-GS
 #define GS_CTL_IN_MAX  16       // данные пакета, байт
 #define GS_CTL_OUT_MAX 64       // ответ, байт: больше всех ответ кривой
 #define GS_CTL_POINTS  32       // точек кривой: от 20 Гц до 20 кГц, поровну по логарифму
@@ -30,11 +29,24 @@ enum {
     GS_CTL_VERSION    = 0xD7
 };
 
+// Ответ GS_CTL_STAT: смещения
+enum {
+    GS_CTL_ST_LOAD   = 0,       // нагрузка, 2 байта, 0.1 %
+    GS_CTL_ST_TOP    = 2,       // пик, 2 байта, 0.1 %
+    GS_CTL_ST_LATE   = 4,       // опоздания, 4 байта
+    GS_CTL_ST_BLOCKS = 8,       // блоки, 4 байта
+    GS_CTL_ST_RATE   = 12,      // частота вывода, Гц, 4 байта
+    GS_CTL_ST_SYSK   = 16,      // такт, кГц, 4 байта
+    GS_CTL_ST_MODE   = 20,      // режим, 1 байт
+    GS_CTL_ST_DEV    = 21,      // устройство, 4 знака
+    GS_CTL_ST_SIZE   = 25
+};
+
 #define GS_CTL_OK  0x00
 #define GS_CTL_ERR 0xFF
 #define GS_CTL_CURVE_ALL 0xFF   // кривая: итог. Иначе ступень: GS_ST_*, GS_CURVE_BASS, GS_CURVE_TREBLE (gs_filter.h)
 
-void gs_ctl_set_save(int (*save)(void));    // запись настроек: железо знает прошивка. 1 - записано
+void gs_ctl_init(int (*save)(void), uint16_t fw_version);    // что знает только прошивка: запись настроек (1 - записано) и её версия
 int  gs_ctl_packet(uint8_t code, const uint8_t *in, int len, uint8_t *out);    // возвращает длину ответа
 
 #endif

@@ -31,7 +31,7 @@ void gs_pt_dma_start(int chan) {
     gs_voice_start(&gs_voice[chan], d, len, period_inc(gs_pt_reg[chan].period));
 }
 
-void gs_pt_led_set(int on) { gs_led_module = on; }
+void gs_pt_led_set(int on) { gs_filter_led_set(on); }
 
 // Регистры -> голос: громкость, период (при BLEP вступит на смене отсчёта), следующий блок
 static void regs_to_voices(void) {
