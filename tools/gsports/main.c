@@ -11,6 +11,8 @@
 #include "../../engine/gs/gs_filter.h"
 #include "../../engine/gs/gs_fx.h"
 #include "../../engine/gs/gs_chan.h"
+#include "../../engine/gs/gs_ctl.h"
+#include "../../engine/gs/gs_stat.h"
 
 extern const gs_dev_t gs_dev_gs, gs_dev_opl4;
 
@@ -86,6 +88,24 @@ static double render(float *dst, int blocks, double *peak) {
     }
     return sum;
 }
+
+// Пакет драйвера как у Z80: байт за байтом, ответ - длина и данные
+static int ctl(uint8_t code, const uint8_t *in, int len, uint8_t *out) {
+    uint8_t head[3] = { code, (uint8_t)len, 0 };
+    for (int i = 0; i < 3 + len; i++) { sd(i < 3 ? head[i] : in[i - 3]); sc(GS_CTL_CMD_BYTE); }
+    int n = gd();
+    n |= gd() << 8;
+    for (int i = 0; i < n; i++) out[i] = (uint8_t)gd();
+    return n;
+}
+
+static int ctl_tag(const char *tag, uint8_t *o) {
+    ctl(GS_CTL_CFG_GET, (const uint8_t *)tag, 4, o);
+    return o[0] | o[1] << 8 | o[2] << 16 | o[3] << 24;
+}
+
+static int saves;
+static int save_stub(void) { saves++; return 1; }
 
 int main(int argc, char **argv) {
     if (argc < 2) { printf("gsports файл.mod\n"); return 1; }
@@ -401,6 +421,74 @@ int main(int argc, char **argv) {
     gs_cfg.st[GS_ST_LP].on = 1;                     // ручка: ступень включилась, кривая за ней
     check("кривая: ступень руками", fabs(gs_filter_db(6000.0f) + 4.5) < 0.5, 1);
     gs_cfg_defaults();
+
+    // Канал драйвера: за ключом, обычному GS не мешает
+    {
+        static uint8_t o[GS_CTL_OUT_MAX + 2];
+        gs_cfg_defaults();
+        gs_core_init();
+        sd(0x55); sc(GS_CTL_CMD_BYTE);
+        check("канал: без ключа байт не взят", st() >> 7, 1);
+        sc(0x00);
+        check("канал: без ключа нет ответа", st() >> 7, 0);
+        for (const char *k = "TRINIT"; *k; k++) { sd((uint8_t)*k); sc(GS_CTL_CMD_KEY); }
+        sd('X'); sc(GS_CTL_CMD_KEY);                          // неверный байт: ключ с начала
+        check("канал: неверный ключ не открыл", st() >> 7, 1);
+        sc(0x00);
+        for (const char *k = GS_CTL_SIGN; *k; k++) { sd((uint8_t)*k); sc(GS_CTL_CMD_KEY); }
+        check("канал: ключ, ответ - протокол", gd(), GS_CTL_PROTO);
+        check("канал: версия", ctl(GS_CTL_VERSION, 0, 0, o) == 3 && o[0] == GS_CTL_PROTO, 1);
+        check("канал: чтение MAST", ctl_tag("MAST", o), gs_cfg.master_pct);
+        uint8_t s1[8] = { 'M', 'A', 'S', 'T', 50, 0, 0, 0 };
+        check("канал: запись ручки", ctl(GS_CTL_CFG_SET, s1, 8, o) == 1 && !o[0] && gs_cfg.master_pct == 50, 1);
+        check("канал: ручка не меняет режим", gs_cfg.mode != GS_MODE_CUSTOM, 1);
+        s1[4] = 101;
+        ctl(GS_CTL_CFG_SET, s1, 8, o);
+        check("канал: за пределом - отказ", o[0] == GS_CTL_ERR && gs_cfg.master_pct == 50, 1);
+        uint8_t s2[8] = { 'R', 'A', 'T', 'E', 0, 0, 0, 0 };
+        ctl(GS_CTL_CFG_SET, s2, 8, o);
+        check("канал: только чтение - отказ", o[0], GS_CTL_ERR);
+        check("канал: нет тега - отказ", ctl(GS_CTL_CFG_GET, (const uint8_t *)"XXXX", 4, o) == 1 && o[0] == GS_CTL_ERR, 1);
+        uint8_t s3[8] = { 'L', 'P', 'O', 'N', 1, 0, 0, 0 };
+        ctl(GS_CTL_CFG_SET, s3, 8, o);
+        check("канал: ступень руками - Custom", gs_cfg.mode == GS_MODE_CUSTOM && gs_cfg.st[GS_ST_LP].on, 1);
+        uint8_t p = GS_MODE_A500;
+        check("канал: пресет", ctl(GS_CTL_PRESET, &p, 1, o) == 1 && !o[0] && gs_cfg.mode == GS_MODE_A500, 1);
+        p = 0xFF;
+        check("канал: кривая 32 точки", ctl(GS_CTL_CURVE, &p, 1, o), GS_CTL_POINTS * 2);
+        int all = (int16_t)(o[50] | o[51] << 8), sum = 0;
+        for (p = 0; p < GS_CURVE_COUNT; p++) { ctl(GS_CTL_CURVE, &p, 1, o); sum += (int16_t)(o[50] | o[51] << 8); }
+        check("канал: итог = сумма ступеней", abs(all - sum) <= GS_CURVE_COUNT, 1);
+        check("канал: итог A500 завален", all < -100, 1);
+        gs_stat_reset();
+        gs_stat_block(100, 1000);                   // сброс выполняет блок
+        gs_stat_block(500, 1000);
+        gs_stat_late();
+        ctl(GS_CTL_STAT, 0, 0, o);
+        check("канал: пик 50.0%", o[2] | o[3] << 8, 500);
+        check("канал: опоздание", o[4], 1);
+        ctl(GS_CTL_STAT_RESET, 0, 0, o);
+        gs_stat_block(100, 1000);
+        ctl(GS_CTL_STAT, 0, 0, o);
+        check("канал: после сброса пик 10.0%", (o[2] | o[3] << 8) == 100 && o[4] == 0, 1);
+        check("канал: без записи - отказ", ctl(GS_CTL_CFG_SAVE, 0, 0, o) == 1 && o[0] == GS_CTL_ERR, 1);
+        gs_ctl_set_save(save_stub);
+        check("канал: запись", ctl(GS_CTL_CFG_SAVE, 0, 0, o) == 1 && !o[0] && saves == 1, 1);
+        gs_ctl_set_save(0);
+        sc(0x60);                                   // обычная команда закрывает канал и работает
+        check("канал: команда GS работает", gd(), 0);
+        sd(0x55); sc(GS_CTL_CMD_BYTE);
+        check("канал: после команды закрыт", st() >> 7, 1);
+        sc(0x00);
+        for (const char *k = GS_CTL_SIGN; *k; k++) { sd((uint8_t)*k); sc(GS_CTL_CMD_KEY); }
+        gd();
+        sc(GS_CTL_CMD_CLOSE);
+        sd(0x55); sc(GS_CTL_CMD_BYTE);
+        check("канал: #FD закрыл", st() >> 7, 1);
+        sc(0x00);
+        gs_cfg_defaults();
+        gs_core_init();
+    }
 
     printf(fails ? "ОШИБОК: %d\n" : "ВСЁ OK\n", fails);
     return fails != 0;

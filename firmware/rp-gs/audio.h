@@ -6,13 +6,6 @@
 
 #define AUDIO_FRAMES 256        // блок: 5.33 мс при 48 кГц
 
-typedef struct {
-    volatile uint32_t blocks;   // посчитано блоков
-    volatile uint32_t late;     // DMA дошёл до буфера раньше, чем его посчитали
-    volatile uint32_t last_us, top_us;
-} audio_stat_t;
-
-extern audio_stat_t audio_stat;
 extern volatile int audio_pattern;      // 1 - вместо звука счётчик: L 0x11nnnnnn, R 0x22nnnnnn (проверка формата)
 extern volatile int audio_hold;         // 1 - ядро 1 выводит тишину и не трогает движок
 

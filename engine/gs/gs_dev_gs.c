@@ -5,6 +5,7 @@
 #include "gs_fx.h"
 #include "gs_chan.h"
 #include "gs_dev_gs.h"
+#include "gs_ctl.h"
 
 const gs_dev_t gs_dev_gs;
 
@@ -44,7 +45,7 @@ static uint8_t notes_old[4], vols_old[4];           // для бита 7 в #63,
 static uint8_t arg_cmd, arg_first, arg_buf[2], arg_need, arg_k;
 
 // Ответ из нескольких байт: следующий - когда Спектрум прочёл предыдущий
-static uint8_t send_buf[4], send_n, send_k;
+static uint8_t send_buf[GS_CTL_OUT_MAX + 2], send_n, send_k;
 
 // Бит данных ставится после значения: Спектрум не прочтёт старое
 static void data_out(uint8_t v) { reg_out = v, bit_data = 1; }
@@ -152,6 +153,46 @@ static void args_done(void) {
 }
 
 static void args_wait(uint8_t c, uint8_t first, int n) { arg_cmd = c, arg_first = first, arg_need = (uint8_t)n, arg_k = 0; }
+
+// Канал драйвера (doc/trinity-api.md, раздел 7): свободные в GS команды за ключом. Без ключа они, как в ROM, ничего не делают;
+// любая обычная команда GS закрывает канал и выполняется как всегда
+static const char ctl_sign[] = GS_CTL_SIGN;
+static uint8_t ctl_open, ctl_key_pos, ctl_in[GS_CTL_IN_MAX + 3];
+static uint16_t ctl_n;
+
+static void ctl_close(void) { ctl_open = 0, ctl_key_pos = 0, ctl_n = 0; }
+
+static void ctl_key(void) {
+    if (reg_in != (uint8_t)ctl_sign[ctl_key_pos]) { ctl_key_pos = 0; return; }   // данные не наши: остаются как есть
+    bit_data = 0;
+    if (ctl_sign[++ctl_key_pos]) return;
+    ctl_key_pos = 0, ctl_open = 1, ctl_n = 0;
+    data_out(GS_CTL_PROTO);
+}
+
+// Байт пакета [код][длина 2 байта][данные]. Последний - выполнить: Z80 ждёт бит команды, пока идёт запись во флеш, поэтому занято видно само
+static void ctl_byte(void) {
+    if (!ctl_open) return;
+    uint8_t v = data_in();
+    if (ctl_n < sizeof ctl_in) ctl_in[ctl_n] = v;
+    ctl_n++;
+    if (ctl_n < 3) return;
+    int len = ctl_in[1] | ctl_in[2] << 8;
+    if (ctl_n < 3 + len) return;
+    int n;
+    if (len > GS_CTL_IN_MAX) send_buf[2] = GS_CTL_ERR, n = 1;
+    else n = gs_ctl_packet(ctl_in[0], ctl_in + 3, len, send_buf + 2);
+    ctl_n = 0;
+    send_buf[0] = (uint8_t)n, send_buf[1] = (uint8_t)(n >> 8);
+    send_start(n + 2);
+}
+
+static void ctl_cmd(uint8_t c) {
+    send_n = send_k = 0;
+    if (c == GS_CTL_CMD_KEY) ctl_key();
+    else if (c == GS_CTL_CMD_BYTE) ctl_byte();
+    else ctl_close();
+}
 
 static void cmd_run(uint8_t c) {
     if ((c & 0xE4) == 0x80) {                       // #80..#83, #88..#8B, #90..#93, #98..#9B
@@ -278,6 +319,7 @@ static void dev_reset(void) {
     gs_chan_reset();
     gs_mod_stop();
     reg_cmd = reg_in = reg_out = 0;
+    ctl_close();
     bit_cmd = bit_data = 0;
     vars_reset();
 }
@@ -325,11 +367,16 @@ static void dev_work(void) {
     if (ring_rd != ring_wr) ring_drain();
     if (bit_cmd) {
         ring_drain();                               // до команды: #D2 должен видеть все байты
-        gs_core_lock();
-        send_n = send_k = 0;                        // новая команда отменяет недосланный ответ, как HSEND в ROM
-        arg_need = arg_k = 0;
-        cmd_run(reg_cmd);
-        gs_core_unlock();
+        uint8_t c = reg_cmd;
+        if (c == GS_CTL_CMD_KEY || c == GS_CTL_CMD_BYTE || c == GS_CTL_CMD_CLOSE) ctl_cmd(c);     // без замка: сам берёт его, где надо; запись во флеш - вне замка
+        else {
+            ctl_close();
+            gs_core_lock();
+            send_n = send_k = 0;                    // новая команда отменяет недосланный ответ, как HSEND в ROM
+            arg_need = arg_k = 0;
+            cmd_run(c);
+            gs_core_unlock();
+        }
         bit_cmd = 0;                                // после выполнения: по этому биту Спектрум читает ответ
     } else if (arg_k < arg_need) {
         if (bit_data) {

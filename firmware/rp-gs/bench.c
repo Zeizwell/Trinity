@@ -8,6 +8,8 @@
 #include "cfgstore.h"
 #include "psram.h"
 #include "audio.h"
+#include "gs/gs_stat.h"
+#include "gs/gs_ctl.h"
 #include "bus.h"
 #include "bench.h"
 #include "gs/gs_core.h"
@@ -100,8 +102,8 @@ static void check_format(void) {
 
 // Живой звук: блоки за секунду, частота LCK с ножки, нагрузка
 static void live_stat(void) {
-    uint32_t b0 = audio_stat.blocks, edges = 0;
-    audio_stat.top_us = 0;
+    uint32_t b0 = gs_stat.blocks, edges = 0;
+    gs_stat_reset();
     uint64_t end = time_us_64() + 1000000;
     bool was = gpio_get(PIN_LCK);
     while (time_us_64() < end) {
@@ -110,8 +112,8 @@ static void live_stat(void) {
         was = now;
     }
     printf("%-12s блоков/с %lu, LCK %lu Гц, блок %lu мкс (%lu%%), худший %lu мкс (%lu%%), опозданий %lu\n", gs_cfg_mode_name(gs_cfg.mode),
-           (unsigned long)(audio_stat.blocks - b0), (unsigned long)edges, (unsigned long)audio_stat.last_us, (unsigned long)(audio_stat.last_us * 100 / budget_us()),
-           (unsigned long)audio_stat.top_us, (unsigned long)(audio_stat.top_us * 100 / budget_us()), (unsigned long)audio_stat.late);
+           (unsigned long)(gs_stat.blocks - b0), (unsigned long)edges, (unsigned long)gs_stat.last_us, (unsigned long)(gs_stat.last_us * 100 / budget_us()),
+           (unsigned long)gs_stat.top_us, (unsigned long)(gs_stat.top_us * 100 / budget_us()), (unsigned long)gs_stat.late);
 }
 
 // Обмен как у Z80, через коре и его таблицу кодов: те же действия шины, ядро 0 работает между ними, звук идёт на ядре 1
@@ -124,7 +126,7 @@ static int z80_gd(void) { while (!(gs_core_port_peek(GS_CODE_BB) & 0x80)) pump()
 static void exchange(void) {
     const uint8_t *mod = mod_bin;
     int size = (int)(mod_end - mod_bin);
-    uint32_t late0 = audio_stat.late;
+    uint32_t late0 = gs_stat.late;
     z80_sc(0x30);
     int h = bus_inject_rd(GS_CODE_B3);
     z80_sc(0xD1);
@@ -148,9 +150,53 @@ static void exchange(void) {
     z80_sc(0x60); int song = z80_gd();
     z80_sc(0x61); int row = z80_gd();
     z80_sc(0x20); int r0 = z80_gd(), r1 = z80_gd(), r2 = z80_gd();
-    printf("позиция %d, строка %d, память %d, опозданий %lu\n", song, row, r0 | r1 << 8 | r2 << 16, (unsigned long)(audio_stat.late - late0));
+    printf("позиция %d, строка %d, память %d, опозданий %lu\n", song, row, r0 | r1 << 8 | r2 << 16, (unsigned long)(gs_stat.late - late0));
     printf("обработчик шины: самый долгий %lu тактов (%lu нс), бюджет 850 нс\n", (unsigned long)bus_irq_top(), (unsigned long)(bus_irq_top() * 1000 / (gs_cfg.sys_khz / 1000)));
     printf("OPL4: порт #C4 отвечает %02X\n", gs_core_port_peek(OPL4_CODE_C4));
+    printf("готово\n");
+}
+
+// Канал драйвера как у Z80: ключ, пакеты через шину
+static int ctl_call(uint8_t code, const uint8_t *in, int len, uint8_t *out) {
+    uint8_t head[3] = { code, (uint8_t)len, 0 };
+    for (int i = 0; i < 3 + len; i++) { z80_sd(i < 3 ? head[i] : in[i - 3]); z80_sc(GS_CTL_CMD_BYTE); }
+    int n = z80_gd();
+    n |= z80_gd() << 8;
+    for (int i = 0; i < n; i++) out[i] = (uint8_t)z80_gd();
+    return n;
+}
+
+static int32_t ctl_get(const char *tag, uint8_t *o) {
+    ctl_call(GS_CTL_CFG_GET, (const uint8_t *)tag, 4, o);
+    return (int32_t)(o[0] | o[1] << 8 | o[2] << 16 | (uint32_t)o[3] << 24);
+}
+
+static void ctl_test(void) {
+    static uint8_t o[GS_CTL_OUT_MAX + 2];
+    uint32_t late0 = gs_stat.late;
+    for (const char *k = GS_CTL_SIGN; *k; k++) { z80_sd((uint8_t)*k); z80_sc(GS_CTL_CMD_KEY); }
+    printf("ключ: протокол %d\n", z80_gd());
+    ctl_call(GS_CTL_VERSION, 0, 0, o);
+    printf("версия: протокол %d, прошивка %d\n", o[0], o[1] | o[2] << 8);
+    printf("MAST %ld, RATE %ld, RCHZ %ld\n", (long)ctl_get("MAST", o), (long)ctl_get("RATE", o), (long)ctl_get("RCHZ", o));
+    uint8_t p = 1;
+    ctl_call(GS_CTL_PRESET, &p, 1, o);
+    printf("пресет A500: ответ %d\n", o[0]);
+    printf("MODE %ld, LPON %ld\n", (long)ctl_get("MODE", o), (long)ctl_get("LPON", o));
+    uint64_t t0 = time_us_64();
+    p = 0xFF;
+    ctl_call(GS_CTL_CURVE, &p, 1, o);
+    printf("кривая: %lu мкс, 3.4 кГц %d, 10 кГц %d (0.01 дБ)\n", (unsigned long)(time_us_64() - t0), (int16_t)(o[46] | o[47] << 8), (int16_t)(o[56] | o[57] << 8));
+    sleep_ms(1500);
+    ctl_call(GS_CTL_STAT, 0, 0, o);
+    printf("нагрузка %d.%d%%, пик %d.%d%%, опозданий %lu, устройство %.4s\n", (o[0] | o[1] << 8) / 10, (o[0] | o[1] << 8) % 10, (o[2] | o[3] << 8) / 10, (o[2] | o[3] << 8) % 10,
+           (unsigned long)(o[4] | o[5] << 8 | o[6] << 16 | (uint32_t)o[7] << 24), o + 21);
+    p = 2;
+    ctl_call(GS_CTL_PRESET, &p, 1, o);
+    t0 = time_us_64();
+    ctl_call(GS_CTL_CFG_SAVE, 0, 0, o);
+    printf("сохранение: ответ %d, %lu мс, опозданий за всё время %lu\n", o[0], (unsigned long)((time_us_64() - t0) / 1000), (unsigned long)(gs_stat.late - late0));
+    z80_sc(GS_CTL_CMD_CLOSE);
     printf("готово\n");
 }
 
@@ -165,13 +211,13 @@ static void save_cfg(void) {
     static uint8_t keep[4096];                      // это память GS: вернуть как было
     volatile uint8_t *p = PSRAM_BASE + (7u << 20);
     for (int i = 0; i < 4096; i++) keep[i] = p[i], p[i] = (uint8_t)(i * 7);
-    uint32_t late0 = audio_stat.late;
+    uint32_t late0 = gs_stat.late;
     uint64_t t = time_us_64();
     int ok = cfgstore_save();
     uint32_t us = (uint32_t)(time_us_64() - t);
     int bad = 0;
     for (int i = 0; i < 4096; i++) { if (p[i] != (uint8_t)(i * 7)) bad++; p[i] = keep[i]; }
-    printf("сохранение: %s, %lu мс, PSRAM не совпало %d, опозданий звука %lu\n", ok ? "да" : "нет", (unsigned long)(us / 1000), bad, (unsigned long)(audio_stat.late - late0));
+    printf("сохранение: %s, %lu мс, PSRAM не совпало %d, опозданий звука %lu\n", ok ? "да" : "нет", (unsigned long)(us / 1000), bad, (unsigned long)(gs_stat.late - late0));
     printf("готово\n");
 }
 
@@ -200,6 +246,7 @@ void bench_key(void) {
     case '1': case '2': case '3': case '4': gs_core_set_mode((gs_mode_t)(c - '1')); show_cfg(); break;
     case 'w': save_cfg(); break;
     case 'c': show_cfg(); break;
+    case 'd': ctl_test(); break;
     default: break;
     }
 }

@@ -15,7 +15,7 @@ set(E ${CMAKE_CURRENT_LIST_DIR}/../../engine/gs)
 set(S ${CMAKE_CURRENT_LIST_DIR}/../../engine/sd)
 set(F ${CMAKE_CURRENT_LIST_DIR}/../../engine/third_party/fatfs)
 add_executable(rp_gs main.c psram.c audio.c bus.c cfgstore.c bench.c sdport.c
-    ${E}/gs_cfg.c ${E}/gs_chan.c ${E}/gs_mod.c ${E}/gs_pt.c ${E}/gs_play_pt.c ${E}/gs_play_pocket.c ${E}/gs_core.c ${E}/gs_dev_gs.c ${E}/gs_dev_opl4.c
+    ${E}/gs_cfg.c ${E}/gs_chan.c ${E}/gs_mod.c ${E}/gs_pt.c ${E}/gs_ctl.c ${E}/gs_stat.c ${E}/gs_play_pt.c ${E}/gs_play_pocket.c ${E}/gs_core.c ${E}/gs_dev_gs.c ${E}/gs_dev_opl4.c
     ${E}/gs_fx.c ${E}/gs_blep.c ${E}/gs_filter.c ${E}/gs_down.c
     ${S}/sd_card.c ${S}/sd_disk.c ${F}/ff.c ${F}/ffunicode.c)
 target_compile_definitions(rp_gs PRIVATE TEST_MOD="${TEST_MOD}")

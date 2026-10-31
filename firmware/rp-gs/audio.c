@@ -9,6 +9,7 @@
 #include "gs/gs_cfg.h"
 #include "config.h"
 #include "audio.h"
+#include "gs/gs_stat.h"
 #include "i2s.pio.h"
 
 
@@ -24,7 +25,6 @@ static uint32_t pattern_n, rate_now;
 
 static volatile uint8_t free_mask;      // какие буферы DMA уже отыграл
 
-audio_stat_t audio_stat;
 volatile int audio_pattern, audio_hold;
 
 // Отыграл - адрес на начало, буфер отдаём ядру 1. Цепочка каналов идёт сама
@@ -34,7 +34,7 @@ static void __isr dma_irq(void) {
     for (int i = 0; i < 2; i++) {
         if (!(st >> dma_ch[i] & 1)) continue;
         dma_channel_set_read_addr(dma_ch[i], dma_buf[i], false);
-        if (free_mask & (1u << i)) audio_stat.late++;   // прошлый раз не успели посчитать
+        if (free_mask & (1u << i)) gs_stat_late();   // прошлый раз не успели посчитать
         free_mask |= (uint8_t)(1u << i);
     }
     __sev();
@@ -78,9 +78,7 @@ static void core1_main(void) {
         uint32_t ints = save_and_disable_interrupts();
         free_mask &= (uint8_t)~(1u << i);
         restore_interrupts(ints);
-        audio_stat.last_us = d;
-        if (d > audio_stat.top_us) audio_stat.top_us = d;
-        audio_stat.blocks++;
+        gs_stat_block(d, AUDIO_FRAMES * 1000000u / gs_cfg.rate_hz);
     }
 }
 

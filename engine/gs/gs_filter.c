@@ -76,6 +76,9 @@ void gs_filter_init(float rate) {
     memset(&treble, 0, sizeof treble);
 }
 
+// Ручка плюс окраска режима: в пределах -12..12 дБ
+static int tone_db(int db) { return db > 12 ? 12 : db < -12 ? -12 : db; }
+
 // --- кривая для драйвера: те же коэффициенты, что звучат ---
 static double abs2(double re, double im) { return re * re + im * im; }
 
@@ -88,22 +91,34 @@ static double shelf_db(const shelf_t *f, double w) {
     return 10.0 * log10(abs2(f->b0 + f->b1 * c + f->b2 * c2, f->b1 * s + f->b2 * s2) / abs2(1.0 + f->a1 * c + f->a2 * c2, f->a1 * s + f->a2 * s2));
 }
 
-float gs_filter_db(float hz) {
+static double hp_p(double c, double s) {             // ФВЧ: вход минус ФНЧ. H = 1 - a0 / (1 - b1 z^-1)
+    double dr = 1.0 - hp.b1 * c, di = hp.b1 * s, d = abs2(dr, di);
+    return abs2(1.0 - hp.a0 * dr / d, hp.a0 * di / d);
+}
+
+float gs_filter_stage_db(int stage, float hz) {
     const gs_stage_t *st = gs_cfg.st;
-    double w = 2.0 * GS_PI * hz / filter_rate, c = cos(w), s = sin(w), p = 1.0, db;
+    double w = 2.0 * GS_PI * hz / filter_rate, c = cos(w), s = sin(w), p = 1.0;
     stages_update();
-    if (st[GS_ST_RC].on) p *= pole1_lp2(&rc, w);
-    if (st[GS_ST_LP].on) p *= pole1_lp2(&lp, w);
-    if (gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module))
-        p *= abs2(led.b0 + led.b1 * c, led.b1 * s) / abs2(1.0 + led.a1 * c + led.a2 * cos(2.0 * w), led.a1 * s + led.a2 * sin(2.0 * w));
-    if (st[GS_ST_HP].on) {                          // ФВЧ: вход минус ФНЧ. H = 1 - a0 / (1 - b1 z^-1)
-        double dr = 1.0 - hp.b1 * c, di = hp.b1 * s, d = abs2(dr, di);
-        p *= abs2(1.0 - hp.a0 * dr / d, hp.a0 * di / d);
+    switch (stage) {
+    case GS_ST_RC: if (st[GS_ST_RC].on) p = pole1_lp2(&rc, w); break;
+    case GS_ST_LP: if (st[GS_ST_LP].on) p = pole1_lp2(&lp, w); break;
+    case GS_ST_LED:
+        if (gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module))
+            p = abs2(led.b0 + led.b1 * c, led.b1 * s) / abs2(1.0 + led.a1 * c + led.a2 * cos(2.0 * w), led.a1 * s + led.a2 * sin(2.0 * w));
+        break;
+    case GS_ST_HP: if (st[GS_ST_HP].on) p = hp_p(c, s); break;
+    case GS_CURVE_BASS: return tone_db(gs_cfg.bass_db + gs_cfg.color_bass_db) ? (float)shelf_db(&bass, w) : 0.0f;
+    case GS_CURVE_TREBLE: return tone_db(gs_cfg.treble_db + gs_cfg.color_treble_db) ? (float)shelf_db(&treble, w) : 0.0f;
+    default: break;
     }
-    db = 10.0 * log10(p);
-    if (bass.db) db += shelf_db(&bass, w);
-    if (treble.db) db += shelf_db(&treble, w);
-    return (float)db;
+    return (float)(10.0 * log10(p));
+}
+
+float gs_filter_db(float hz) {
+    float db = 0.0f;
+    for (int i = 0; i < GS_CURVE_COUNT; i++) db += gs_filter_stage_db(i, hz);
+    return db;
 }
 
 // Компрессор (общий на L и R, чтобы не гуляла панорама) и мягкий ограничитель. Порог, степень и подъём - здесь
@@ -143,9 +158,6 @@ void gs_comp_run(float *buf, int n, float rate) {
         buf[i + 1] = soft_limit(buf[i + 1] * comp_g);
     }
 }
-
-// Ручка плюс окраска режима: в пределах -12..12 дБ
-static int tone_db(int db) { return db > 12 ? 12 : db < -12 ? -12 : db; }
 
 void gs_filter_run(float *buf, int n) {
     int use_lp = gs_cfg.st[GS_ST_LP].on, use_hp = gs_cfg.st[GS_ST_HP].on, use_rc = gs_cfg.st[GS_ST_RC].on;
