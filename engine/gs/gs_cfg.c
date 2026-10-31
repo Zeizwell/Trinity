@@ -8,7 +8,7 @@ void gs_cfg_defaults(void) {
     gs_cfg.oversample = 2;
     gs_cfg.voices = 4;
     gs_cfg.master_pct = 100;
-    gs_cfg_mode(GS_MODE_GS);
+    gs_cfg_mode(GS_MODE_A1200);
 }
 
 uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
