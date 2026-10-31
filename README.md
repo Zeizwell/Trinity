@@ -1,63 +1,67 @@
 # ZX Trinity
 
-**Three computers' worth of sound on one card for the ZX Spectrum.**
-Real AY chips, the sound of the Amiga and the FM of the MSX, on ZX-BUS / NemoBus and ZX Evolution.
+**Sound card for the ZX Spectrum: Atari, Amiga and MSX on one board.**
 
-| | Platform | What you get |
-|---|---|---|
-| 🎹 | **Atari** | Two real YM2203 chips (AY + FM) with timer effects on top: SID, Sync buzzer, FM, sweeps. SNDH player planned |
-| 🎸 | **Amiga** | General Sound compatible, with the sound of Paula: A500 and A1200 filters, ProTracker playback |
-| 🎺 | **MSX** | OPL4 (Moonsound) in place of the GS mode |
+For ZX-BUS / NemoBus and ZX Evolution.
 
-## Where we are
+| Sound | How |
+|---|---|
+| **Atari** | Two real YM2203 chips (AY and FM) and timer effects: SID, Sync, FM, sweep |
+| **Amiga** | General Sound compatible, with Paula sound and A500 / A1200 filters |
+| **MSX** | OPL4 (Moonsound), used instead of General Sound |
+
+## Status
 
 ### Done
-- ✅ **Board rev A** designed and ordered, on its way
-- ✅ **Amiga sound:** Paula-style output, A500 / A1200 / LED filters, presets GS, A500, A1200 and HiFi
-- ✅ **ProTracker player:** every Paula register matches the original replayer on hundreds of test modules
-- ✅ **Checked against real hardware:** A1200 and MultiSound recordings, the spectrum matches within ±1 dB up to 16 kHz
-- ✅ **General Sound:** ports, module and effect loading, commands
-- ✅ **Plenty of headroom:** the sound core takes 10-17 % of its time
-- ✅ **Driver API for Z80:** check for the card, change settings and presets, see the load and filter curves live. Include one file and write any interface you like
+- Board rev A is designed and ordered
+- Amiga sound: Paula output, A500 / A1200 / LED filters, presets GS, A500, A1200, HiFi
+- ProTracker player: Paula registers match the original player on 205 test modules
+- Sound on PC: A1200 mode matches recordings of a real A1200, GS mode matches MultiSound, both within ±1 dB up to 16 kHz
+- General Sound: ports, loading modules and effects, commands
+- Output: 32-bit I2S to a PCM5102A DAC. Paula and HiFi 48 kHz, GS 37.5 kHz like the original (each sample sent twice, DAC at 75 kHz)
+- Sound takes 10-17 % of one CPU core
+- Z80 API: find the card, settings, presets, CPU load, filter curves, versions
 
-### Working on the bench
-- 🔧 **AY side:** bus capture, register shadow and timer effects on a breadboard prototype
-- 🔧 **SD card** with exFAT, tested on PC so far
+### Works on a test setup
+- AY part: bus, registers and timer effects
+- SD card with exFAT: tested on PC only
 
-### Next
-- ⏳ Assemble the first boards and run the card on a real Spectrum
-- ⏳ CPLD firmware and firmware updates from SD
-- ⏳ OPL4 sound, SNDH player, NeoGS, XM
+### To do
+- Build the first boards and test on a real Spectrum
+- CPLD firmware, firmware updates from SD, driver program for the Spectrum
+- OPL4 sound, SNDH player, NeoGS, XM
 
 ---
 
 # ZX Trinity
 
-**Звук трёх компьютеров на одной карте для ZX Spectrum.**
-Настоящие чипы AY, звук Амиги и FM от MSX, для ZX-BUS / NemoBus и ZX Evolution.
+**Звуковая карта для ZX Spectrum: Atari, Amiga и MSX на одной плате.**
 
-| | Платформа | Что внутри |
-|---|---|---|
-| 🎹 | **Atari** | Два настоящих YM2203 (AY + FM) и таймерные эффекты поверх: SID, бузер Sync, FM, свипы. SNDH-плеер в планах |
-| 🎸 | **Amiga** | Совместимость с General Sound и звук Paula: фильтры A500 и A1200, воспроизведение ProTracker |
-| 🎺 | **MSX** | OPL4 (Moonsound) вместо режима GS |
+Для ZX-BUS / NemoBus и ZX Evolution.
+
+| Звук | Как |
+|---|---|
+| **Atari** | Два настоящих YM2203 (AY и FM) и таймерные эффекты: SID, Sync, FM, свип |
+| **Amiga** | Совместимость с General Sound, звук Paula, фильтры A500 / A1200 |
+| **MSX** | OPL4 (Moonsound), вместо General Sound |
 
 ## Что сейчас
 
 ### Готово
-- ✅ **Плата рев A** разведена и заказана, едет
-- ✅ **Звук Амиги:** вывод как у Paula, фильтры A500 / A1200 / LED, пресеты GS, A500, A1200 и HiFi
-- ✅ **Плеер ProTracker:** все регистры Paula совпали с оригинальным реплеером на сотнях тестовых модулей
-- ✅ **Сверено с настоящим железом:** записи A1200 и MultiSound, спектр совпал в пределах ±1 дБ до 16 кГц
-- ✅ **General Sound:** порты, загрузка модулей и эффектов, команды
-- ✅ **Большой запас:** ядро звука занято на 10-17 %
-- ✅ **API драйвера для Z80:** проверка карты, настройки и пресеты, нагрузка и кривые фильтров вживую. Подключаешь один файл и пишешь любой интерфейс
+- Плата рев A разведена и заказана
+- Звук Амиги: вывод Paula, фильтры A500 / A1200 / LED, пресеты GS, A500, A1200, HiFi
+- Плеер ProTracker: регистры Paula совпали с оригинальным плеером на 205 тестовых модулях
+- Звук на ПК: режим A1200 совпал с записями настоящей A1200, режим GS с MultiSound, оба в пределах ±1 дБ до 16 кГц
+- General Sound: порты, загрузка модулей и эффектов, команды
+- Выход: I2S 32 бита на ЦАП PCM5102A. Paula и HiFi 48 кГц, GS 37.5 кГц как в оригинале (каждый отсчёт дважды, ЦАП на 75 кГц)
+- Звук занимает 10-17 % одного ядра процессора
+- API для Z80: поиск карты, настройки, пресеты, нагрузка, кривые фильтров, версии
 
-### Работает на стенде
-- 🔧 **Часть AY:** перехват шины, тень регистров и таймерные эффекты на макете
-- 🔧 **SD-карта** с exFAT, пока проверена на ПК
+### Работает на макете
+- Часть AY: шина, регистры и таймерные эффекты
+- SD-карта с exFAT: проверена только на ПК
 
 ### Дальше
-- ⏳ Собрать первые платы и запустить карту на настоящем Спектруме
-- ⏳ Прошивка CPLD и обновление прошивок с SD
-- ⏳ Звук OPL4, SNDH-плеер, NeoGS, XM
+- Собрать первые платы и проверить на настоящем Спектруме
+- Прошивка CPLD, обновление прошивок с SD, программа-драйвер для Спектрума
+- Звук OPL4, SNDH-плеер, NeoGS, XM
