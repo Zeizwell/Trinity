@@ -293,13 +293,14 @@ static void voice_block(gs_voice_t *v, int c, int n) {
     }
 }
 
-// Тики генератора GS: фронт - только где выход изменился
-static void ticks_block(int voices, int n, gs_resample_t rs, float hold_add, float rate, float hold) {
+// Тики генератора GS: как ЦАП GS и NeoGS: на тике голоса складываются, уровень держится до следующего тика, без BLEP
+static void ticks_block(int voices, int n, gs_resample_t rs, float hold_add) {
     for (int s = 0; s < n; s++) {
         hold_acc += hold_add;
         if (hold_acc < 1.0f) continue;
         hold_acc -= 1.0f;
         int quantum = (rom_tick_n++ & 255) == 0;        // GS: громкость и шаг - раз в квант 256 тиков
+        float amp[2] = { 0.0f, 0.0f };
         for (int c = 0; c < voices; c++) {
             gs_voice_t *v = &gs_voice[c];
             gs_blep_t *b = &v->blep;
@@ -309,10 +310,15 @@ static void ticks_block(int voices, int n, gs_resample_t rs, float hold_add, flo
                 v->held = ((int)rom_tick(v) - 128) * (1.0f / 128.0f) * v->rom_vol * (1.0f / 64.0f);
             } else voice_step(v);
             if (v->held != b->last) {
-                float offset = hold < rate ? hold_acc / hold_add : 0.0f;
-                bus_edge(c, s, offset < 1.0f ? offset : 0.0f, b->last - v->held);
+                float d = b->last - v->held;
+                amp[0] += d * gain[c][0];
+                amp[1] += d * gain[c][1];
                 b->last = v->held;
             }
+        }
+        uint32_t p = (bus_pos + (uint32_t)s) & BUS_MASK;
+        for (int k = 0; k < 2; k++) {
+            bus_step[k][p] -= amp[k];
         }
     }
 }
@@ -349,7 +355,7 @@ void gs_chan_mix(float *out, int n) {
             if (v->data || v->blep.last != 0.0f) voice_block(v, c, n);
         }
     } else if (rs == GS_RS_STEP || rs == GS_RS_ROM) {
-        ticks_block(voices, n, rs, hold / rate, rate, hold);
+        ticks_block(voices, n, rs, hold / rate);
     } else {                                            // на каждый отсчёт: кубика, рампа, ШИМ
         float ramp_k = gs_cfg.ramp ? 1000.0f / (1.5f * rate) : 0.0f;    // рампа ~1.5 мс
         double cck = CCK_HZ / rate;                     // тактов CCK на отсчёт

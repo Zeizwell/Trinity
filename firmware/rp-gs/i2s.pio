@@ -1,0 +1,56 @@
+; I2S (Philips), 32 бита на канал. Такт: 2 команды на бит
+; side-set: бит 0 - BCK, бит 1 - LCK. Данные меняются на спаде BCK, LCK - за один BCK до старшего бита
+.program i2s_out
+.side_set 2
+bitloop1:
+    out pins, 1       side 0b10
+    jmp x-- bitloop1  side 0b11
+    out pins, 1       side 0b00
+public entry:
+    set x, 30         side 0b01
+bitloop0:
+    out pins, 1       side 0b00
+    jmp x-- bitloop0  side 0b01
+    out pins, 1       side 0b10
+    set x, 30         side 0b11
+
+; Проверка без ЦАП: читает свои же ножки как ЦАП. После спада LCK первый фронт BCK - младший бит прошлого канала, его пропускаем
+.program i2s_check
+    wait 1 pin 2
+    wait 0 pin 2
+    wait 1 pin 1
+    wait 0 pin 1
+.wrap_target
+    wait 1 pin 1
+    in pins, 1
+    wait 0 pin 1
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+static inline void i2s_out_init(PIO pio, uint sm, uint off, uint pin_din, uint pin_bck, uint rate_hz) {
+    pio_sm_config c = i2s_out_program_get_default_config(off);
+    sm_config_set_out_pins(&c, pin_din, 1);
+    sm_config_set_sideset_pins(&c, pin_bck);
+    sm_config_set_out_shift(&c, false, true, 32);       // старший бит первым, автоподхват
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv(&c, (float)clock_get_hz(clk_sys) / (float)(rate_hz * 64u * 2u));
+    pio_gpio_init(pio, pin_din);
+    pio_gpio_init(pio, pin_bck);
+    pio_gpio_init(pio, pin_bck + 1);
+    pio_sm_set_pins_with_mask(pio, sm, 0, 1u << pin_din | 3u << pin_bck);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_din, 1, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_bck, 2, true);
+    pio_sm_init(pio, sm, off + i2s_out_offset_entry, &c);
+}
+
+static inline void i2s_check_init(PIO pio, uint sm, uint off, uint pin_din) {
+    pio_sm_config c = i2s_check_program_get_default_config(off);
+    sm_config_set_in_pins(&c, pin_din);                 // 0 - DIN, 1 - BCK, 2 - LCK
+    sm_config_set_in_shift(&c, false, true, 32);        // старший бит первым, автовыгрузка
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    pio_sm_init(pio, sm, off, &c);
+}
+%}
