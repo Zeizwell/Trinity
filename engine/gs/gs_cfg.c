@@ -9,7 +9,7 @@ gs_cfg_t gs_cfg;
 
 void gs_cfg_defaults(void) {
     gs_cfg.sys_khz = 250000;                    // как RP-AY: ответ на чтение сразу за записью на 14 МГц (бюджет ~0.85 мкс)
-    gs_cfg.gs_ram_kb = 4096;
+    gs_cfg.gs_ram_kb = 8192;
     gs_cfg.gs_on = 1;
     gs_cfg.oversample = 1;
     gs_cfg.voices = 8;                          // 4 модуль, 4 эффекты

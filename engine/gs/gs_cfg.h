@@ -13,7 +13,7 @@ typedef enum { GS_LED_OFF, GS_LED_MODULE, GS_LED_ON } gs_led_t;          // LED-
 typedef struct {
     // --- железо
     uint32_t sys_khz;           // такт RP, кГц
-    uint32_t gs_ram_kb;         // память GS в PSRAM, КБ (п.60 не решён, рабочее значение)
+    uint32_t gs_ram_kb;         // память GS в PSRAM, КБ (п.60: вся, у активного устройства)
     // --- устройства
     uint8_t  gs_on;             // GS отвечает на порты и звучит
     // --- вывод

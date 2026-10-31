@@ -162,14 +162,15 @@ static void show_cfg(void) {
 
 // Сохранение: проверить, что PSRAM пережила запись во флеш (та же шина QSPI)
 static void save_cfg(void) {
+    static uint8_t keep[4096];                      // это память GS: вернуть как было
     volatile uint8_t *p = PSRAM_BASE + (7u << 20);
-    for (int i = 0; i < 4096; i++) p[i] = (uint8_t)(i * 7);
+    for (int i = 0; i < 4096; i++) keep[i] = p[i], p[i] = (uint8_t)(i * 7);
     uint32_t late0 = audio_stat.late;
     uint64_t t = time_us_64();
     int ok = cfgstore_save();
     uint32_t us = (uint32_t)(time_us_64() - t);
     int bad = 0;
-    for (int i = 0; i < 4096; i++) if (p[i] != (uint8_t)(i * 7)) bad++;
+    for (int i = 0; i < 4096; i++) { if (p[i] != (uint8_t)(i * 7)) bad++; p[i] = keep[i]; }
     printf("сохранение: %s, %lu мс, PSRAM не совпало %d, опозданий звука %lu\n", ok ? "да" : "нет", (unsigned long)(us / 1000), bad, (unsigned long)(audio_stat.late - late0));
     printf("готово\n");
 }
