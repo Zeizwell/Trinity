@@ -3,6 +3,7 @@
 #define GS_CHAN_H
 
 #include <stdint.h>
+#include "gs_blep.h"
 
 #define GS_VOICES_MAX 32
 
@@ -14,7 +15,10 @@ typedef struct {
     float    pos;               // позиция; < 0 - сэмпл кончился
     float    inc;               // шаг на отсчёт вывода
     uint8_t  vol;               // 0..64
-    float    held;              // текущая ступенька, -1..1 (GS_RS_STEP)
+    float    held;              // текущая ступенька, -1..1
+    uint32_t idx;               // GS_RS_BLEP: какой отсчёт сэмпла звучит
+    gs_blep_t blep;             // GS_RS_BLEP
+    float    vol_now;           // GS_RS_INTERP: громкость с рампой, 0..1
 } gs_voice_t;
 
 extern gs_voice_t gs_voice[GS_VOICES_MAX];

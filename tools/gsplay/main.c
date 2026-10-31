@@ -76,7 +76,6 @@ static int live(const unsigned char *mod, int size) {
         hdr[i].dwFlags |= WHDR_DONE;
     }
     printf("1 GS  2 Paula A500  3 Paula A1200  4 HiFi  |  space pause  s stop/start  q quit\n");
-    printf("(2-4: BLEP, filters - next step, sound like GS for now)\n");
     int paused = 0, run = 1;
     show(paused);
     for (;;) {

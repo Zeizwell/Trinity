@@ -3,6 +3,7 @@
 #include "gs_mod.h"
 #include "gs_chan.h"
 #include "gs_cfg.h"
+#include "gs_filter.h"
 
 static pocketmod_context pm;
 static int playing;
@@ -10,6 +11,7 @@ static int playing;
 int gs_mod_load(const void *data, int size) {
     playing = 0;
     gs_chan_reset();
+    gs_led_module = 0;
     if (!pocketmod_init(&pm, data, size, (int)gs_cfg.rate_hz)) return 0;
     if (pm.num_channels > GS_VOICES_MAX) return 0;
     playing = 1;
@@ -57,6 +59,9 @@ void gs_mod_audio(float *out, int n) {
         if (pm.sample >= pm.samples_per_tick) {
             pm.sample -= pm.samples_per_tick;
             _pocketmod_next_tick(&pm);
+            if (pm.tick == 0)                               // E0x: LED-фильтр, 0 - вкл, 1 - выкл
+                for (int i = 0; i < pm.num_channels; i++)
+                    if (pm.channels[i].effect == 0xE0) gs_led_module = !(pm.channels[i].param & 1);
         }
     }
 }

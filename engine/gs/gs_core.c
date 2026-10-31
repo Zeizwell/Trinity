@@ -1,6 +1,7 @@
 #include <string.h>
 #include "gs_core.h"
 #include "gs_cfg.h"
+#include "gs_filter.h"
 
 extern const gs_dev_t gs_dev_gs;
 
@@ -13,6 +14,7 @@ static const gs_dev_t *active;
 void gs_core_init(void) {
     gs_cfg_defaults();
     active = 0;
+    gs_filter_init((float)gs_cfg.rate_hz);
     for (int i = 0; i < DEV_N; i++) dev_list[i]->reset();
 }
 
@@ -26,6 +28,7 @@ const gs_dev_t *gs_core_active(void) { return active; }
 void gs_core_audio(float *out, int n) {
     memset(out, 0, (size_t)n * 2 * sizeof(float));
     if (active && active->enabled()) active->audio(out, n);
+    gs_filter_run(out, n);
     float k = gs_cfg.master_pct * 0.01f;
     for (int i = 0; i < n * 2; i++) {
         float x = out[i] * k;

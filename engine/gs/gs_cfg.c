@@ -10,7 +10,7 @@ void gs_cfg_defaults(void) {
     gs_cfg_mode(GS_MODE_GS);
 }
 
-// Режим - только значения переменных. BLEP, интерполяция и фильтры - следующие шаги: пока звучат как ступеньки
+// Режим - только значения переменных
 void gs_cfg_mode(gs_mode_t mode) {
     gs_cfg.mode = mode;
     switch (mode) {
