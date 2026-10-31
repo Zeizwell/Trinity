@@ -97,9 +97,17 @@ void gs_chan_mix(float *out, int n) {
             float x;
             if (rs == GS_RS_BLEP) x = voice_blep(v);
             else if (rs == GS_RS_INTERP) x = voice_interp(v, ramp_k);
-            else {
-                if (tick) voice_step(v, v->inc * step_mul);
-                x = v->held;
+            else {                                      // ступеньки GS: фронт - точно в свой момент, BLEP без лишней грязи от 48 кГц
+                gs_blep_t *b = &v->blep;
+                if (tick) {
+                    voice_step(v, v->inc * step_mul);
+                    if (v->held != b->last) {
+                        float offset = hold < rate ? hold_acc / hold_add : 0.0f;
+                        gs_blep_add(b, offset < 1.0f ? offset : 0.0f, b->last - v->held);
+                        b->last = v->held;
+                    }
+                }
+                x = b->left > 0 ? gs_blep_run(b, v->held) : v->held;
             }
             x *= 0.5f;
             int right = ((c + 1) >> 1) & 1;             // 0 L, 1 R, 2 R, 3 L
