@@ -26,8 +26,8 @@
 ;      RU: Все процедуры отвечают одинаково:     C - успех;  NC - ошибка, A = код ошибки (GSC_E_*).
 ;   3. EN: Numbers are little endian. Interrupts may stay on.
 ;      RU: Числа - младшим байтом вперёд. Прерывания можно не запрещать.
-;   4. EN: Finish a GS load (#30 / #38 ... #D2) before Gsc_Detect: during a load #B3 bytes go to memory.
-;      RU: Закончить загрузку в GS (#30 / #38 ... #D2) до Gsc_Detect: во время загрузки байты #B3 идут в память.
+;    4. EN: Finish a GS load (#30 / #38 ... #D2) before Gsc_Detect: during a load the key bytes go into the module and spoil it, the channel stays closed. After #D2 all is well, reload the module.
+;         RU: Закончить загрузку в GS (#30 / #38 ... #D2) до Gsc_Detect: во время загрузки байты ключа попадут в модуль и испортят его, канал не откроется. После #D2 всё работает, модуль загрузить заново.
 ;
 ; ROUTINES / ПРОЦЕДУРЫ
 ;   Gsc_Detect      EN: is the card here, open the channel      RU: есть ли карта, открыть канал
