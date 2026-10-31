@@ -47,6 +47,7 @@ void gs_core_audio(float *out, int n) {
         p += k * 2;
         left -= k;
     }
+    gs_comp_run(out, n, (float)gs_cfg.rate_hz);
     float g = gs_cfg.master_pct * 0.01f;
     for (int i = 0; i < n * 2; i++) {
         float x = out[i] * g;

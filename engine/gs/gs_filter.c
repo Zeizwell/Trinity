@@ -66,6 +66,43 @@ void gs_filter_init(float rate) {
     memset(&treble, 0, sizeof treble);
 }
 
+// Компрессор (общий на L и R, чтобы не гуляла панорама) и мягкий ограничитель. Порог, степень и подъём - здесь
+#define COMP_THR     0.10f      // порог, -20 дБ
+#define COMP_RATIO   3.0f
+#define COMP_MAKEUP  3.2f       // подъём, ~+10 дБ
+#define COMP_ATK_MS  5.0f
+#define COMP_REL_MS  150.0f
+#define LIM_KNEE     0.8f       // до него ограничитель не трогает
+
+#define COMP_STEP    16         // усиление считаем раз в столько отсчётов (степень на RP дорогая), между ними - плавно
+
+static float comp_env, comp_g = COMP_MAKEUP, comp_add;
+static int comp_left;
+
+static float soft_limit(float x) {
+    float a = fabsf(x);
+    if (a <= LIM_KNEE) return x;
+    a = LIM_KNEE + (1.0f - LIM_KNEE) * tanhf((a - LIM_KNEE) / (1.0f - LIM_KNEE));
+    return x < 0.0f ? -a : a;
+}
+
+void gs_comp_run(float *buf, int n, float rate) {
+    if (!gs_cfg.comp) return;
+    float atk = 1.0f - expf(-1000.0f / (COMP_ATK_MS * rate)), rel = 1.0f - expf(-1000.0f / (COMP_REL_MS * rate));
+    for (int i = 0; i < n * 2; i += 2) {
+        float a = fabsf(buf[i]), b = fabsf(buf[i + 1]), x = a > b ? a : b;
+        comp_env += (x - comp_env) * (x > comp_env ? atk : rel);
+        if (comp_left-- <= 0) {
+            float g = comp_env > COMP_THR ? powf(COMP_THR / comp_env, 1.0f - 1.0f / COMP_RATIO) : 1.0f;
+            comp_add = (g * COMP_MAKEUP - comp_g) / COMP_STEP;
+            comp_left = COMP_STEP - 1;
+        }
+        comp_g += comp_add;
+        buf[i] = soft_limit(buf[i] * comp_g);
+        buf[i + 1] = soft_limit(buf[i + 1] * comp_g);
+    }
+}
+
 void gs_filter_run(float *buf, int n) {
     int use_lp = gs_cfg.lp == GS_LP_A500;           // ФНЧ A1200 ~34 кГц: не слышно, не считаем (как pt2-clone)
     int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module);

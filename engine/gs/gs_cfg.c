@@ -7,7 +7,7 @@ void gs_cfg_defaults(void) {
     gs_cfg.rate_hz = 48000;
     gs_cfg.oversample = 2;
     gs_cfg.voices = 4;
-    gs_cfg.master_pct = 100;
+    gs_cfg.master_pct = 80;                     // запас: выбросы BLEP на громких модулях шли за 16 бит
     gs_cfg_mode(GS_MODE_A1200);
 }
 
@@ -17,6 +17,7 @@ uint32_t gs_cfg_mix_hz(void) { return gs_cfg.rate_hz * gs_cfg.oversample; }
 void gs_cfg_mode(gs_mode_t mode) {
     gs_cfg.mode = mode;
     gs_cfg.rc16k = 0;
+    if (mode != GS_MODE_CUSTOM) gs_cfg.bass_db = gs_cfg.treble_db = 0, gs_cfg.comp = 0;
     switch (mode) {
     case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц, RC после ЦАП
         gs_cfg.resample = GS_RS_ROM, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
@@ -33,6 +34,7 @@ void gs_cfg_mode(gs_mode_t mode) {
     case GS_MODE_HIFI:
         gs_cfg.resample = GS_RS_CUBIC, gs_cfg.ramp = 1, gs_cfg.stereo_pct = 70;
         gs_cfg.lp = GS_LP_OFF, gs_cfg.led = GS_LED_OFF, gs_cfg.hp = 1;
+        gs_cfg.bass_db = 4, gs_cfg.treble_db = 5, gs_cfg.comp = 1;
         break;
     case GS_MODE_CUSTOM:                        // переменные - как есть
         break;

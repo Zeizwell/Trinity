@@ -29,9 +29,10 @@ typedef struct {
     gs_led_t led;               // LED-фильтр
     uint8_t  hp;                // ФВЧ ~5 Гц: 0 / 1
     uint8_t  rc16k;             // RC после ЦАП GS (1 кОм + 10 нФ, схема MultiSound): 0 / 1
-    // --- ручки: режим их не меняет
+    // --- окраска (HiFi)
     int8_t   bass_db;           // НЧ, -12..12 дБ, 0 - не трогать
     int8_t   treble_db;         // ВЧ, -12..12 дБ, 0 - не трогать
+    uint8_t  comp;              // компрессор и мягкий ограничитель на выходе: 0 / 1
 } gs_cfg_t;
 
 extern gs_cfg_t gs_cfg;
