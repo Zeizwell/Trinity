@@ -13,4 +13,12 @@
 #define PIN_BCK 15
 #define PIN_LCK 16              // сразу за BCK
 
+// SD: рев А, SPI1 (trinity-board-checklist). На макете эти ножки - шина слота, трогать нельзя
+#define BOARD_HAS_SD 0
+#define PIN_SD_MISO 28
+#define PIN_SD_CS   29
+#define PIN_SD_SCK  30
+#define PIN_SD_MOSI 31
+#define PIN_SD_DET  32
+
 #endif

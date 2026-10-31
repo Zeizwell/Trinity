@@ -14,6 +14,12 @@
 #include "gs/gs_cfg.h"
 #include "gs/gs_dev_gs.h"
 
+#if BOARD_HAS_SD
+#include "ff.h"
+#include "sdport.h"
+static FATFS sd_fs;
+#endif
+
 static spin_lock_t *engine_lock;
 static void lock_on(void) { spin_lock_unsafe_blocking(engine_lock); }
 static void lock_off(void) { spin_unlock_unsafe(engine_lock); }
@@ -30,6 +36,10 @@ int main(void) {
     psram_init();
     gs_gs_set_ram(PSRAM_BASE, gs_cfg.gs_ram_kb * 1024u);
     gs_core_init();
+#if BOARD_HAS_SD
+    sdport_init();
+    if (sdport_present()) f_mount(&sd_fs, "0:", 1);     // нет карты - работаем без неё (п.42)
+#endif
     audio_start();
     bus_start();
     for (;;) {                                      // спит, будят шина и USB
