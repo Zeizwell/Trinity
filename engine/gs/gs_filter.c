@@ -103,15 +103,19 @@ void gs_comp_run(float *buf, int n, float rate) {
     }
 }
 
+// Ручка плюс окраска режима: в пределах -12..12 дБ
+static int tone_db(int db) { return db > 12 ? 12 : db < -12 ? -12 : db; }
+
 void gs_filter_run(float *buf, int n) {
     int use_lp = gs_cfg.lp == GS_LP_A500;           // ФНЧ A1200 ~34 кГц: не слышно, не считаем (как pt2-clone)
     int use_led = gs_cfg.led == GS_LED_ON || (gs_cfg.led == GS_LED_MODULE && gs_led_module);
     pole1_t *hp = gs_cfg.hp ? (gs_cfg.lp == GS_LP_A500 ? &hp_a500 : &hp_a1200) : 0;
-    int use_rc = gs_cfg.rc16k, use_bass = gs_cfg.bass_db != 0, use_treble = gs_cfg.treble_db != 0;
-    if (use_bass && bass.db != gs_cfg.bass_db) shelf_set(&bass, BASS_HZ, gs_cfg.bass_db, 0);
-    if (use_treble && treble.db != gs_cfg.treble_db) shelf_set(&treble, TREBLE_HZ, gs_cfg.treble_db, 1);
+    int bass_db = tone_db(gs_cfg.bass_db + gs_cfg.color_bass_db), treble_db = tone_db(gs_cfg.treble_db + gs_cfg.color_treble_db);
+    int use_rc = gs_cfg.rc16k, use_bass = bass_db != 0, use_treble = treble_db != 0;
+    if (use_bass && bass.db != bass_db) shelf_set(&bass, BASS_HZ, bass_db, 0);
+    if (use_treble && treble.db != treble_db) shelf_set(&treble, TREBLE_HZ, treble_db, 1);
     if (!use_lp && !use_led && !hp && !use_rc && !use_bass && !use_treble) return;
-    int up = gs_cfg.bass_db > gs_cfg.treble_db ? gs_cfg.bass_db : gs_cfg.treble_db;
+    int up = bass_db > treble_db ? bass_db : treble_db;
     float head = up > 0 ? (float)pow(10.0, -up / 20.0) : 1.0f;  // запас под подъём ручками: иначе пики режутся
     for (int i = 0; i < n * 2; i += 2) {
         for (int c = 0; c < 2; c++) {
