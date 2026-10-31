@@ -6,6 +6,7 @@ set T=%~dp0
 set E=%T%..\..\engine\gs
 set W=%TEMP%\sdktest
 if not exist "%W%" mkdir "%W%"
+if exist "%W%sdktest.exe" del "%W%sdktest.exe"
 pushd "%W%"
 "%T%..\sjasmplus\sjasmplus.exe" --nologo --inc="%T%..\.." "%T%test.asm"
 popd
