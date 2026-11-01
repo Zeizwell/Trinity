@@ -8,7 +8,7 @@
 #define PAULA_VOICES 4
 #define MOD_ROWS 64
 #define MOD_SAMPLES 31
-#define MAX_PATTERNS 100
+#define MAX_PATTERNS 256
 #define MIN_BPM 32
 #define MAX_BPM 255
 #define SPECTRUM_BAR_NUM 23
