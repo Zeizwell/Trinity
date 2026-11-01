@@ -25,3 +25,14 @@ KiCad/trinity/gen/test/
 KiCad/trinity/gen/before/
 KiCad/trinity/gen/mixer.kicad_pro
 KiCad/trinity/gen/mixer.kicad_prl
+cpld/syn/db/
+cpld/syn/incremental_db/
+cpld/syn/*.rpt
+cpld/syn/*.summary
+cpld/syn/*.smsg
+cpld/syn/*.done
+cpld/syn/*.jdi
+cpld/syn/*.pin
+cpld/syn/*.pof
+cpld/syn/*.svf
+cpld/syn/*.qws
