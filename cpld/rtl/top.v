@@ -82,12 +82,15 @@ wire hit_ay = io_nomreq && code_ay != CODE_AY_NONE;
 wire hit    = hit_gs || hit_ay;
 
 // Ответ RP - через два триггера
-reg [1:0] gs_rdy_s, ay_rdy_s;
+reg [2:0] gs_rdy_s;
+reg [1:0] ay_rdy_s;
 always @(posedge clk) begin
-    gs_rdy_s <= {gs_rdy_s[0], gs_rdy};
+    gs_rdy_s <= {gs_rdy_s[1:0], gs_rdy};
     ay_rdy_s <= {ay_rdy_s[0], ay_rdy};
 end
 wire rdy = to_ay ? ay_rdy_s[1] : gs_rdy_s[1];
+// Только подъём: RDY после чтения ещё держится, а данных уже нет
+wire mask_load = gs_rdy_s[2:1] == 2'b01;
 
 always @(posedge clk) begin
     case (state)
@@ -95,8 +98,8 @@ always @(posedge clk) begin
         gs_wr <= 1; gs_rd <= 1; ay_wr <= 1; ay_rd <= 1;   // после включения - в покой
         gs_c  <= CODE_NONE; ay_c <= CODE_AY_NONE;
         wait_on <= 0;
-        // RDY без чтения - RP-GS загружает маску
-        if (gs_rdy_s[1]) mask <= gs_d[2:0];
+        // Подъём RDY без чтения - RP-GS загружает маску
+        if (mask_load) mask <= gs_d[2:0];
         else if (hit) begin
             to_ay <= !hit_gs;
             gs_c  <= hit_gs ? code_gs : CODE_NONE;

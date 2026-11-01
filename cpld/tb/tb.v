@@ -55,7 +55,9 @@ module tb;
         #(1.5*T); wait_seen = (n_wait === 1'b0);
         while (n_wait === 1'b0) #T;
         #T; rd_v = d;
-        n_rd = 1; n_iorq = 1; #(9*T);
+        n_rd = 1; n_iorq = 1; #5;
+        check(d === 8'hzz, "bus released at RD end");
+        #(9*T);
     end endtask
 
     task load_mask(input [7:0] m);
@@ -99,6 +101,8 @@ module tb;
         // IM2: M1 + IORQ без RD, IORQGE нет
         a = 16'h00B3; n_m1 = 0; #10; check(n_iorqge === 1'b1, "IORQGE on M1");
         n_iorq = 0; #(2*T); check(d === 8'hzz && gs_rds == 0, "IM2"); n_iorq = 1; n_m1 = 1; #(9*T);
+        // RDY после чтения не должен перезаписать маску
+        check(u.mask == 3'd7, "mask kept after reads");
         // Сброс
         n_rst = 0; #10; check(ay_rst === 1'b1, "AY reset"); n_rst = 1;
         if (errors == 0) $display("ALL OK"); else $display("ERRORS: %0d", errors);
