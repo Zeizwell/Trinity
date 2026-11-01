@@ -83,6 +83,12 @@ static void core1_main(void) {
 }
 
 void audio_start(void) {
+#ifdef PIN_XSMT
+    pio_set_gpio_base(pio, 16);                     // I2S на GP40..42
+    gpio_init(PIN_XSMT);
+    gpio_set_dir(PIN_XSMT, GPIO_OUT);
+    gpio_put(PIN_XSMT, 1);
+#endif
     sm_out = pio_claim_unused_sm(pio, true);
     sm_chk = pio_claim_unused_sm(pio, true);
     uint off = pio_add_program(pio, &i2s_out_program);

@@ -1,0 +1,101 @@
+; Шина платы рев А: на RP-GS идёт код порта от CPLD, адреса нет (doc/cpld.md). Ножки - из config.h.
+; Ожидания строба (WAIT GPIO) патчатся при загрузке (bus_gs_add_program): индекс - ножка строба.
+
+; ---- Записи: на каждый GS_WR в FIFO снимок ножек от GP0: код и данные.
+; Данные - последний снимок, пока GS_WR ещё внизу, как в rp-ay/bus.pio.
+.program bus_gs_wr
+.wrap_target
+    wait 0 gpio 0                    ; GS_WR вниз
+sample:
+    in pins, 32                      ; снимок от PIN_GS_C0
+    jmp pin done                     ; JMP_PIN = GS_WR: уже вверх - берём прошлый снимок
+    mov x, isr                       ; снимок, после которого GS_WR ещё был внизу
+    jmp sample
+done:
+    mov isr, x
+    push noblock
+.wrap
+
+; ---- Чтения: GS_RD вниз - выдать ответ из X (X = статус << 8 | данные), поднять RDY.
+; Код 1 (#B3) - данные, в конце метка в FIFO. Код 2 (#BB) - статус. Остальным не отвечаем: CPLD по таймауту даст #FF.
+.program bus_gs_rd
+.side_set 1 opt
+.wrap_target
+top:
+    wait 0 gpio 0                    ; GS_RD вниз
+    mov isr, null
+    in pins, 3                       ; код (IN_BASE = PIN_GS_C0)
+    mov y, isr
+    mov osr, x
+    jmp y-- not_0
+    jmp skip                         ; код 0
+not_0:
+    jmp y-- not_1
+    set y, 1                         ; код 1: данные, в конце метка
+    jmp drive
+not_1:
+    jmp y-- skip                     ; не 2 - не наш
+    out null, 8                      ; код 2: статус, второй байт X
+    set y, 0
+drive:
+    out pins, 8                      ; значение на GS_D (OUT_BASE = PIN_GS_D0)
+    mov osr, ~null
+    out pindirs, 8                   ; выходы
+    nop side 1                       ; данные стоят - RDY
+    wait 1 gpio 0                    ; GS_RD вверх
+    mov osr, null side 0             ; RDY вниз
+    out pindirs, 8                   ; снова входы
+    jmp !y top                       ; статус - без метки
+    push noblock                     ; ISR ещё с кодом: метка "прочитали данные"
+    jmp top
+skip:
+    wait 1 gpio 0
+.wrap
+
+% c-sdk {
+static inline uint bus_gs_add_program(PIO pio, const pio_program_t *prog, uint pin) {
+    static uint16_t ins[32];
+    for (uint i = 0; i < prog->length; i++) {
+        uint16_t x = prog->instructions[i];
+        if ((x & 0xE060) == 0x2000)                  // WAIT, источник GPIO: индекс - ножка
+            x = (uint16_t)((x & ~0x1F) | ((pin - pio_get_gpio_base(pio)) & 0x1F));
+        ins[i] = x;
+    }
+    pio_program_t p = *prog;
+    p.instructions = ins;
+    return pio_add_program(pio, &p);
+}
+
+static inline void bus_gs_wr_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_gs_wr_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, PIN_GS_C0);
+    sm_config_set_jmp_pin(&c, PIN_GS_WR);
+    sm_config_set_in_shift(&c, false, false, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);   // 8 записей в запасе
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void bus_gs_rd_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_gs_rd_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, PIN_GS_C0);
+    sm_config_set_out_pins(&c, PIN_GS_D0, 8);
+    sm_config_set_sideset_pins(&c, PIN_GS_RDY);
+    sm_config_set_out_shift(&c, true, false, 32);    // вправо: младший бит - D0
+    sm_config_set_in_shift(&c, false, false, 32);
+    for (uint i = 0; i < 8; i++) pio_gpio_init(pio, PIN_GS_D0 + i);
+    pio_gpio_init(pio, PIN_GS_RDY);
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN_GS_D0, 8, false);
+    pio_sm_set_pins_with_mask(pio, sm, 0, 1u << PIN_GS_RDY);
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN_GS_RDY, 1, true);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+// Новый ответ: X = статус << 8 | данные
+static inline void bus_gs_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status) {
+    pio_sm_put(pio, sm, (uint32_t)status << 8 | data);
+    pio_sm_exec(pio, sm, pio_encode_pull(false, false));
+    pio_sm_exec(pio, sm, pio_encode_mov(pio_x, pio_osr));
+}
+%}

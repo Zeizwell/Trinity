@@ -247,6 +247,9 @@ void bench_key(void) {
     case 'w': save_cfg(); break;
     case 'c': show_cfg(); break;
     case 'd': ctl_test(); break;
+#ifdef BUS_SELFTEST
+    case 'u': bus_selftest(); printf("готово\n"); break;
+#endif
     default: break;
     }
 }

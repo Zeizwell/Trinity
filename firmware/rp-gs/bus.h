@@ -9,5 +9,6 @@ void bus_answer(void);          // ядро 0: устройство что-то 
 void bus_inject_wr(uint8_t code, uint8_t v);    // проверка без Спектрума: те же действия, что в прерывании
 int  bus_inject_rd(uint8_t code);       // прочитать как Z80, чтение данных снимает бит
 uint32_t bus_irq_top(void);     // самый долгий обработчик, такты
+void bus_selftest(void);        // плата рев А, BUS_SELFTEST: проверка PIO без CPLD
 
 #endif

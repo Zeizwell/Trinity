@@ -36,3 +36,5 @@ cpld/syn/*.pin
 cpld/syn/*.pof
 cpld/syn/*.svf
 cpld/syn/*.qws
+firmware/rp-gs/build_a/
+firmware/rp-gs/build_st/
