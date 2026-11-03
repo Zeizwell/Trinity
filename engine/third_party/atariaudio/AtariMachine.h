@@ -8,12 +8,16 @@
 #pragma once
 #include <stdint.h>
 #include "ym2149c.h"
+#include "trinity_aa.h"	// Trinity
 #include "Mk68901.h"
 #include "SteDac.h"
 #include "Blitter.h"
 #include "external/Musashi/m68k.h"
 #include "external/Musashi/m68kops.h"
 
+
+// Trinity: true - не считать звук YM (пишем в живой AY); STE DMA идёт: его прерывания ведут машину
+extern bool g_atariNoSynth;
 
 class AtariMachine
 {

@@ -1,3 +1,13 @@
 AtariAudio 1.27 - github.com/arnaud-carre/AtariAudio, коммит f68f058 (2026), MIT (LICENSE).
-Взят каталог src/ как есть, без правок. Внутри: Musashi (68000, MIT), ice_24 (public domain), lzh (Окумура / Медина).
+Взят каталог src/. Внутри: Musashi (68000, MIT), ice_24 (public domain), lzh (Окумура / Медина).
 Где и как используем - doc/trinity-sndh.md.
+
+Наши правки (помечены "Trinity" в коде):
+- ym2149c.h / .cpp: g_ym2149WriteHook - каждая запись данных в YM (регистр, значение, из таймера) - для живого AY;
+- AtariMachine.h / .cpp: g_atariNoSynth - не считать звук YM; машина, таймеры и STE DMA (его прерывания ведут машину) идут как обычно.
+- trinity_aa.h (наш файл): TRINITY_COLD у sDatabase (timedb.cpp), s_ym2149RecordedMixTable (ym2149_tables.h), ym2Bank
+  (ym2data.h): на RP эти таблицы во флеше - в ОЗУ им места нет, а нужны они только при открытии файла / синтезе;
+- trinity_aa.h, AtariMachine.cpp, SndhRenderer.cpp, YmRenderer.cpp, AtariAudioRenderer.cpp, external/lzh.cpp: g_aaBigAlloc /
+  g_aaBigFree - большие блоки (память Atari 4 МБ, файл, распаковка); на RP - из PSRAM (sndh_arena), иначе malloc / free;
+- external/Musashi (m68kops.h / .cpp, m68k.cpp): TRINITY_M68K_COMPACT - один 68000: номер обработчика на опкод
+  (128 К) и такты 68000 - по строке обработчика (байт на строку) вместо таблиц на 832 К. Проверено: хэши записей на 302 SNDH те же, что без него.

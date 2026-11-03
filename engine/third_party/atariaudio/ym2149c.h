@@ -8,6 +8,9 @@
 #pragma once
 #include <stdint.h>
 
+// Trinity: каждая запись данных в YM (номер регистра, значение, из обработчика таймера) - SNDH на живой AY (engine/sndh)
+extern void (*g_ym2149WriteHook)(int reg, uint8_t value, bool inTimer);
+
 class Ym2149c
 {
 public:

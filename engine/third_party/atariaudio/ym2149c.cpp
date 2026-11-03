@@ -65,10 +65,15 @@ void	Ym2149c::Reset(uint32_t hostReplayRate, uint32_t ymClock, bool predictibleY
 		m_dcAdjustBuffer[i] = 0;
 }
 
+void (*g_ym2149WriteHook)(int reg, uint8_t value, bool inTimer) = nullptr;	// Trinity
+
 void	Ym2149c::WritePort(uint8_t port, uint8_t value)
 {
 	if (port & 2)
+	{
+		if (g_ym2149WriteHook) g_ym2149WriteHook(m_selectedReg, value, m_insideTimerIrq);	// Trinity
 		WriteReg(m_selectedReg, value);
+	}
 	else
 		m_selectedReg = value;
 }

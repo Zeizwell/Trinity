@@ -14,7 +14,8 @@ struct TimeDbEntry
 };
 
 #define TIMEDB_ENTRY(HASH,SONGID,FRAMES,FLAGS) { 0x##HASH, FRAMES }
-static const TimeDbEntry sDatabase[] =
+#include "trinity_aa.h"	// Trinity
+static const TimeDbEntry sDatabase[] TRINITY_COLD =
 {
 	// timedb.inc.h database by Benjamin Gerard & SNDH Community
 	#include "external/timedb.inc.h"

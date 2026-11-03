@@ -7,6 +7,7 @@
 #include <memory.h>
 #include <string.h>
 #include "lzh.h"
+#include "../trinity_aa.h"	// Trinity
 
 bool LzhDepacker::IsLzhPacked(const void* data, uint32_t size)
 {
@@ -52,14 +53,14 @@ void*	LzhDepacker::Unpack(const void* dataIn, uint32_t inSize, uint32_t& outSize
 
 	r8 += headerSize;
 
-	ret = malloc(originalSize);
+	ret = g_aaBigAlloc(originalSize);	// Trinity: g_aaBigAlloc
 	if (LzUnpack((void*)r8, packedSize, ret, originalSize))
 	{
 		outSize = originalSize;
 	}
 	else
 	{
-		free(ret);
+		g_aaBigFree(ret);	// Trinity
 		ret = nullptr;
 	}
 	return ret;

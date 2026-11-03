@@ -43,7 +43,7 @@ AtariAudioRenderer::AtariAudioRenderer()
 
 AtariAudioRenderer::~AtariAudioRenderer()
 {
-	free((void*)m_songInfo.rawBinaryData);
+	g_aaBigFree((void*)m_songInfo.rawBinaryData);	// Trinity: g_aaBigFree
 }
 
 AtariAudioRenderer::eFileType AtariAudioRenderer::QuickFileTypeCheck(const void* rawMemory, uint32_t rawSize)

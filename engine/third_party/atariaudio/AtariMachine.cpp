@@ -241,7 +241,7 @@ AtariMachine::AtariMachine()
 
 AtariMachine::~AtariMachine()
 {
-	free(m_RAM);
+	g_aaBigFree(m_RAM);	// Trinity: g_aaBigFree
 }
 
 void	AtariMachine::Gemdos(int func, uint32_t a7)
@@ -375,7 +375,7 @@ int	AtariMachine::TrapInstructionCallback(int v)
 void	AtariMachine::Startup(uint32_t hostReplayRate, bool predictibleYm2149State)
 {
 	if ( nullptr == m_RAM )
-		m_RAM = (uint8_t*)malloc(RAM_SIZE);
+		m_RAM = (uint8_t*)g_aaBigAlloc(RAM_SIZE);	// Trinity: g_aaBigAlloc
 
 	memset(m_RAM, 0, RAM_SIZE);
 
@@ -540,12 +540,16 @@ bool AtariMachine::PlayerTick(uint32_t musicDriverCallAddr)
 	return Jsr(musicDriverCallAddr, 0);
 }
 
+bool g_atariNoSynth = false;	// Trinity
+void *(*g_aaBigAlloc)(size_t size) = malloc;	// Trinity
+void (*g_aaBigFree)(void *p) = free;
+
 int16_t	AtariMachine::ComputeNextSample()
 {
-	int32_t level = m_ym2149.ComputeNextSample();
+	int32_t level = g_atariNoSynth ? 0 : m_ym2149.ComputeNextSample();	// Trinity: g_atariNoSynth
 	assert(m_RAM);
 	int32_t steLevel = m_steDac.ComputeNextSample((const int8_t*)m_RAM, RAM_SIZE, m_mfp);
-	if ( 0 == (m_muteMask&(1<<3)))
+	if ( 0 == (m_muteMask&(1<<3)) && !g_atariNoSynth)	// Trinity: без синтеза выход - ровно 0
 		level += steLevel;
 
 	if (level > 32767)

@@ -6,12 +6,21 @@
 /* ======================================================================== */
 
 
+#include <stdint.h>
 #include "m68kcpu.h"
 
 /* Build the opcode handler table */
 void m68ki_build_opcode_table(void);
 
+#ifdef TRINITY_M68K_COMPACT			// Trinity: такты - по номеру обработчика (у обработчика они одни), таблицы на опкод нет
+extern unsigned char (*m68ki_cycles)[0x10000];
+extern uint16_t m68ki_op_index[0x10000];
+extern uint8_t m68ki_op_cyc[];
+#define M68KI_CYC(ir) m68ki_op_cyc[m68ki_op_index[ir]]
+#else
 extern unsigned char m68ki_cycles[][0x10000];
+#define M68KI_CYC(ir) CYC_INSTRUCTION[ir]
+#endif
 
 /* Helper to load a bitfield from EA */
 typedef struct {
@@ -182,7 +191,14 @@ public:
 	#include "m68k_func.inc"
 };
 
+#ifdef TRINITY_M68K_COMPACT			// Trinity: один 68000 - номер обработчика на опкод (128 К), не метод (512 К)
+extern uint16_t m68ki_op_index[0x10000];
+extern void (M68k::*m68ki_op_handler[])(void);
+#define M68KI_HANDLER(ir) m68ki_op_handler[m68ki_op_index[ir]]
+#else
 extern void (M68k::*m68ki_instruction_jump_table[0x10000])(void); /* opcode handler jump table */
+#define M68KI_HANDLER(ir) m68ki_instruction_jump_table[ir]
+#endif
 
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */

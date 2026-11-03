@@ -41,7 +41,7 @@ bool	SndhRenderer::Load(const void* rawSndhFile, uint32_t sndhFileSize, uint32_t
 	if (ice_24_header((unsigned char*)rawSndhFile))
 	{
 		si.rawBinaryDataSize = (uint32_t)ice_24_origsize((unsigned char*)rawSndhFile);
-		si.rawBinaryData = malloc(si.rawBinaryDataSize);
+		si.rawBinaryData = g_aaBigAlloc(si.rawBinaryDataSize);	// Trinity: g_aaBigAlloc
 		long csize = ice_24_depack((unsigned char*)rawSndhFile, (unsigned char*)si.rawBinaryData);
 		if (si.rawBinaryDataSize != csize)
 			return false;
@@ -49,7 +49,7 @@ bool	SndhRenderer::Load(const void* rawSndhFile, uint32_t sndhFileSize, uint32_t
 	else
 	{
 		si.rawBinaryDataSize = sndhFileSize;
-		si.rawBinaryData = malloc(si.rawBinaryDataSize);
+		si.rawBinaryData = g_aaBigAlloc(si.rawBinaryDataSize);	// Trinity: g_aaBigAlloc
 		memcpy((void*)si.rawBinaryData, rawSndhFile, sndhFileSize);
 	}
 
