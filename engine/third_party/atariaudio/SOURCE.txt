@@ -1,0 +1,3 @@
+AtariAudio 1.27 - github.com/arnaud-carre/AtariAudio, коммит f68f058 (2026), MIT (LICENSE).
+Взят каталог src/ как есть, без правок. Внутри: Musashi (68000, MIT), ice_24 (public domain), lzh (Окумура / Медина).
+Где и как используем - doc/trinity-sndh.md.

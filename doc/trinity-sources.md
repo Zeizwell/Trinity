@@ -41,6 +41,7 @@
 |---|---|---|
 | tslabs/zx-evo целиком (разреженный клон, только дерево) | `ref-zxevo/zx-evo/` | `pentevo/soft/WC/source/core32/drivers/SD_NGS.ASM`, ПЗУ `pentevo/unreal/Unreal/cfg/rom/gs105a.rom`; файлы берутся `git checkout` по пути |
 | FatFs R0.15a (ChaN, BSD-подобная, без GPL): на RP-GS, exFAT + FAT32, CP866, карты до 2 ТБ (SDXC) | `engine/third_party/fatfs/`, порт `engine/sd/`, тест `tools/sdtest/` | взят из `ref/Paula/picogus-main/sw/fatfs`; на живой карте пока не проверен |
+| AtariAudio 1.27 (Leonard / Oxygene, MIT; внутри Musashi 68000 MIT): эмуляция Atari ST для SNDH | `engine/third_party/atariaudio/` (SOURCE.txt — коммит) | без правок; замеры и план — `doc/trinity-sndh.md` |
 | Наш FAT32 (из WC Improved): ядро без железа, устройство — таблица `init / read512 / write512 / sync` | `FT2/drivers/fat32/` (README) | порт сейчас один: `ports/sdzc.asm` (SD Z-Controller, номер карты 0 / 1 = SD / SD2) |
 | **Исходники Wild Commander Improved** (скачаны 2026-10-18) | `ref-wc/Wild-Commander-Improved/source/` | драйверы устройств: `DIDENEMO.ASM` (IDE Nemo), `DIDESMUC.ASM` (IDE SMUC), `DSDZC.ASM` (SD ZC), `DSDNGS.ASM` (SD NeoGS); список «Select Device» — `WCVLS.ASM` (`THDD`) |
 
