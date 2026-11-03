@@ -13,9 +13,9 @@
 #ifndef PICO_FLASH_SPI_CLKDIV
 #define PICO_FLASH_SPI_CLKDIV 4    // RP на 250 МГц: флеш 62.5 МГц, с запасом
 #endif
-// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (4 * 1024 * 1024)
+// pico_cmake_set_default PICO_FLASH_SIZE_BYTES = (16 * 1024 * 1024)
 #ifndef PICO_FLASH_SIZE_BYTES
-#define PICO_FLASH_SIZE_BYTES (4 * 1024 * 1024)   // точный объём не знаем - берём с запасом малый
+#define PICO_FLASH_SIZE_BYTES (16 * 1024 * 1024)  // флеш 16 МБ, PSRAM 8 МБ (пользователь, 2026-11-03)
 #endif
 #ifndef PICO_RP2350_A2_SUPPORTED
 #define PICO_RP2350_A2_SUPPORTED 1
