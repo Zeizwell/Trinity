@@ -70,6 +70,7 @@ void irq_set_priority(uint n, uint8_t p);
 void irq_set_enabled(uint n, bool on);
 uint32_t save_and_disable_interrupts(void);
 void restore_interrupts(uint32_t s);
+#define __dmb() ((void)0)               // модель - одно ядро: порядок памяти и так
 
 // --- прочее sdk
 void stdio_init_all(void);
@@ -84,4 +85,6 @@ extern uint32_t sim_led;                // последний цвет свет�
 extern uint32_t sim_wr_min_ns, sim_gap_addr_min_ns;   // самый короткий /WR и пауза адрес -> данные
 extern bool     sim_no_chip;            // чипа нет: шина держит последнее, что на неё выставили
 extern uint8_t  sim_fault_tie;          // склеить биты данных чипа (маска двух бит; 0 - исправен)
-void sim_run_main(int (*m)(void), uint32_t ms);   // запустить main прошивки на ms модельного времени
+void sim_run_main(int (*m)(void), uint32_t ms);
+extern uint32_t sim_phim_hz;            // такт φM, что поставила прошивка (phim_set; 0 - как для Спектрума)
+extern int      sim_sndh_crash_at, sim_sndh_opens;   // машина Atari (sndh_mock.c)   // запустить main прошивки на ms модельного времени

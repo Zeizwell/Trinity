@@ -7,6 +7,7 @@
 #include "ayfx.h"
 #include "svc.h"
 #include "psram.h"
+#include "atari.h"
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
 
@@ -135,6 +136,7 @@ static void fx_timeout(void) {
 // MODE AY (пакет #C0, просьба с ядра 0): карта по умолчанию - плагины выкл (FX, Atari), чипы и тень - тишина,
 // дальше чип у Спектрума. Потоки не закрываем: Спектрум ещё читает ответ
 static volatile bool mode_ay_req;
+static volatile bool atari_on_req, atari_off_req;           // самоплеер Atari (atari.c): просьбы ядра 0
 
 static void mode_default(void) {
     uint32_t s = save_and_disable_interrupts();                 // режим читает прерывание шины
@@ -154,6 +156,21 @@ void card_poll(void) {
     if (mode_ay_req) {                                          // MODE AY - до событий шины, они уже для AY
         mode_ay_req = false;
         mode_default();
+        touched = true;
+    }
+    if (atari_on_req) {                                         // ATARI - плагин: из AY / FX сначала карта по умолчанию
+        atari_on_req = false;                                   //   (FX выкл, тишина), потом чип у RP; UPDATE / TEST - нет
+        if (mode == MODE_AY || mode == MODE_FX) {
+            mode_default();
+            uint32_t s = save_and_disable_interrupts();         // режим читает прерывание шины
+            mode_set(MODE_ATARI);
+            restore_interrupts(s);
+        }
+        touched = true;
+    }
+    if (atari_off_req) {                                        // плеер кончился: из ATARI - карта по умолчанию
+        atari_off_req = false;
+        if (mode == MODE_ATARI) mode_default();
         touched = true;
     }
     while (ev_tail != ev_head) {                                // события шины - по порядку
@@ -186,6 +203,9 @@ uint32_t card_sound(void) {
         card_late_sum += late, card_late_n++;
         snd_due = 0;
     }
+#ifdef SNDH
+    if (mode == MODE_ATARI) return atari_sound(now);            // самоплеер: записи кадра в срок
+#endif
     uint32_t hz = cfg.ay_clock_hz / 8;                          // тактов тона в секунду
     if (mode != MODE_FX) { tick_acc = 0; return CARD_SOUND_MAX_US; }   // TEST и др.: эффекты стоят
     // такты тона за dt мкс: остаток копится в единицах 1/1e6 такта (dt до ~19 с не переполнит 32 бита)
@@ -218,6 +238,10 @@ static uint8_t svc_mode_ay(void *user) {
     return 0;
 }
 
+void card_atari(bool on) {
+    if (on) atari_on_req = true; else atari_off_req = true;
+}
+
 // Состояние карты -> svc (биты статуса): чип, FX, ошибка
 static void svc_state(bool error) {
     static const uint8_t chip_of[MODE_COUNT] = { SVC_CHIP_AY, SVC_CHIP_AY, SVC_CHIP_PLAY, SVC_CHIP_UPDATE, SVC_CHIP_TEST };
@@ -229,13 +253,22 @@ static void svc_state(bool error) {
 // Служебные пакеты шины -> ответ, кусок задания, байт статуса в шину. Ответ в PIO освежится на следующем
 // обращении Спектрума (он опрашивает статус в цикле - опоздание на одно чтение)
 void card_svc_poll(bool error) {
-    if (!svc.pool) svc_init(&svc, PSRAM_BASE + PSRAM_SVC, SVC_POOL_KB * 1024), svc.mode_ay = svc_mode_ay;
+    if (!svc.pool) {
+        svc_init(&svc, PSRAM_BASE + PSRAM_SVC, SVC_POOL_KB * 1024);
+        svc.mode_ay = svc_mode_ay;
+#ifdef SNDH
+        svc.host = &atari_svc, svc.host_n = 1;                  // сервис 1 - плеер Atari
+#endif
+    }
     for (int c = 0; c < CARD_CHIPS; c++)
         if (bus[c].sbusy) {
             uint16_t n = svc_packet(&svc, bus[c].sbuf);
             ayfx_bus_reply(&bus[c], svc.reply, n);
         }
     svc_step(&svc);
+#ifdef SNDH
+    atari_poll(&svc);                                           // задание плеера кончилось - стоп
+#endif
     svc_state(error);
     uint8_t st = svc_status(&svc);
     for (int c = 0; c < CARD_CHIPS; c++) bus[c].status = st;

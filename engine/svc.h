@@ -50,6 +50,8 @@ typedef struct {                    // сервис - строка таблиц�
     uint32_t in, out;               // типы слотов входа / выхода (0 - любой / нет)
     bool   (*start)(svc_t *s, svc_job_t *j);   // проверить вход, подготовиться; false - ошибка (текст - в лог)
     int    (*step)(svc_t *s, svc_job_t *j);    // кусок работы: 0 - ещё, 1 - готово, -1 - ошибка
+    uint8_t (*cmd)(svc_t *s, svc_job_t *j, uint8_t cmd, const uint8_t *par);   // команда идущему заданию (SVC_CALL
+                                    //   того же сервиса): 0 - принята, 4 - нет такой; NULL - команд нет (занято)
 } svc_def_t;
 
 struct svc {
@@ -60,6 +62,8 @@ struct svc {
     uint8_t    chip;                // состояние чипа (SVC_CHIP_*) - ставит хозяин
     bool       fx, error;           // FX включены, ошибка карты - ставит хозяин
     uint8_t  (*mode_ay)(void *user);   // MODE AY (стоп самоплеера): 0 - сделано (хозяин)
+    const svc_def_t *host;          // сервисы хозяина (плеер Atari - только в прошивке RP-AY): таблица, строк
+    int        host_n;
     void      *user;
     uint8_t    reply[SVC_REPLY_MAX];
 };

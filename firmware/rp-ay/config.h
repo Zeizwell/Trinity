@@ -5,7 +5,7 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      31
+#define FW_VERSION      32
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -47,6 +47,8 @@
 // ---- PSRAM 8 МБ (psram.h): пул временных слотов служебного API (doc/trinity-api.md) - с начала
 #define SVC_POOL_KB     128
 #define PSRAM_SVC       0
+#define PSRAM_ATARI     (1u << 20)      // машина Atari самоплеера (sndh_arena): 4 МБ RAM, файл, распаковка
+#define PSRAM_ATARI_SIZE (7u << 20)
 
 // ---- Режимы (doc 14а). Порядок - как в таблице переходов modes.c
 typedef enum { MODE_AY, MODE_FX, MODE_ATARI, MODE_UPDATE, MODE_TEST, MODE_COUNT } mode_t;

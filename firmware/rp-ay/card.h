@@ -27,6 +27,9 @@ void    card_svc_poll(bool error);              // звать часто (~1 м�
 void    card_poll(void);                    // фон ядра 1: события шины -> планы эффектов и чип; кадр свипа; таймаут
 uint32_t card_sound(void);                  // прерывание будильника: шаги по готовым планам; -> мкс до следующего вызова
 void    sound_kick(void);                   // (main.c) будильник - сейчас (планы поменялись)
+void    phim_set(uint32_t hz);              // (main.c) такт чипов φM, Гц; 0 - как для Спектрума (cfg.phim_hz)
+void    card_atari(bool on);                // (ядро 0) просьба ядру 1: on - режим ATARI (из AY / FX - через MODE AY), off - был
+                                            //   ATARI - карта по умолчанию (MODE AY)
 void    card_reset(void);                   // сброс (/IC, включение): всё; звать при выключенных прерываниях
 void    card_resend(void);                  // тень Спектрума (SSG 0..13) - снова в чип (после теста)
 void    card_test_bytes(const uint8_t *b, int n);   // итог теста чипа - в тень #E0.. (номера, что никто не пишет):

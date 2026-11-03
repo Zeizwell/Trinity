@@ -42,6 +42,38 @@ AYFX_MODE_AY    equ 0               ; EN: state AY - default (Spectrum commands 
 AYFX_ST_BUSY    equ 7               ; EN: status bit: service packet is being parsed   RU: бит статуса: разбирается пакет
 AYFX_ST_REPLY   equ 6               ; EN: status bit: answer ready in #C1              RU: бит статуса: ответ готов в #C1
 
+; --- Service packets (Ayfx_Svc; trinity-api.md 2) / Служебные пакеты: [code][length 2][data], LSB first / мл. байт вперёд
+AYFX_P_SLOT_NEW   equ #80           ; EN: type 4, size 4, flags -> slot (0 - no room)   RU: тип 4, размер 4, флаги -> слот (0 - нет места)
+AYFX_P_SLOT_WRITE equ #81           ; EN: slot, offset 4, bytes (up to 512) - no answer   RU: слот, смещение 4, байты (до 512) - без ответа
+AYFX_P_SLOT_READ  equ #82           ; EN: slot, offset 4, count 2 -> bytes               RU: слот, смещение 4, сколько 2 -> байты
+AYFX_P_SLOT_FREE  equ #84           ; EN: slot - no answer                                RU: слот - без ответа
+AYFX_P_SVC_CALL   equ #91           ; EN: service, command, in slot, out slot, params (up to 8) -> 0 ok, 1 busy, 2 no service,
+                                    ;     3 wrong input, 4 no such command
+                                    ; RU: сервис, команда, слот входа, слот выхода, параметры (до 8) -> 0 пошло, 1 занято,
+                                    ;     2 нет сервиса, 3 вход не тот, 4 нет такой команды
+AYFX_P_JOB_STATUS equ #A0           ; EN: -> state (0 none, 1 runs, 2 done, 3 error), progress 0..100, log slot, log bytes 4
+                                    ; RU: -> состояние (0 нет, 1 идёт, 2 готово, 3 ошибка), прогресс 0..100, слот лога, байт лога 4
+
+; --- Service 1: player (Atari SNDH) / Сервис 1: плеер. PLAY: in - slot 'SNDH', param 0 - song (0 = first), out - slot
+;     'STAT' or 0 (the card makes one). Then the same service: STOP, PAUSE (param 0: 1 pause, 0 go on), SEEK (params 0..3 -
+;     frame of 20 ms). The card leaves FX / AY by itself; MODE AY, reset or STOP - the chip is Spectrum's again.
+;     RU: PLAY: вход - слот 'SNDH', параметр 0 - песня (0 = первая), выход - слот 'STAT' или 0 (карта сделает сама). Дальше тому
+;     же сервису: STOP, PAUSE (параметр 0: 1 пауза, 0 дальше), SEEK (параметры 0..3 - кадр 20 мс). Из FX / AY карта уходит
+;     сама; MODE AY, сброс или STOP - чип снова у Спектрума.
+ATARI_SVC       equ 1
+ATARI_PLAY      equ 1
+ATARI_STOP      equ 2
+ATARI_PAUSE     equ 3
+ATARI_SEEK      equ 4
+ATARI_ST_FRAME  equ 0               ; EN: STAT: 4 - frames played   RU: STAT: 4 - кадров сыграно
+ATARI_ST_FRAMES equ 4               ; EN: 4 - song length in frames (0 - unknown)   RU: 4 - длина песни в кадрах (0 - неизвестна)
+ATARI_ST_SONG   equ 8               ; EN: 1 - song, 1 - songs in the file   RU: 1 - песня, 1 - песен в файле
+ATARI_ST_FLAGS  equ 10              ; EN: bit 0 - pause, bit 1 - seeking    RU: бит 0 - пауза, бит 1 - перемотка
+ATARI_ST_LOAD   equ 12              ; EN: 2 - us to compute the last frame (of 20000), 2 - peak   RU: 2 - мкс счёта кадра (из 20000), 2 - пик
+ATARI_ST_LATE   equ 16              ; EN: 4 - frames late (the chip waited)  RU: 4 - кадр опоздал (чип ждал)
+ATARI_ST_LOST   equ 20              ; EN: 4 - writes that did not fit        RU: 4 - записей не влезло
+ATARI_ST_SIZE   equ 32
+
 ;-------- EN: Open the card: key "TRIN" into #C0 (stream parser restarts)
 ;         RU: Открыть карту: ключ "TRIN" в #C0 (разбор потока - с начала)
 Ayfx_Key
@@ -162,6 +194,60 @@ Ayfx_ModeAy
         in e,(c)
         call Ayfx_Close
         ld a,e
+        ret
+
+;-------- EN: Service packet from HL (DE bytes: code, length 2, data), wait for the card, the answer - right after the
+;             packet. -> HL = answer, DE = its bytes, A = its first byte (result). No answer (SLOT_WRITE etc.) - A = 0,
+;             DE = 0. No card (no answer for ~65536 status reads) - A = #FF, DE = 0
+;         RU: Служебный пакет с HL (DE байт: код, длина 2, данные), ждать карту, ответ - сразу за пакетом.
+;             -> HL = ответ, DE = его байт, A = первый байт (итог). Пакет без ответа (SLOT_WRITE и т.п.) - A = 0, DE = 0.
+;             Карты нет (нет ответа ~65536 чтений статуса) - A = #FF, DE = 0
+Ayfx_Svc
+        call Ayfx_Key
+        call Ayfx_Stream
+.b      ld a,(hl)                   ; EN: packet bytes   RU: байты пакета
+        out (c),a
+        inc hl
+        dec de
+        ld a,d
+        or e
+        jr nz,.b
+        ld b,high AYFX_PORT_REG     ; EN: select #C0 - reads give the status byte   RU: выбрать #C0 - чтение даёт статус
+        ld a,AYFX_CTL
+        out (c),a
+.w      in a,(c)                    ; EN: DE = 0 - timeout counter   RU: DE = 0 - счётчик таймаута
+        bit AYFX_ST_BUSY,a          ; EN: still parsing - wait   RU: ещё разбирает - ждать
+        jr nz,.n
+        bit AYFX_ST_REPLY,a
+        jr nz,.r
+        call Ayfx_Close             ; EN: done, no answer   RU: разобрал, ответа нет
+        xor a
+        ret
+.n      dec de
+        ld a,d
+        or e
+        jr nz,.w
+        call Ayfx_Close             ; EN: no answer - no card   RU: ответа нет - карты нет
+        ld a,#FF
+        ret
+.r      ld a,AYFX_STREAM            ; EN: answer: length 2, bytes   RU: ответ: длина 2, байты
+        out (c),a
+        in e,(c)
+        in d,(c)
+        push hl
+        push de
+.d      ld a,d
+        or e
+        jr z,.e
+        in a,(c)
+        ld (hl),a
+        inc hl
+        dec de
+        jr .d
+.e      pop de
+        pop hl
+        call Ayfx_Close
+        ld a,(hl)
         ret
 
 ;-------- EN: Send D bytes of packets from HL (D = 1..255): key, stream, bytes, close. HL - after the last byte

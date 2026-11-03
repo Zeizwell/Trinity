@@ -43,8 +43,10 @@ static const svc_def_t svc_list[] = {
 };
 #define SVC_N (int)(sizeof svc_list / sizeof svc_list[0])
 
-static const svc_def_t *svc_find(uint8_t id) {
+// Сервис по номеру: общие (svc_list), потом хозяина (s->host)
+static const svc_def_t *svc_find(const svc_t *s, uint8_t id) {
     for (int i = 0; i < SVC_N; i++) if (svc_list[i].id == id) return &svc_list[i];
+    for (int i = 0; i < s->host_n; i++) if (s->host[i].id == id) return &s->host[i];
     return NULL;
 }
 
@@ -106,11 +108,17 @@ void svc_log(svc_t *s, const char *text) {
     j->log_n += n + 1;
 }
 
-// Запуск: 0 - пошло, 1 - занято, 2 - нет сервиса, 3 - вход не тот
+// Запуск: 0 - пошло, 1 - занято, 2 - нет сервиса, 3 - вход не тот. Тот же сервис уже идёт - команда ему (cmd):
+// 0 - принята, 4 - нет такой
 static uint8_t job_start(svc_t *s, const uint8_t *d, uint16_t n) {
     svc_job_t *j = &s->job;
-    if (j->state == SVC_JOB_RUN) return 1;
-    const svc_def_t *def = n >= 4 ? svc_find(d[0]) : NULL;
+    const svc_def_t *def = n >= 4 ? svc_find(s, d[0]) : NULL;
+    if (j->state == SVC_JOB_RUN) {
+        if (!def || def->id != j->svc || !def->cmd) return 1;
+        uint8_t par[sizeof j->par] = { 0 };
+        memcpy(par, d + 4, n - 4 > sizeof par ? sizeof par : n - 4u);
+        return def->cmd(s, j, d[1], par);
+    }
     if (!def) return 2;
     if (j->log) s->slot[j->log].size = 0;                   // лог прошлого задания - освободить
     memset(j, 0, sizeof *j);
@@ -125,7 +133,7 @@ static uint8_t job_start(svc_t *s, const uint8_t *d, uint16_t n) {
 void svc_step(svc_t *s) {
     svc_job_t *j = &s->job;
     if (j->state != SVC_JOB_RUN) return;
-    const svc_def_t *def = svc_find(j->svc);
+    const svc_def_t *def = svc_find(s, j->svc);
     int r = def ? def->step(s, j) : -1;
     if (r > 0) j->state = SVC_JOB_DONE, j->progress = 100;
     else if (r < 0) j->state = SVC_JOB_ERR;
@@ -184,11 +192,12 @@ uint16_t svc_packet(svc_t *s, const uint8_t *pkt) {
         for (uint8_t i = 1; i <= SVC_SLOTS; i++) if (s->slot[i].size) o[r++] = i;
         break;
     case SVC_P_LIST:                                        // -> число, по 26 байт: номер, версия, имя 16, вход, выход
-        o[r++] = (uint8_t)SVC_N;
-        for (int i = 0; i < SVC_N; i++) {
-            o[r++] = svc_list[i].id, o[r++] = svc_list[i].ver;
-            memcpy(o + r, svc_list[i].name, 16), r += 16;
-            wr32(o + r, svc_list[i].in), wr32(o + r + 4, svc_list[i].out), r += 8;
+        o[r++] = (uint8_t)(SVC_N + s->host_n);
+        for (int i = 0; i < SVC_N + s->host_n; i++) {
+            const svc_def_t *v = i < SVC_N ? &svc_list[i] : &s->host[i - SVC_N];
+            o[r++] = v->id, o[r++] = v->ver;
+            memcpy(o + r, v->name, 16), r += 16;
+            wr32(o + r, v->in), wr32(o + r + 4, v->out), r += 8;
         }
         break;
     case SVC_P_CALL:                                        // сервис, команда, вход, выход, параметры -> итог

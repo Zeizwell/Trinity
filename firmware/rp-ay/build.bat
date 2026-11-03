@@ -14,7 +14,7 @@ if "%1"=="build_a" set N=rp_ay_a
 if "%1"=="build_st" set O=-DBOARD_REV_A=ON -DBUS_SELFTEST=ON
 if "%1"=="build_st" set B=build_st
 if "%1"=="build_st" set N=rp_ay_st
-cmake -S . -B %B% -G Ninja -DCMAKE_BUILD_TYPE=Release -Dpioasm_DIR=%TOOLS%\sdk-tools\pioasm -Dpicotool_DIR=%TOOLS%\picotool\picotool %O% || exit /b 1
+cmake -S . -B %B% -G Ninja -DCMAKE_BUILD_TYPE=Release -Dpioasm_DIR=%TOOLS%\sdk-tools\pioasm -Dpicotool_DIR=%TOOLS%\picotool\picotool %O% -DSNDH=ON || exit /b 1
 cmake --build %B% || exit /b 1
 rem Версия - из config.h (FW_VERSION). Каждая версия - свой файл в bin\, готовый не перезаписываем
 for /f "tokens=3" %%v in ('findstr /c:"#define FW_VERSION" config.h') do set VER=%%v

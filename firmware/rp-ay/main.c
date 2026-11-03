@@ -113,6 +113,16 @@ static void snd_alarm_cb(uint alarm) {
 
 void sound_kick(void)   { if (snd_alarm >= 0) hardware_alarm_force_irq((uint)snd_alarm); }
 
+// Такт чипов φM: на плате рев А его даёт RP (GP25, CLK_GPOUT3), на макете - слот MultiSound (не трогаем)
+void phim_set(uint32_t hz) {
+#ifdef BOARD_REV_A
+    if (!hz) hz = cfg.phim_hz;
+    clock_gpio_init(PIN_PHIM, CLOCKS_CLK_GPOUT3_CTRL_AUXSRC_VALUE_CLK_SYS, (float)clock_get_hz(clk_sys) / (float)hz);
+#else
+    (void)hz;
+#endif
+}
+
 static void sound_on(void) {                    // на ядре 1: прерывание будильника - здесь
     snd_alarm = hardware_alarm_claim_unused(true);
     hardware_alarm_set_callback((uint)snd_alarm, snd_alarm_cb);
@@ -121,6 +131,7 @@ static void sound_on(void) {                    // на ядре 1: прерыв
 }
 #else
 void sound_kick(void) {}
+void phim_set(uint32_t hz) { sim_phim_hz = hz; }
 static void sound_on(void) {}
 #endif
 
@@ -359,7 +370,7 @@ int main(void) {
     gpio_set_dir(PIN_CHIP_IC, GPIO_OUT);
     gpio_init(PIN_AY_RST);
     gpio_set_dir(PIN_AY_RST, GPIO_IN);
-    clock_gpio_init(PIN_PHIM, CLOCKS_CLK_GPOUT3_CTRL_AUXSRC_VALUE_CLK_SYS, (float)clock_get_hz(clk_sys) / (float)cfg.phim_hz);
+    phim_set(0);
     busy_wait_us_32(IC_PULSE_US);
     gpio_put(PIN_CHIP_IC, 1);
 #else

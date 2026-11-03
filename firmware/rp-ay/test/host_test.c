@@ -3,6 +3,7 @@
 #define main fw_main
 #include "../main.c"
 #undef main
+#include "../atari.h"
 
 static int fails;
 static void check(const char *what, int ok) {
@@ -33,6 +34,75 @@ static int mode_ay_packet(void) {
     card_slot_write(0, 0xC0); card_slot_write(1, 0);
     return a[0] == 1 && a[1] == 0 ? a[2] : -2;
 }
+
+// Служебный пакет как SDK: ключ, #C1: код, длина 2, данные; ядро 0 отвечает -> данные ответа в ans, закрыть.
+// -> байт в ответе (-1 - пакет без ответа)
+static int svc_req(uint8_t code, const uint8_t *d, int n, uint8_t *ans, int max) {
+    const char *key = "TRIN";
+    card_slot_write(0, 0xC0);
+    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    card_slot_write(0, 0xC1);
+    card_slot_write(1, code); card_slot_write(1, (uint8_t)n); card_slot_write(1, (uint8_t)(n >> 8));
+    for (int i = 0; i < n; i++) card_slot_write(1, d[i]);
+    card_svc_poll(false);
+    card_slot_write(0, 0xC0);
+    int k = -1;
+    if ((card_answer() & 0xC0) == 0x40) {
+        card_slot_write(0, 0xC1);
+        uint8_t l[2];
+        for (int i = 0; i < 2; i++) { l[i] = card_answer(); card_read_done(); }
+        k = l[0] | l[1] << 8;
+        for (int i = 0; i < k; i++) { uint8_t v = card_answer(); card_read_done(); if (i < max) ans[i] = v; }
+    }
+    card_slot_write(0, 0xC0); card_slot_write(1, 0);
+    return k;
+}
+
+// Оба ядра на ms модельного времени: ядро 0 - служебное раз в мс, ядро 1 - «Звук» и чип.
+// R8 (у подставной машины - номер кадра) сменился: сколько раз, через сколько мкс (самый короткий / длинный)
+static uint32_t r8_changes, r8_min_us, r8_max_us;
+static void run_ms(uint32_t ms) {
+    uint64_t end = sim_now_ns() + (uint64_t)ms * 1000000, next = 0, t_prev = 0;
+    uint8_t last = sim_ym_regs[8];
+    r8_changes = 0, r8_min_us = UINT32_MAX, r8_max_us = 0;
+    while (sim_now_ns() < end) {
+        if (sim_now_ns() >= next) card_svc_poll(false), next = sim_now_ns() + 1000000;
+        card_poll(); card_sound(); chip_poll();
+        if (sim_ym_regs[8] != last) {
+            uint64_t now = sim_now_ns();
+            if (t_prev) {
+                uint32_t d = (uint32_t)((now - t_prev) / 1000);
+                if (d < r8_min_us) r8_min_us = d;
+                if (d > r8_max_us) r8_max_us = d;
+            }
+            t_prev = now, last = sim_ym_regs[8], r8_changes++;
+        }
+    }
+}
+
+// Плеер Atari: SVC_CALL сервиса 1 (команда, слот входа, параметры 0..3) -> итог
+static int player(uint8_t cmd, uint8_t in, uint32_t par) {
+    uint8_t d[8] = { ATARI_SVC, cmd, in, 0, (uint8_t)par, (uint8_t)(par >> 8), (uint8_t)(par >> 16), (uint8_t)(par >> 24) };
+    uint8_t a[4];
+    return svc_req(0x91, d, 8, a, 4) == 1 ? a[0] : -1;
+}
+
+static int job_state(void) {
+    uint8_t a[8];
+    return svc_req(0xA0, NULL, 0, a, 8) >= 1 ? a[0] : -1;
+}
+
+// Слот 'STAT' плеера (ищем по типу) -> st; false - нет
+static bool player_stat(uint8_t *st) {
+    for (uint8_t n = 1; n <= SVC_SLOTS; n++) {
+        uint8_t a[9];
+        if (svc_req(0x83, &n, 1, a, 9) != 9 || memcmp(a, "STAT", 4)) continue;
+        uint8_t d[7] = { n, 0, 0, 0, 0, ATARI_ST_SIZE, 0 };
+        return svc_req(0x82, d, 7, st, ATARI_ST_SIZE) == ATARI_ST_SIZE;
+    }
+    return false;
+}
+static uint32_t st32(const uint8_t *p) { return p[0] | p[1] << 8 | p[2] << 16 | (uint32_t)p[3] << 24; }
 
 int main(void) {
     // 1. Старт целиком: белый -> писк -> тест чипа -> зелёный 5 с -> обычная работа
@@ -102,7 +172,7 @@ int main(void) {
     card_slot_write(0, 0xC1);
     uint8_t sl[4];
     for (int i = 0; i < 4; i++) { sl[i] = card_answer(); card_read_done(); }
-    check("ответ: длина 27, 1 сервис, номер 4", sl[0] == 27 && sl[1] == 0 && sl[2] == 1 && sl[3] == 4);
+    check("ответ: длина 53, 2 сервиса (4 тест, 1 плеер Atari), первый - 4", sl[0] == 53 && sl[1] == 0 && sl[2] == 2 && sl[3] == 4);
 
     // 6. Пакет через очередь: TABLE + ROW (SID канал A) - «Звук» пишет громкость в чип
     card_slot_write(0, 8); card_slot_write(1, 15);   // громкость A = 15 (поток открыт - регистры как обычно)
@@ -135,6 +205,71 @@ int main(void) {
     check("из ATARI: режим AY, тишина в чипе", drain(100) && mode == MODE_AY && sim_ym_regs[7] == 0x3F && sim_ym_regs[8] == 0);
     mode_set(MODE_TEST);
     check("из TEST: нельзя (FF), режим TEST", mode_ay_packet() == 0xFF && drain(100) && mode == MODE_TEST);
+    mode_set(MODE_AY);
+
+    // 8. Самоплеер Atari (сервис 1, atari.c): машина подставная (mock/sndh_mock.c) - кадр k пишет R8 = k & 15
+    printf("--- самоплеер Atari\n");
+    uint8_t a[64], st[ATARI_ST_SIZE];
+    check("SVC_LIST: второй сервис - 1 player, вход SNDH, выход STAT", svc_req(0x90, NULL, 0, a, 64) == 53 && a[0] == 2
+          && a[27] == 1 && !memcmp(a + 29, "player", 6) && !memcmp(a + 45, "SNDHSTAT", 8));
+    static const uint8_t sn[9] = { 'S', 'N', 'D', 'H', 5, 0, 0, 0, 0 };
+    int slot = svc_req(0x80, sn, 9, a, 1) == 1 ? a[0] : 0;
+    uint8_t wr[10] = { (uint8_t)slot, 0, 0, 0, 0, 'M', 'O', 'C', 'K', 2 };
+    svc_req(0x81, wr, 10, a, 1);
+    check("слот SNDH создан и записан", slot > 0);
+    check("PLAY: пошло (0), карта была в FX (ключ его включил)", mode == MODE_FX && player(ATARI_PLAY, (uint8_t)slot, 1) == 0);
+    run_ms(5);
+    check("режим ATARI, такт φM 4 МГц, задание идёт", mode == MODE_ATARI && sim_phim_hz == 4000000 && job_state() == SVC_JOB_RUN);
+    run_ms(200);
+    printf("  R8 (кадр) сменился %u раз, шаг %u..%u мкс\n", r8_changes, r8_min_us, r8_max_us);
+    check("кадры в чип ровно через 20 мс (+-50 мкс)", r8_changes >= 9 && r8_min_us >= 19950 && r8_max_us <= 20050);
+    check("R13 кадра 0 дошёл, R0 из таймера дошёл", sim_ym_regs[13] == 0x0E && sim_ym_regs[0] != 0);
+    check("STAT: позиция ~10 кадров, длина 100, песня 1 из 2, опозданий 0", player_stat(st) && st32(st) >= 9 && st32(st) <= 12
+          && st32(st + ATARI_ST_FRAMES) == 100 && st[ATARI_ST_SONG] == 1 && st[ATARI_ST_SONG + 1] == 2 && st32(st + ATARI_ST_LATE) == 0);
+    card_slot_write(0, 8); card_slot_write(1, 0x1F);            // у машины R8 до 0F
+    check("запись Спектрума в R8 - только в тень", (run_ms(2), sim_ym_regs[8] != 0x1F) && card_answer() == 0x1F);
+
+    check("PAUSE: принята", player(ATARI_PAUSE, 0, 1) == 0);
+    run_ms(50);
+    uint32_t pos = player_stat(st) ? st32(st) : 0;
+    run_ms(60);
+    check("пауза: громкость 0, позиция стоит, флаг паузы", sim_ym_regs[8] == 0 && player_stat(st) && st32(st) == pos && (st[ATARI_ST_FLAGS] & 1));
+    check("PAUSE 0: дальше", player(ATARI_PAUSE, 0, 0) == 0);
+    run_ms(100);
+    check("после паузы позиция идёт", player_stat(st) && st32(st) >= pos + 4);
+
+    int opens = sim_sndh_opens;
+    check("SEEK 50: принята", player(ATARI_SEEK, 0, 50) == 0);
+    run_ms(30);
+    check("SEEK 50: позиция 50..52, машина заново не открывалась", player_stat(st) && st32(st) >= 50 && st32(st) <= 52 && sim_sndh_opens == opens);
+    check("после перемотки R8 = позиция (регистры машины дошли)", (sim_ym_regs[8] - (st32(st) & 15) + 16) % 16 <= 1);
+    check("SEEK 10: назад", player(ATARI_SEEK, 0, 10) == 0);
+    run_ms(30);
+    check("SEEK 10: позиция 10..12, машина открыта с начала", player_stat(st) && st32(st) >= 10 && st32(st) <= 12 && sim_sndh_opens == opens + 1);
+
+    check("STOP: принята", player(ATARI_STOP, 0, 0) == 0);
+    run_ms(5);
+    check("STOP: режим AY, тишина, φM Спектрума, задание готово", mode == MODE_AY && sim_ym_regs[7] == 0x3F && sim_ym_regs[8] == 0
+          && sim_phim_hz == 0 && job_state() == SVC_JOB_DONE);
+
+    check("PLAY снова (песня 2)", player(ATARI_PLAY, (uint8_t)slot, 2) == 0 && (run_ms(50), mode == MODE_ATARI));
+    check("MODE AY во время игры: 0", mode_ay_packet() == 0);
+    run_ms(5);
+    check("MODE AY: плеер встал, режим AY, задание готово, φM Спектрума", mode == MODE_AY && job_state() == SVC_JOB_DONE && sim_phim_hz == 0);
+
+    check("песни 3 нет: задание - ошибка, режим не ATARI", player(ATARI_PLAY, (uint8_t)slot, 3) == 0 && (run_ms(5), job_state() == SVC_JOB_ERR) && mode != MODE_ATARI);
+    sim_sndh_crash_at = 20;
+    check("машина упала в кадре 20: ошибка, режим AY, тишина, φM Спектрума", player(ATARI_PLAY, (uint8_t)slot, 1) == 0
+          && (run_ms(600), mode == MODE_AY) && sim_ym_regs[8] == 0 && sim_phim_hz == 0 && job_state() == SVC_JOB_ERR);
+    sim_sndh_crash_at = -1;
+    wr[5] = 'X';
+    svc_req(0x81, wr, 10, a, 1);
+    check("не SNDH: ошибка, режим не ATARI", player(ATARI_PLAY, (uint8_t)slot, 1) == 0 && (run_ms(5), job_state() == SVC_JOB_ERR) && mode != MODE_ATARI);
+    wr[5] = 'M';
+    svc_req(0x81, wr, 10, a, 1);
+    mode_set(MODE_AY);
+    mode_set(MODE_TEST);
+    check("из TEST: ошибка, режим TEST", player(ATARI_PLAY, (uint8_t)slot, 1) == 0 && (run_ms(80), job_state() == SVC_JOB_ERR) && mode == MODE_TEST);
     mode_set(MODE_AY);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);

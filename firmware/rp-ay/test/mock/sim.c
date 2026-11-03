@@ -8,6 +8,7 @@
 #define HZ 150000000u
 pio_hw_t sim_pio0 = {0}, sim_pio1 = {1};
 uint8_t  sim_psram[PSRAM_SIZE];                 // PSRAM карты (psram.h)
+uint32_t sim_phim_hz;
 const pio_program_t chip_wr_program, ws2812_program, bus_wr_program, bus_rd_program;
 
 static uint64_t cyc;                    // модельное время, такты RP
