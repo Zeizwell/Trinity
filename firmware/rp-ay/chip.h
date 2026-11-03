@@ -22,8 +22,8 @@ extern chip_stat_t chip_stat;
 
 void chip_init(void);                     // ножки чипа - выходы, /CS и /WR вверх
 void chip_reset_state(void);              // сброс: очередь пуста
-bool chip_put(uint8_t reg, uint8_t v);    // в очередь: регистр + данные; false - очередь полна
-void chip_put_fx(uint8_t reg, uint8_t v); // запись эффекта (0..15): вне очереди, первой на границе записи; слот на регистр
+bool chip_put(int c, uint8_t reg, uint8_t v);    // в очередь: регистр + данные; false - очередь полна
+void chip_put_fx(int c, uint8_t reg, uint8_t v); // запись эффекта (0..15): вне очереди, первой на границе записи; слот на регистр
 void chip_poll(void);                     // писатель: следующий цикл, если чип уже готов (ядро 1, в цикле)
 bool chip_idle(void);                     // очередь пуста, запись не начата
 
@@ -36,10 +36,10 @@ typedef struct {
                                           //   ожидаемому (чип не выдал данные), прошлое значение (запись не прошла), значение другого регистра
     uint16_t reg_err[14];                 // ошибок по регистрам
 } chip_test_t;
-void chip_test(chip_test_t *r);          // только когда chip_idle(); после теста в чипе мусор - вернуть тень
+void chip_test(int c, chip_test_t *r);          // только когда chip_idle(); после теста в чипе мусор - вернуть тень
 void chip_hold(uint32_t ms);              // замер тестером: A0 = 1, /WR = 0, /CS = 1 держать ms, потом покой
-uint16_t chip_pins_check(void);         // ножки RP к чипу: замыкания (маска: D0..D7, /CS, /WR, A0, /RD)
-void chip_probe(uint8_t out[3]);         // чтение R14, R15 (порты) и статуса - без записи: какая линия
+uint16_t chip_pins_check(int c);         // ножки RP к чипу: замыкания (маска: D0..D7, /CS, /WR, A0, /RD)
+void chip_probe(int c, uint8_t out[3]);         // чтение R14, R15 (порты) и статуса - без записи: какая линия
 
 // Паузы записи: ритм Z80 на 3.5 МГц (cfg, полутакты) * % набора. Наборы: default - 100 %, tuned - из теста пауз
 #define CHIP_TM_N 5                       // установка, /WR, удержание, после адреса, после данных

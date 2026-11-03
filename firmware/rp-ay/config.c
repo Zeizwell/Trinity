@@ -30,4 +30,12 @@ void cfg_defaults(void) {
     cfg.vreg             = VREG_VOLTAGE_1_15;     // под 250 МГц
     cfg.led_bright       = 16;
     cfg.log_period_ms    = 1000;
+#ifdef BOARD_REV_A
+    cfg.chips            = 2;           // плата: два YM2203, выбор TurboSound - RP
+    cfg.sys_khz          = 252000;      // такт чипов 3.5 МГц - делитель 72 без дрожания (250 / 3.5 - дробный)
+#endif
+#ifdef BUS_SELFTEST
+    cfg.boot_test        = false;       // на голой RP чипов нет
+    cfg.log_period_ms    = 0;
+#endif
 }

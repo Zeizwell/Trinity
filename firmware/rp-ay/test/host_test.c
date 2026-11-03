@@ -26,7 +26,7 @@ int main(void) {
 
     // 2. Запись в чип: значения доходят, тайминги - по тактам Z80 3.5 МГц
     printf("--- запись в чип\n");
-    chip_put(0, 0x5A); chip_put(1, 0x0C); chip_put(13, 0x0E);
+    chip_put(0, 0, 0x5A); chip_put(0, 1, 0x0C); chip_put(0, 13, 0x0E);
     check("очередь дошла до чипа (chip_idle стал true)", drain(100));
     check("R0 = 5A, R1 = 0C, R13 = 0E", sim_ym_regs[0] == 0x5A && sim_ym_regs[1] == 0x0C && sim_ym_regs[13] == 0x0E);
     check("chip_idle повторно, когда всё записано, - сразу true", chip_idle() && chip_idle());
@@ -38,19 +38,19 @@ int main(void) {
     // 3. Тест чтения чипа: исправный - 0 ошибок, склеенные D4 / D6 - ловит
     printf("--- тест чтения чипа\n");
     chip_test_t r;
-    chip_test(&r);
+    chip_test(0, &r);
     check("исправный чип: 0 ошибок из 3584 (14 регистров x 256)", r.errors == 0 && r.checks == 3584);
     sim_fault_tie = 0x50;
-    chip_test(&r);
+    chip_test(0, &r);
     check("склеенные D4 / D6: ошибки найдены", r.errors > 0);
     check("склеенные D4 / D6: плохие биты = 50", r.bad_bits == 0x50);
     sim_no_chip = true;                          // чипа нет (или не туда воткнут): тест не должен давать ложный OK
-    chip_test(&r);
+    chip_test(0, &r);
     printf("  чипа нет: %u ошибок из %u\n", r.errors, r.checks);
     check("чипа нет: ошибки во всех проверках, биты FF", r.errors == r.checks && r.bad_bits == 0xFF);
     sim_no_chip = false;
     sim_fault_tie = 0;
-    check("после теста запись в чип идёт", (chip_put(2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
+    check("после теста запись в чип идёт", (chip_put(0, 2, 0x33), drain(100)) && sim_ym_regs[2] == 0x33);
 
     // 4. Спектрум: #FFFD (выбор регистра) и #BFFD (данные) через card.c -> чип и ответ на чтение
     printf("--- запись Спектрума через card.c\n");

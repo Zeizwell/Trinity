@@ -103,9 +103,9 @@ uint8_t card_sel(void) { return bus[cur].sel; }
 // ================= «Звук»: фон (card_poll) - события, планы, кадр, таймаут; прерывание будильника (card_sound) -
 // только шаги эффектов по готовым планам (двойной буфер планов - прерывание никогда не ждёт фон)
 
-// Выход движка: запись эффекта в чип - вне очереди (chip_put_fx). Настоящий чип на макете - только 0
+// Выход движка: запись эффекта в чип - вне очереди (chip_put_fx). Настоящих чипов - CHIP_N
 static void fx_out(void *user, uint8_t reg, uint8_t val) {
-    if ((uintptr_t)user == 0) chip_put_fx(reg, val);
+    if ((uintptr_t)user < CHIP_N) chip_put_fx((int)(uintptr_t)user, reg, val);
 }
 
 // Событие шины -> движок и чип
@@ -113,7 +113,7 @@ static void ev_do(uint32_t e) {
     uint8_t type = (uint8_t)(e >> 24), c = (uint8_t)(e >> 16), r = (uint8_t)(e >> 8), v = (uint8_t)e;
     switch (type) {
     case AYFX_EV_REG:                                           // регистр у эффекта - движок записал с поправкой
-        if (!ayfx_reg_write(&fx[c], r, v) && c == 0) chip_put(r, v);
+        if (!ayfx_reg_write(&fx[c], r, v) && c < CHIP_N) chip_put(c, r, v);
         break;
     case AYFX_EV_PACKET:
         if (pk[v][0] < 5) card_pk[pk[v][0]]++;
@@ -226,7 +226,8 @@ void card_test_bytes(const uint8_t *b, int n) {
 }
 
 void card_resend(void) {
-    for (uint8_t r = 0; r < 14; r++) chip_put(r, regs[0][r]);
+    for (int c = 0; c < CHIP_N; c++)
+        for (uint8_t r = 0; r < 14; r++) chip_put(c, r, regs[c][r]);
 }
 
 void card_reset(void) {
@@ -241,8 +242,10 @@ void card_reset(void) {
     }
     chip_reset_state();
     if (cfg.silence_on_reset) {                                 // тишина: тон и шум выкл, громкости 0
-        chip_put(7, 0x3F);
-        chip_put(8, 0), chip_put(9, 0), chip_put(10, 0);
+        for (int c = 0; c < CHIP_N; c++) {
+            chip_put(c, 7, 0x3F);
+            chip_put(c, 8, 0), chip_put(c, 9, 0), chip_put(c, 10, 0);
+        }
         regs[0][7] = 0x3F;
     }
     t_last = t_frame = t_act = time_us_32();

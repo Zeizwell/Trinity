@@ -5,10 +5,26 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      27
+#define FW_VERSION      29
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef BOARD_REV_A
+// ---- Ножки платы рев А (doc/trinity-board-checklist.md, KiCad/trinity/gen/rpay_gen.py)
+#define PIN_AY_D0    28  // шина к CPLD: данные GP28..GP35
+#define PIN_AY_WR    36
+#define PIN_AY_RD    37
+#define PIN_AY_C0    38  // код порта: GP38, GP39
+#define PIN_AY_RDY   40
+#define PIN_AY_RST   41  // от CPLD, 1 - сброс
+#define PIN_CHIP_IC  46  // /IC обоих чипов
+#define PIN_PHIM     25  // такт чипов, CLK_GPOUT3
+#define PIN_SLOT_PHIM PIN_PHIM   // замер такта (phim_khz) - свой же
+#define PIN_RGB      20
+#define CHIP_N       2
+//                       D0, A0, /CS, /WR, /RD
+#define CHIP_PIN_TABLE { { 0, 8, 9, 10, 42 }, { 11, 21, 22, 23, 43 } }
+#else
 // ---- Ножки макета (doc/zx-trinity.md, п.15). На плате - другие: менять ТОЛЬКО здесь (C и PIO берут отсюда).
 // Требование к разводке: D0..D7 слота подряд, D0..D7 чипа подряд; остальные - любые (слот - в окне 32 ножек PIO).
 #define PIN_SLOT_D0     0   // слот: D0..D7 = GP0..GP7 (RP выдаёт только на чтение своего чипа)
@@ -24,6 +40,9 @@
 #define PIN_CHIP_A0     38
 #define PIN_CHIP_RD     39  // /RD чипа - только для теста (режим TEST); на чипе подтяжка 10к к +5 В
 #define PIN_RGB         20  // светодиод WS2812 на Spotpear
+#define CHIP_N          1
+#define CHIP_PIN_TABLE  { { PIN_CHIP_D0, PIN_CHIP_A0, PIN_CHIP_CS, PIN_CHIP_WR, PIN_CHIP_RD } }
+#endif
 
 // ---- Служебный API (doc/trinity-api.md): пул временных слотов в ОЗУ
 #define SVC_POOL_KB     128

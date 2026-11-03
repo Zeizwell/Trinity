@@ -38,3 +38,8 @@ cpld/syn/*.svf
 cpld/syn/*.qws
 firmware/rp-gs/build_a/
 firmware/rp-gs/build_st/
+
+# сборки RP-AY под плату и самотест; самотест в bin не храним
+firmware/rp-ay/build_a/
+firmware/rp-ay/build_st/
+firmware/rp-ay/bin/rp_ay_st_*.uf2

@@ -1,0 +1,79 @@
+; Шина платы рев А: на RP-AY идёт код порта от CPLD (doc/cpld.md). Ножки - из config.h.
+; Окно PIO - GP16..GP47 (pio_set_gpio_base). Стробы ждём по IN_BASE = PIN_AY_D0: AY_WR - ножка 8, AY_RD - 9.
+
+; ---- Записи: на каждый AY_WR в FIFO снимок ножек от PIN_AY_D0: данные и код.
+; Данные - последний снимок, пока AY_WR ещё внизу, как в bus.pio.
+.program bus_ay_wr
+.wrap_target
+    wait 0 pin 8                     ; AY_WR вниз
+sample:
+    in pins, 32                      ; снимок от PIN_AY_D0
+    jmp pin done                     ; JMP_PIN = AY_WR: уже вверх - берём прошлый снимок
+    mov x, isr                       ; снимок, после которого AY_WR ещё был внизу
+    jmp sample
+done:
+    mov isr, x
+    push noblock
+.wrap
+
+; ---- Чтения: код 1 (#FFFD) - ответ из X, RDY, в конце метка в FIFO. Остальным не отвечаем: CPLD по таймауту даст #FF
+; (#BFFD у образцов на чтение не отвечает, у MultiSound только #FFFD).
+.program bus_ay_rd
+.side_set 1 opt
+.wrap_target
+top:
+    wait 0 pin 9                     ; AY_RD вниз
+    jmp pin drive                    ; JMP_PIN = AY_C0: код 1 или 3
+    wait 1 pin 9
+    jmp top
+drive:
+    mov osr, x
+    out pins, 8                      ; значение на AY_D (OUT_BASE = PIN_AY_D0)
+    mov osr, ~null
+    out pindirs, 8                   ; выходы
+    nop side 1                       ; данные стоят - RDY
+    wait 1 pin 9                     ; AY_RD вверх
+    mov osr, null side 0             ; RDY вниз
+    out pindirs, 8                   ; снова входы
+    mov isr, x                       ; метка "прочитали данные" = что было на шине
+    push noblock
+.wrap
+
+% c-sdk {
+static inline void bus_ay_wr_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_ay_wr_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, PIN_AY_D0);
+    sm_config_set_jmp_pin(&c, PIN_AY_WR);
+    sm_config_set_in_shift(&c, false, false, 32);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);   // 8 записей в запасе
+    for (uint p = PIN_AY_WR; p <= PIN_AY_C0 + 1; p++) pio_gpio_init(pio, p);   // AY_WR, AY_RD, код - входы
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN_AY_WR, PIN_AY_C0 + 2 - PIN_AY_WR, false);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void bus_ay_rd_init(PIO pio, uint sm, uint offset) {
+    pio_sm_config c = bus_ay_rd_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, PIN_AY_D0, 8);
+    sm_config_set_in_pins(&c, PIN_AY_D0);            // для wait pin
+    sm_config_set_jmp_pin(&c, PIN_AY_C0);
+    sm_config_set_sideset_pins(&c, PIN_AY_RDY);
+    sm_config_set_out_shift(&c, true, false, 32);    // вправо: младший бит - D0
+    sm_config_set_in_shift(&c, false, false, 32);
+    for (uint i = 0; i < 8; i++) pio_gpio_init(pio, PIN_AY_D0 + i);
+    pio_gpio_init(pio, PIN_AY_RDY);
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN_AY_D0, 8, false);
+    pio_sm_set_pins_with_mask64(pio, sm, 0, 1ull << PIN_AY_RDY);
+    pio_sm_set_consecutive_pindirs(pio, sm, PIN_AY_RDY, 1, true);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+// Новый ответ: X
+static inline void bus_ay_rd_set(PIO pio, uint sm, uint8_t data) {
+    pio_sm_put(pio, sm, data);
+    pio_sm_exec(pio, sm, pio_encode_pull(false, false));
+    pio_sm_exec(pio, sm, pio_encode_mov(pio_x, pio_osr));
+}
+static_assert(PIN_AY_WR == PIN_AY_D0 + 8 && PIN_AY_RD == PIN_AY_D0 + 9, "wait pin 8 / 9");
+%}

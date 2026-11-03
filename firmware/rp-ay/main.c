@@ -15,8 +15,13 @@
 #include "chip.h"
 #include "card.h"
 #include "ws2812.pio.h"
+#ifdef BOARD_REV_A
+#include "bus_ay.pio.h"
+#else
 #include "bus.pio.h"
+#endif
 
+#define IC_PULSE_US 100                 // /IC вниз при старте и сбросе: у YM2203 от 72 тактов, это 20 мкс на 3.5 МГц
 static PIO  bus_pio = pio1;
 static uint sm_wr, sm_rd;
 
@@ -34,7 +39,7 @@ static uint8_t       boot_probe[3];            // до теста: R14, R15, с�
 static void test_run(void) {                      // ядро 1: дождаться очереди, тест, вернуть тень, режим AY
     if (!chip_idle()) return;                     //   (пока очередь не пуста - в следующий раз)
     busy_wait_us_32(100);                         //   чип закончил последнюю запись
-    chip_test(&test_res);
+    chip_test(0, &test_res);
     card_resend();
     test_req = false;
     test_done = true;
@@ -43,7 +48,11 @@ static void test_run(void) {                      // ядро 1: дождать�
 
 // Ответ на чтение: данные - от карты, статус - из cfg
 static void answer_update(void) {
+#ifdef BOARD_REV_A
+    bus_ay_rd_set(bus_pio, sm_rd, card_answer());
+#else
     bus_rd_set(bus_pio, sm_rd, card_answer(), cfg.status_answer);
+#endif
 }
 
 // ---- Уровень «Шина» (doc 14б): прерывание PIO, высший приоритет, ядро 1. Всё, от чего зависит ответ Спектруму,
@@ -59,8 +68,13 @@ static void bus_irq(void) {
     uint32_t t0 = cyc_now();
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
         uint32_t w = pio_sm_get(bus_pio, sm_wr);    // снимок ножек от PIN_SLOT_D0 (раскладка - config.h)
+#ifdef BOARD_REV_A
+        uint code = w >> (PIN_AY_C0 - PIN_AY_D0) & 3;       // cpld/rtl/top.v: 1 - #FFFD, 2 - #BFFD
+        if (code == 1 || code == 2) card_slot_write(code == 2, (uint8_t)w);
+#else
         if (w >> (PIN_SLOT_CS - PIN_SLOT_D0) & 1) continue;      // /CS = 1 - не наш чип
         card_slot_write(w >> (PIN_SLOT_A0 - PIN_SLOT_D0) & 1, (uint8_t)w);
+#endif
         answer_update();
     }
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
@@ -116,6 +130,11 @@ static void do_reset(void) {                      // /IC: сбросить вс�
     answer_update();
     restore_interrupts(s);
     chip_stat.resets++;
+#ifdef BOARD_REV_A
+    gpio_put(PIN_CHIP_IC, 0);                       // сброс и самих чипов
+    busy_wait_us_32(IC_PULSE_US);
+    gpio_put(PIN_CHIP_IC, 1);
+#endif
 }
 
 // ---- Ядро 1: «Шина» - прерыванием, «Звук» - здесь, в цикле
@@ -124,11 +143,11 @@ static void boot_beep(void) {
     if (!cfg.boot_beep_ms) return;
     boot_stage = 1;
     static const uint8_t on[][2] = { {0, 0xF8}, {1, 0x00}, {7, 0x3E}, {8, 15} };   // период #0F8: ~440 Гц при такте AY 1.75 МГц
-    for (unsigned i = 0; i < sizeof on / sizeof on[0]; i++) chip_put(on[i][0], on[i][1]);
+    for (unsigned i = 0; i < sizeof on / sizeof on[0]; i++) chip_put(0, on[i][0], on[i][1]);
     uint32_t t0 = time_us_32();
     while (time_us_32() - t0 < cfg.boot_beep_ms * 1000u) chip_poll();
-    chip_put(8, 0);
-    chip_put(7, 0x3F);
+    chip_put(0, 8, 0);
+    chip_put(0, 7, 0x3F);
     while (!chip_idle()) chip_poll();
 }
 
@@ -140,9 +159,13 @@ static void boot_check(void) {
     if (!cfg.boot_test) { boot_result = 0; return; }
     boot_stage = 2;
     while (!chip_idle()) chip_poll();
-    boot_pins = chip_pins_check();
-    chip_probe(boot_probe);
-    chip_test(&boot_res);
+    boot_pins = chip_pins_check(0);
+    chip_probe(0, boot_probe);
+    chip_test(0, &boot_res);
+    for (int c = 1; c < CHIP_N && !boot_res.errors; c++) {      // остальные чипы - тот же тест
+        boot_pins |= chip_pins_check(c);
+        chip_test(c, &boot_res);
+    }
     uint8_t out[6] = { (uint8_t)boot_res.errors, (uint8_t)(boot_res.errors >> 8), boot_res.bad_bits,
                        boot_res.bad_reg, boot_res.bad_wrote, boot_res.bad_read };
     card_test_bytes(out, 6);
@@ -150,12 +173,19 @@ static void boot_check(void) {
     boot_result = boot_res.errors ? 1 : 0;
 }
 
+// Сброс со стороны шины: линия вверху - работаем
+#ifdef BOARD_REV_A
+static bool bus_ic_high(void) { return !gpio_get(PIN_AY_RST); }
+#else
+static bool bus_ic_high(void) { return gpio_get(PIN_SLOT_IC); }
+#endif
+
 static void core1_main(void) {
     bus_irq_on();
     boot_check();
     boot_beep();
     sound_on();                                     // после теста: эффекты пишут в чип только теперь
-    bool ic_was = gpio_get(PIN_SLOT_IC);
+    bool ic_was = bus_ic_high();
     while (true) {
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;   // прерывание не успело
         card_poll();                                    // события шины, планы эффектов, кадр, таймаут
@@ -172,7 +202,7 @@ static void core1_main(void) {
             mode_set(MODE_AY);
             tune_req = false, tune_done = true;
         }
-        bool ic = gpio_get(PIN_SLOT_IC);
+        bool ic = bus_ic_high();
         if (!ic && ic_was) do_reset();                  // /IC вниз
         ic_was = ic;
     }
@@ -197,6 +227,116 @@ static void rgb(uint8_t r, uint8_t g, uint8_t b) {
     pio_sm_put_blocking(led_pio, led_sm, ((uint32_t)g << 24) | ((uint32_t)r << 16) | ((uint32_t)b << 8));
 }
 
+#ifdef BUS_SELFTEST
+// ---- Самотест шины платы без CPLD: ядро 0 изображает CPLD на тех же ножках (cpld/rtl/top.v). Только на голой RP:
+// на плате этими ножками правит CPLD. Ядро 1 работает как обычно: прерывание шины, карта, писатели чипов
+#include "hardware/structs/systick.h"
+#define ST_RUNS  100000
+#define ST_LIMIT 2000                   // тактов ядра на ответ (8 мкс): дальше считаем, что RP молчит
+#define ST_CODE_FFFD 1                  // коды CPLD (top.v, CODE_FFFD / CODE_BFFD)
+#define ST_CODE_BFFD 2
+#define ST_CHIP_US   30                 // запись дошла до ножек чипа: адрес и данные с паузами (chip.c)
+
+static uint32_t st_top_rdy;
+static const uint8_t st_chip_d0[CHIP_N] = { 0, 11 };   // D0 чипов (config.h, CHIP_PIN_TABLE)
+
+static uint32_t st_now(void) { return systick_hw->cvr; }
+static void st_code(uint code) { gpio_put_masked64(3ull << PIN_AY_C0, (uint64_t)code << PIN_AY_C0); }
+
+// CPLD читает: AY_RD вниз, ждём RDY, берём данные, AY_RD вверх, ждём опускания RDY. -1 - не ответила
+static int st_read(uint code) {
+    st_code(code);
+    busy_wait_at_least_cycles(20);
+    uint32_t t0 = st_now();
+    gpio_put(PIN_AY_RD, 0);
+    while (!gpio_get(PIN_AY_RDY))
+        if (((t0 - st_now()) & 0xFFFFFF) > ST_LIMIT) { gpio_put(PIN_AY_RD, 1); return -1; }
+    uint32_t d = (t0 - st_now()) & 0xFFFFFF;
+    if (d > st_top_rdy) st_top_rdy = d;
+    int v = (int)(gpio_get_all64() >> PIN_AY_D0 & 0xFF);
+    gpio_put(PIN_AY_RD, 1);
+    t0 = st_now();
+    while (gpio_get(PIN_AY_RDY))
+        if (((t0 - st_now()) & 0xFFFFFF) > ST_LIMIT) return -2;
+    return v;
+}
+
+// CPLD пишет: код и данные, строб 125 нс, данные ещё такт. Пока ядро держит AY_D, PIO на них не выходит
+static void st_write(uint code, uint8_t v) {
+    const uint64_t d_mask = 0xFFull << PIN_AY_D0;
+    st_code(code);
+    for (uint i = 0; i < 8; i++) gpio_init(PIN_AY_D0 + i);
+    gpio_put_masked64(d_mask, (uint64_t)v << PIN_AY_D0);
+    gpio_set_dir_masked64(d_mask, d_mask);
+    busy_wait_at_least_cycles(10);
+    gpio_put(PIN_AY_WR, 0);
+    busy_wait_at_least_cycles(32);
+    gpio_put(PIN_AY_WR, 1);
+    busy_wait_at_least_cycles(8);
+    gpio_set_dir_masked64(d_mask, 0);
+    for (uint i = 0; i < 8; i++) pio_gpio_init(bus_pio, PIN_AY_D0 + i);
+}
+
+static unsigned long st_ns(uint32_t cycles) {
+    return (unsigned long)((uint64_t)cycles * 1000000u / (clock_get_hz(clk_sys) / 1000));
+}
+
+static void bus_selftest(void) {
+    long no_answer = 0, bad_read = 0, bad_other = 0, bffd_answered = 0, bad_pins = 0, none_seen = 0;
+    int mirror[CHIP_N][14];
+    const uint64_t out_mask = (1ull << PIN_AY_WR) | (1ull << PIN_AY_RD) | (3ull << PIN_AY_C0);
+    for (int c = 0; c < CHIP_N; c++) for (int r = 0; r < 14; r++) mirror[c][r] = -1;
+    systick_hw->rvr = 0xFFFFFF;
+    systick_hw->csr = 5;                                       // такт ядра 0
+    st_top_rdy = 0;
+    uint32_t wr0 = chip_stat.slot_wr;
+    for (uint p = PIN_AY_WR; p <= PIN_AY_C0 + 1; p++) gpio_init(p);
+    gpio_put_masked64(out_mask, (1ull << PIN_AY_WR) | (1ull << PIN_AY_RD));
+    gpio_set_dir_masked64(out_mask, out_mask);
+    for (long i = 0; i < ST_RUNS; i++) {
+        int c = (int)(i & 1), r = (int)(i / 2 % 14);
+        uint8_t v = (uint8_t)(i * 37 + 11);
+        // Запись: выбор чипа (#FF - 0, #FE - 1), регистр, данные
+        st_write(ST_CODE_FFFD, (uint8_t)(0xFF - c));
+        st_write(ST_CODE_FFFD, (uint8_t)r);
+        st_write(ST_CODE_BFFD, v);
+        mirror[c][r] = v;
+        // Чтение #FFFD: тот же регистр - то, что записали
+        int got = st_read(ST_CODE_FFFD);
+        if (got < 0) no_answer++;
+        else if (got != v) bad_read++;
+        // Другой чип: его регистр не тронут
+        int o = c ^ 1;
+        st_write(ST_CODE_FFFD, (uint8_t)(0xFF - o));
+        st_write(ST_CODE_FFFD, (uint8_t)r);
+        got = st_read(ST_CODE_FFFD);
+        if (got < 0) no_answer++;
+        else if (mirror[o][r] >= 0 && got != mirror[o][r]) bad_other++;
+        // #BFFD на чтение молчит
+        if (st_read(ST_CODE_BFFD) != -1) bffd_answered++;
+        // Код 0 (не нам): запись не доходит
+        uint32_t w = chip_stat.slot_wr;
+        st_write(0, 0x55);
+        busy_wait_us_32(1);
+        if (chip_stat.slot_wr != w) none_seen++;
+        // Писатель чипа выставил данные на его ножки (последнее - данные v), каждые 64 прогона
+        if ((i & 63) == 0) {
+            busy_wait_us_32(ST_CHIP_US);
+            if ((uint8_t)(gpio_get_all64() >> st_chip_d0[c]) != v) bad_pins++;
+        }
+    }
+    gpio_set_dir_masked64(out_mask, 0);
+    printf("самотест шины RP-AY: прогонов %d, записей принято %lu (ждали %ld)\n", ST_RUNS,
+           (unsigned long)(chip_stat.slot_wr - wr0), (long)ST_RUNS * 5);
+    printf("нет ответа %ld, чтение не то %ld, чужой чип испорчен %ld, #BFFD ответил %ld, код 0 принят %ld, ножки чипа не те %ld\n",
+           no_answer, bad_read, bad_other, bffd_answered, none_seen, bad_pins);
+    printf("RDY после AY_RD: самый долгий %lu нс, обработчик шины %lu нс, записей в чипы %lu, потеряно в очередях %lu\n",
+           st_ns(st_top_rdy), st_ns(irq_max_cyc), (unsigned long)chip_stat.chip_wr, (unsigned long)chip_stat.q_lost);
+    printf("PIO: база %u, команда записи %u, чтения %u\n", (unsigned)pio_get_gpio_base(bus_pio),
+           (unsigned)pio_sm_get_pc(bus_pio, sm_wr), (unsigned)pio_sm_get_pc(bus_pio, sm_rd));
+}
+#endif
+
 int main(void) {
     cfg_defaults();
     vreg_set_voltage(cfg.vreg);                        // разгон: ответ на чтение сразу за записью (14 МГц) успевает
@@ -211,20 +351,37 @@ int main(void) {
     rgb(64, 64, 64);                                   // прошивка жива: яркий белый 0.5 с
     sleep_ms(500);
 
-    for (uint p = PIN_SLOT_CS; p <= PIN_SLOT_A0; p++) {   // стробы слота - входы (у RP2350 ножка до gpio_init
+#ifdef BOARD_REV_A
+    gpio_init(PIN_CHIP_IC);                                // /IC внизу, пока нет такта чипов
+    gpio_put(PIN_CHIP_IC, 0);
+    gpio_set_dir(PIN_CHIP_IC, GPIO_OUT);
+    gpio_init(PIN_AY_RST);
+    gpio_set_dir(PIN_AY_RST, GPIO_IN);
+    clock_gpio_init(PIN_PHIM, CLOCKS_CLK_GPOUT3_CTRL_AUXSRC_VALUE_CLK_SYS, (float)clock_get_hz(clk_sys) / (float)cfg.phim_hz);
+    busy_wait_us_32(IC_PULSE_US);
+    gpio_put(PIN_CHIP_IC, 1);
+#else
+    for (uint p = PIN_SLOT_CS; p <= PIN_SLOT_A0; p++) {   // стробы слота - входы (у RP2350 ножка по умолчанию
         gpio_init(p);                                      //   изолирована, PIO её не видит)
         gpio_set_dir(p, GPIO_IN);
     }
     gpio_init(PIN_SLOT_IC);   gpio_set_dir(PIN_SLOT_IC, GPIO_IN);
     gpio_init(PIN_SLOT_PHIM); gpio_set_dir(PIN_SLOT_PHIM, GPIO_IN);
+#endif
     chip_init();
     mode_reset();
     card_reset();
 
     sm_wr = pio_claim_unused_sm(bus_pio, true);
     sm_rd = pio_claim_unused_sm(bus_pio, true);
+#ifdef BOARD_REV_A
+    pio_set_gpio_base(bus_pio, 16);                                // шина на GP28..GP40
+    bus_ay_wr_init(bus_pio, sm_wr, pio_add_program(bus_pio, &bus_ay_wr_program));
+    bus_ay_rd_init(bus_pio, sm_rd, pio_add_program(bus_pio, &bus_ay_rd_program));
+#else
     bus_wr_init(bus_pio, sm_wr, bus_add_program(bus_pio, &bus_wr_program, PIN_SLOT_WR));   // ножки - config.h
     bus_rd_init(bus_pio, sm_rd, bus_add_program(bus_pio, &bus_rd_program, PIN_SLOT_RD));
+#endif
     answer_update();
 
     multicore_launch_core1(core1_main);
@@ -245,6 +402,9 @@ int main(void) {
         }
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
         if (key == 'p' && !tune_req && mode == MODE_AY) { tune_req = true; printf("pause test: ~1 min...\n"); }
+#ifdef BUS_SELFTEST
+        if (key == 'u') { bus_selftest(); printf("готово\n"); }
+#endif
         if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }
         if (key == 't' && !test_req) {
             if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
@@ -286,7 +446,7 @@ int main(void) {
                    boot_res.got_float, boot_res.got_old, boot_res.got_other);
             for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
             printf("\n  phiM %lu kHz, /IC %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
-                   (unsigned long)phim_khz(), gpio_get(PIN_SLOT_IC), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
+                   (unsigned long)phim_khz(), bus_ic_high(), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
             printf("  bus irq max %lu cyc (%lu ns), events lost %lu, packets ROW %lu TABLE %lu RESET %lu\n",
                    (unsigned long)irq_max_cyc, (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)),
                    (unsigned long)card_ev_lost, (unsigned long)card_pk[1], (unsigned long)card_pk[2], (unsigned long)card_pk[3]);
