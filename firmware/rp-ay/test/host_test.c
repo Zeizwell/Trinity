@@ -17,6 +17,23 @@ static bool drain(uint32_t limit_ms) {
     return false;
 }
 
+// MODE AY как SDK: ключ, #C1: [C0][1][0][0], ждать ответ (ядро 0), прочитать [длина 2][итог], закрыть -> итог
+static int mode_ay_packet(void) {
+    const char *key = "TRIN";
+    card_slot_write(0, 0xC0);
+    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    card_slot_write(0, 0xC1);
+    card_slot_write(1, 0xC0); card_slot_write(1, 1); card_slot_write(1, 0); card_slot_write(1, 0);
+    card_svc_poll(false);
+    card_slot_write(0, 0xC0);
+    if ((card_answer() & 0xC0) != 0x40) return -1;
+    card_slot_write(0, 0xC1);
+    uint8_t a[3];
+    for (int i = 0; i < 3; i++) { a[i] = card_answer(); card_read_done(); }
+    card_slot_write(0, 0xC0); card_slot_write(1, 0);
+    return a[0] == 1 && a[1] == 0 ? a[2] : -2;
+}
+
 int main(void) {
     // 1. Старт целиком: белый -> писк -> тест чипа -> зелёный 5 с -> обычная работа
     printf("--- старт прошивки (модель, 8 с)\n");
@@ -101,6 +118,24 @@ int main(void) {
     card_slot_write(0, 0xC0);
     card_slot_write(1, 0);                       // закрыть
     check("закрыть (0 в #C0): режим FX остаётся, SID играет (закрыт доступ, не эффекты)", mode == MODE_FX && drain(100) && sim_ym_regs[8] == 15);
+
+    // 7. MODE AY (как SDK Ayfx_ModeAy): карта по умолчанию - плагины выкл, чип и тень - тишина
+    printf("--- MODE AY\n");
+    check("из FX: ответ 0", mode_ay_packet() == 0);
+    check("из FX: режим AY", drain(100) && mode == MODE_AY);
+    check("тишина в чипе: R7 = 3F, громкости 0 (SID выкл - за 100 мс громкость не вернул)", drain(100) && sim_ym_regs[7] == 0x3F && sim_ym_regs[8] == 0 && sim_ym_regs[9] == 0 && sim_ym_regs[10] == 0);
+    card_slot_write(0, 8);
+    check("тень тоже тишина: чтение R8 = 0", card_answer() == 0);
+    card_slot_write(1, 5);
+    check("дальше чип у Спектрума: R8 = 5 дошло", drain(100) && sim_ym_regs[8] == 5);
+    mode_set(MODE_ATARI);                        // самоплеер играет: записи Спектрума до чипа не доходят
+    card_slot_write(0, 8); card_slot_write(1, 9);
+    check("ATARI: запись Спектрума - только в тень", drain(100) && sim_ym_regs[8] == 5 && card_answer() == 9);
+    check("из ATARI: протокол работает, ответ 0", mode_ay_packet() == 0);
+    check("из ATARI: режим AY, тишина в чипе", drain(100) && mode == MODE_AY && sim_ym_regs[7] == 0x3F && sim_ym_regs[8] == 0);
+    mode_set(MODE_TEST);
+    check("из TEST: нельзя (FF), режим TEST", mode_ay_packet() == 0xFF && drain(100) && mode == MODE_TEST);
+    mode_set(MODE_AY);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);
     return fails;

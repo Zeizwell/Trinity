@@ -76,11 +76,11 @@ static void addr_write(uint8_t v) {
 static void data_write(uint8_t v) {
     ayfx_bus_t *b = &bus[cur];
     regs[cur][b->sel] = v;
-    if (!mode_chip_from_slot()) return;                         // ATARI / UPDATE / TEST: только тень
-    switch (ayfx_bus_write(b, v)) {
-    case AYFX_EV_REG:    if (b->sel < 16) ev_put(AYFX_EV_REG, cur, b->sel, v); break;
+    bool to_chip = mode_chip_from_slot();                       // ATARI / UPDATE / TEST: регистры - только тень
+    switch (ayfx_bus_write(b, v)) {                             // протокол - в любом режиме (MODE AY из ATARI)
+    case AYFX_EV_REG:    if (to_chip && b->sel < 16) ev_put(AYFX_EV_REG, cur, b->sel, v); break;
     case AYFX_EV_OPEN:   bus_open(); break;              // закрытие (AYFX_EV_CLOSE) - только шина, эффекты играют
-    case AYFX_EV_PACKET: pk_put(cur, b->pkt); break;
+    case AYFX_EV_PACKET: if (to_chip) pk_put(cur, b->pkt); break;   // реалтайм FX - только когда чип у Спектрума
     }
 }
 
@@ -132,10 +132,30 @@ static void fx_timeout(void) {
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
 }
 
+// MODE AY (пакет #C0, просьба с ядра 0): карта по умолчанию - плагины выкл (FX, Atari), чипы и тень - тишина,
+// дальше чип у Спектрума. Потоки не закрываем: Спектрум ещё читает ответ
+static volatile bool mode_ay_req;
+
+static void mode_default(void) {
+    uint32_t s = save_and_disable_interrupts();                 // режим читает прерывание шины
+    mode_set(MODE_AY);
+    restore_interrupts(s);
+    for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
+    for (int c = 0; c < CARD_CHIPS; c++) {                      // тишина: тон и шум выкл, громкости 0
+        regs[c][7] = 0x3F, regs[c][8] = regs[c][9] = regs[c][10] = 0;
+        if (c < CHIP_N) chip_put(c, 7, 0x3F), chip_put(c, 8, 0), chip_put(c, 9, 0), chip_put(c, 10, 0);
+    }
+}
+
 // Фон ядра 1: события шины (пакеты -> планы, записи Спектрума), свип раз в кадр, таймаут. Прерывание шагов не
 // выключаем: план считается в запасном буфере и подменяется одной записью (engine/ayfx.h); потом будильник - заново
 void card_poll(void) {
     bool touched = false;
+    if (mode_ay_req) {                                          // MODE AY - до событий шины, они уже для AY
+        mode_ay_req = false;
+        mode_default();
+        touched = true;
+    }
     while (ev_tail != ev_head) {                                // события шины - по порядку
         ev_do(ev[ev_tail]);
         ev_tail = (ev_tail + 1) & (EV_Q - 1);
@@ -191,9 +211,10 @@ uint32_t card_sound(void) {
 
 // ================= «Служебное» (ядро 0) =================
 
-// MODE AY: самоплеер - стоп (ATARI -> AY); FX и AY - это уже он
+// MODE AY: карту по умолчанию - делает ядро 1 (mode_default). Из UPDATE / TEST - нельзя
 static uint8_t svc_mode_ay(void *user) {
-    if (mode == MODE_ATARI) mode_set(MODE_AY);
+    if (mode == MODE_UPDATE || mode == MODE_TEST) return 0xFF;
+    mode_ay_req = true;
     return 0;
 }
 

@@ -36,6 +36,11 @@ AYFX_RESET_LEN  equ 2
 AYFX_P_INFO     equ 4               ; EN: INFO: then read #C1 - "TRIN", version   RU: INFO: дальше читать #C1 - "TRIN", версия
 AYFX_INFO_LEN   equ 1
 AYFX_INFO_N     equ 5               ; EN: INFO answer bytes: "TRIN", protocol version   RU: байт ответа INFO: "TRIN", версия
+AYFX_P_MODE     equ #C0             ; EN: service MODE: [code][length 2][state], answer [length 2][0 done / FF not allowed]
+                                    ; RU: служебный MODE: [код][длина 2][состояние], ответ [длина 2][0 сделано / FF нельзя]
+AYFX_MODE_AY    equ 0               ; EN: state AY - default (Spectrum commands + FX)   RU: состояние AY - по умолчанию
+AYFX_ST_BUSY    equ 7               ; EN: status bit: service packet is being parsed   RU: бит статуса: разбирается пакет
+AYFX_ST_REPLY   equ 6               ; EN: status bit: answer ready in #C1              RU: бит статуса: ответ готов в #C1
 
 ;-------- EN: Open the card: key "TRIN" into #C0 (stream parser restarts)
 ;         RU: Открыть карту: ключ "TRIN" в #C0 (разбор потока - с начала)
@@ -118,6 +123,46 @@ Ayfx_Info
         dec d
         jr nz,.r
         jp Ayfx_Close
+
+;-------- EN: Card to default: MODE AY - stops the self-player (Atari etc.), the chip is Spectrum's again. Call it at
+;             player init. -> A = 0 done, #FF - not allowed / no card (no answer for ~65536 status reads). Spoils D, E
+;         RU: Карту в состояние по умолчанию: MODE AY - стоп самоплеера (Atari и т.п.), чип снова у Спектрума. Звать
+;             при инициализации плеера. -> A = 0 сделано, #FF - нельзя / карты нет (нет ответа ~65536 чтений статуса). Портит D, E
+Ayfx_ModeAy
+        call Ayfx_Key
+        call Ayfx_Stream
+        ld a,AYFX_P_MODE            ; EN: packet: code, length 1, state   RU: пакет: код, длина 1, состояние
+        out (c),a
+        ld a,1
+        out (c),a
+        xor a
+        out (c),a
+        ld a,AYFX_MODE_AY
+        out (c),a
+        ld b,high AYFX_PORT_REG     ; EN: select #C0 - reads give the status byte   RU: выбрать #C0 - чтение даёт статус
+        ld a,AYFX_CTL
+        out (c),a
+        ld de,0                     ; EN: timeout counter   RU: счётчик таймаута
+.w      in a,(c)
+        bit AYFX_ST_BUSY,a          ; EN: still parsing - wait   RU: ещё разбирает - ждать
+        jr nz,.n
+        bit AYFX_ST_REPLY,a         ; EN: answer ready - read it   RU: ответ готов - читать
+        jr nz,.r
+.n      dec de
+        ld a,d
+        or e
+        jr nz,.w
+        call Ayfx_Close             ; EN: no answer - no card   RU: ответа нет - карты нет
+        ld a,#FF
+        ret
+.r      ld a,AYFX_STREAM            ; EN: answer: length 2, result   RU: ответ: длина 2, итог
+        out (c),a
+        in a,(c)
+        in a,(c)
+        in e,(c)
+        call Ayfx_Close
+        ld a,e
+        ret
 
 ;-------- EN: Send D bytes of packets from HL (D = 1..255): key, stream, bytes, close. HL - after the last byte
 ;         RU: Отправить D байт пакетов с HL (D = 1..255): ключ, поток, байты, закрыть. HL - за последним байтом
