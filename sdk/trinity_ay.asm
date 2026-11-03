@@ -53,6 +53,11 @@ AYFX_P_SVC_CALL   equ #91           ; EN: service, command, in slot, out slot, p
                                     ;     2 нет сервиса, 3 вход не тот, 4 нет такой команды
 AYFX_P_JOB_STATUS equ #A0           ; EN: -> state (0 none, 1 runs, 2 done, 3 error), progress 0..100, log slot, log bytes 4
                                     ; RU: -> состояние (0 нет, 1 идёт, 2 готово, 3 ошибка), прогресс 0..100, слот лога, байт лога 4
+AYFX_P_JOB_LOG    equ #A1           ; EN: -> log text (up to 512)   RU: -> текст лога (до 512)
+SVC_JOB_NONE    equ 0               ; EN: job states   RU: состояния задания
+SVC_JOB_RUN     equ 1
+SVC_JOB_DONE    equ 2
+SVC_JOB_ERR     equ 3
 
 ; --- Service 1: player (Atari SNDH) / Сервис 1: плеер. PLAY: in - slot 'SNDH', param 0 - song (0 = first), out - slot
 ;     'STAT' or 0 (the card makes one). Then the same service: STOP, PAUSE (param 0: 1 pause, 0 go on), SEEK (params 0..3 -
