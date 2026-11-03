@@ -5,7 +5,7 @@
 #pragma once
 
 // Версия прошивки: +1 на каждую сборку, что идёт в RP. build.bat кладёт файл в bin/rp_ay_vNN.uf2 и старые не трогает
-#define FW_VERSION      30
+#define FW_VERSION      31
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -44,8 +44,9 @@
 #define CHIP_PIN_TABLE  { { PIN_CHIP_D0, PIN_CHIP_A0, PIN_CHIP_CS, PIN_CHIP_WR, PIN_CHIP_RD } }
 #endif
 
-// ---- Служебный API (doc/trinity-api.md): пул временных слотов в ОЗУ
+// ---- PSRAM 8 МБ (psram.h): пул временных слотов служебного API (doc/trinity-api.md) - с начала
 #define SVC_POOL_KB     128
+#define PSRAM_SVC       0
 
 // ---- Режимы (doc 14а). Порядок - как в таблице переходов modes.c
 typedef enum { MODE_AY, MODE_FX, MODE_ATARI, MODE_UPDATE, MODE_TEST, MODE_COUNT } mode_t;

@@ -14,6 +14,7 @@
 #include "modes.h"
 #include "chip.h"
 #include "card.h"
+#include "psram.h"
 #include "ws2812.pio.h"
 #ifdef BOARD_REV_A
 #include "bus_ay.pio.h"
@@ -343,6 +344,7 @@ int main(void) {
     sleep_ms(2);
     set_sys_clock_khz(cfg.sys_khz, true);
     stdio_init_all();
+    psram_init();                                      // PSRAM: пул слотов API (config.h); такт уже выставлен
 
     pio_set_gpio_base(led_pio, PIN_RGB >= 32 ? 16 : 0);  // окно PIO - 32 ножки: светодиод (config.h) должен попасть
     led_sm = pio_claim_unused_sm(led_pio, true);         // занять: иначе запись в чип (chip.c) получит ту же машину

@@ -6,6 +6,7 @@
 #include "chip.h"
 #include "ayfx.h"
 #include "svc.h"
+#include "psram.h"
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
 
@@ -30,8 +31,7 @@ static volatile uint32_t t_act;             // мкс: последняя зап
 static uint8_t    test_res[16];             // итог теста чипа (#E0..#EF тени)
 
 // ---- «Служебное» (ядро 0): API карты. Ответ один на RP (svc.reply): пакеты со второго чипа TurboSound - тоже туда
-static svc_t   svc;
-static uint8_t svc_pool[SVC_POOL_KB * 1024];
+static svc_t   svc;                        // пул слотов - в PSRAM (config.h PSRAM_SVC)
 
 // ---- «Звук»
 static ayfx_t   fx[CARD_CHIPS];             // движок эффектов каждого чипа
@@ -229,7 +229,7 @@ static void svc_state(bool error) {
 // Служебные пакеты шины -> ответ, кусок задания, байт статуса в шину. Ответ в PIO освежится на следующем
 // обращении Спектрума (он опрашивает статус в цикле - опоздание на одно чтение)
 void card_svc_poll(bool error) {
-    if (!svc.pool) svc_init(&svc, svc_pool, sizeof svc_pool), svc.mode_ay = svc_mode_ay;
+    if (!svc.pool) svc_init(&svc, PSRAM_BASE + PSRAM_SVC, SVC_POOL_KB * 1024), svc.mode_ay = svc_mode_ay;
     for (int c = 0; c < CARD_CHIPS; c++)
         if (bus[c].sbusy) {
             uint16_t n = svc_packet(&svc, bus[c].sbuf);

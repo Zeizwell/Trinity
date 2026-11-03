@@ -1,11 +1,13 @@
 // Модель железа RP2350 (sim.h). Такт RP - 150 МГц; время идёт от вызовов прошивки.
 #include "sim.h"
+#include "psram.h"
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define HZ 150000000u
 pio_hw_t sim_pio0 = {0}, sim_pio1 = {1};
+uint8_t  sim_psram[PSRAM_SIZE];                 // PSRAM карты (psram.h)
 const pio_program_t chip_wr_program, ws2812_program, bus_wr_program, bus_rd_program;
 
 static uint64_t cyc;                    // модельное время, такты RP
@@ -90,6 +92,7 @@ void sim_run_main(int (*m)(void), uint32_t ms) {
     stop_cyc = 0;
 }
 uint32_t clock_get_hz(int clk) { (void)clk; return HZ; }
+uint32_t psram_init(void) { return 0x0D5D46; }   // ID APS6404, как у карты
 void vreg_set_voltage(int v) { (void)v; }
 bool set_sys_clock_khz(uint32_t khz, bool r) { (void)khz; (void)r; return true; }   // модель - такт не меняет
 
