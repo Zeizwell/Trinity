@@ -4,7 +4,8 @@
 ; *.sndh) и только API оригинала WC v1.10: идёт и в оригинале, и в WC Improved (todo п.73).
 ; Файл - в слот карты 'SNDH' (SLOT_WRITE по 512), PLAY; окно: песня, время, прогресс, нагрузка карты.
 ; Клавиши: Space - пауза, <- / -> - перемотка 10 с, Up / Down - песня, PgUp / PgDn - файл, Esc - выход (стоп).
-; С картой - только через SDK (sdk/trinity_ay.asm, Ayfx_Svc).
+; С картой - только через SDK (sdk/trinity_ay.asm: Ayfx_InfoSend / Ayfx_Detect, Ayfx_SvcSend, Ayfx_SvcState,
+; Ayfx_SvcReply); ждём карту в своём цикле (Wait) - Esc выходит.
 ; =========================================================================
         device zxspectrum128
 
@@ -15,7 +16,6 @@ LINE_W          equ WIN_W-2             ;   строка текста
 BAR_W           equ 36                  ;   полоса прогресса
 POLL_FRAMES     equ 10                  ; опрос карты - раз в столько кадров
 SEEK_FRAMES     equ 500                 ; перемотка - 10 с (кадр 20 мс)
-SONG_WAIT       equ 3                   ; смена песни: кадров между STOP и PLAY (карта отпускает режим)
 
 ; --- API WC (номера оригинала v1.10)
 API_PRWOW       equ 1
@@ -70,8 +70,12 @@ Code    push ix
         pop ix
         ret
 
-; Имя файла (BC, до 0) -> строка 1 окна
+; Имя файла (BC, до 0) -> строка 1 окна (прошлое имя - стереть)
 Name_Copy
+        push bc
+        ld hl,Line1
+        call Line_Clear
+        pop bc
         ld hl,Line1
         ld d,LINE_W
 .c      ld a,(bc)
@@ -84,7 +88,17 @@ Name_Copy
         jr nz,.c
         ret
 
-Main    ld a,API_GEDPL                  ; текстовый экран WC
+Main    xor a                           ; WC держит плагин в памяти: прошлый запуск забыть
+        ld (SlotIn),a
+        ld (SlotSt),a
+        ld (Paused),a
+        ld (JProg),a
+        ld hl,St                        ; песни, время, длина - пока карта не скажет
+        ld b,ATARI_ST_SIZE
+.z      ld (hl),a
+        inc hl
+        djnz .z
+        ld a,API_GEDPL                  ; текстовый экран WC
         call WLD
         ld ix,Win
         ld a,API_PRWOW
@@ -149,12 +163,16 @@ Size_Check
         scf
         ret
 
-; Карта на чипе 0 -> CF = 1, HL - текст
+; Карта на чипе 0: INFO, ждать ответ, "TRIN"? -> CF = 1, HL - текст
 Card_Find
         call Chip0
+        call Ayfx_InfoSend
+        call Wait
+        cp AYFX_SVC_REPLY
+        jr nz,.no                       ; карты нет / Esc / ответа нет
         call Ayfx_Detect
         ret nz
-        ld hl,TxNoCard
+.no     ld hl,TxNoCard
         scf
         ret
 
@@ -167,11 +185,15 @@ Load    ld hl,(Size)                    ; размер - в пакет SLOT_NEW
         call Req
         or a
         jp z,.room
+        cp #FF                          ; карты нет / Esc
+        jp z,.esc
         ld (SlotIn),a
         ld hl,TStatNew
         call Req
         or a
         jp z,.room
+        cp #FF                          ; карты нет / Esc
+        jp z,.esc
         ld (SlotSt),a
         ld a,API_GIPAGPL                ; поток - в начало файла
         call WLD
@@ -227,9 +249,9 @@ Load    ld hl,(Size)                    ; размер - в пакет SLOT_NEW
         add hl,de
         ex de,hl
         ld hl,Buf
-        call Ayfx_Svc
+        call Send
         inc a
-        jr z,.lost                      ; #FF - карта не ответила
+        jr z,.esc                       ; #FF - карты нет / Esc
         ld de,(N)                       ; смещение += n, осталось -= n
         ld hl,(Off)
         add hl,de
@@ -260,7 +282,7 @@ Load    ld hl,(Size)                    ; размер - в пакет SLOT_NEW
 .io     ld hl,TxRead
         scf
         ret
-.lost   ld hl,TxNoCard
+.esc    ld hl,TxStop
         scf
         ret
 
@@ -401,7 +423,7 @@ Seek    ld de,(St+ATARI_ST_FRAME)
         ld (Tick),a
         jr Key_Done
 
-; Песня Song + A (1..песен): STOP, пауза, PLAY
+; Песня Song + A (1..песен): STOP, PLAY
 Song_Step
         ld hl,Song
         add a,(hl)
@@ -413,10 +435,6 @@ Song_Step
         ld (hl),c
         ld a,ATARI_STOP
         call Cmd
-        ld b,SONG_WAIT
-.w      ei
-        halt
-        djnz .w
         call Play
         jr nc,Key_Done
         pop af                          ; карта не взяла - ошибка (из Keys - в Run)
@@ -432,11 +450,12 @@ Key_Done
 
 ; Выход: STOP, окно убрать, слоты освободить. A - выход в WC
 Quit    push af
+        ld a,API_UNPRESS                ; Esc выхода отпустить: ожидание STOP бросается по Esc
+        call WLD
         ld a,(SlotIn)                   ; файла на карте нет - и плеера нет (карты может не быть)
         or a
         ld a,ATARI_STOP
         call nz,Cmd
-        call Cmd
         ld ix,Win
         ld a,API_RRESB
         call WLD
@@ -455,20 +474,39 @@ Chip0   ld bc,AYFX_PORT_REG
         out (c),a
         ret
 
-; Служебный пакет по шаблону HL (длина, байты): копия в Buf, Ayfx_Svc -> HL - ответ, A - первый байт
-Req     push hl
-        call Chip0
-        pop hl
-        ld c,(hl)
+; Служебный пакет по шаблону HL (длина, байты): копия в Buf, отправить -> Send. Чип - после копии: ldir портит C (порт)
+Req     ld c,(hl)
         ld b,0
         inc hl
         push bc
         ld de,Buf
         ldir
+        call Chip0                      ; C = #FD - порт карты
         pop de
         ld hl,Buf
-        ld c,low AYFX_PORT_REG
-        jp Ayfx_Svc
+
+; Пакет HL (DE байт): отправить, ждать карту (Esc - бросить) -> HL - ответ (сразу за пакетом), DE - его байт,
+; A - первый байт; ответа нет - A = 0, DE = 0; карты нет / Esc - A = #FF, DE = 0
+Send    call Ayfx_SvcSend               ; HL - за пакетом: туда ответ
+        call Wait
+        ld de,0
+        cp AYFX_SVC_REPLY
+        ret nz                          ; 0 - ответа нет, #FF - карты нет / Esc
+        jp Ayfx_SvcReply
+
+; Ждать, пока карта занята (Esc - бросить) -> A: AYFX_SVC_DONE / AYFX_SVC_REPLY, #FF - карты нет / Esc. HL, C - как были
+Wait    call Ayfx_SvcState
+        cp AYFX_SVC_BUSY
+        ret nz
+        push hl
+        push bc                         ; C = #FD - порт карты
+        ld a,API_ESC                    ; карта занята: можно уйти
+        call WLD
+        pop bc
+        pop hl
+        jr z,Wait
+        ld a,#FF
+        ret
 
 ; Команда плееру: A - команда, DE - параметр (младшие 16 бит) -> A - итог
 Cmd     ld (TCall+5),a
@@ -771,6 +809,7 @@ TxSeek  db "Seeking...",0
 TxEmpty db "Empty file",0
 TxBig   db "File too big (card slot: up to 120K)",0
 TxNoCard db "Trinity card not found",0
+TxStop  db "No answer from the card / Esc",0
 TxRoom  db "No room on the card",0
 TxRead  db "Disk read error",0
 TxRefused db "The card refused to play",0

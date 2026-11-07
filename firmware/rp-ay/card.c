@@ -1,4 +1,5 @@
-// Карта со стороны Спектрума (card.h): «Шина» в прерывании, «Звук» в фоне, между ними очередь событий.
+// Карта со стороны Спектрума (card.h): «Шина» в прерывании, «Звук» в фоне, между ними очередь событий. Ответ на
+// чтение - железо (bus_hw.h, doc/zx-trinity.md п.14е): модель шины (engine) сообщает ему, что поменялось.
 #include <string.h>
 #include "card.h"
 #include "config.h"
@@ -8,6 +9,8 @@
 #include "svc.h"
 #include "psram.h"
 #include "atari.h"
+#include "bus_hw.h"
+#include "wd.h"
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
 
@@ -67,10 +70,26 @@ static void bus_open(void) {
     if (mode == MODE_AY) mode_set(MODE_FX);
 }
 
+// Модель шины чипа c -> железо: новый ответ - в поток, статус, и только потом снять метку (п.14е-5: Спектрум видит
+// «не занята», когда ответ и статус уже лежат; пока метка стоит, статус ядра не виден)
+static void hw_sync(int c) {
+    ayfx_bus_t *b = &bus[c];
+    if (b->taken) {
+        b->taken = 0;
+        bus_hw_reply(c, b->rbuf, b->rready ? b->rlen : 0);
+    }
+    bus_hw_status(c, ayfx_bus_status(b));
+    if (b->unmark) {
+        b->unmark = 0;
+        bus_hw_unmark(c);
+    }
+}
+
 // Адрес (#FFFD): выбор чипа TurboSound или регистра
 static void addr_write(uint8_t v) {
     if (chips() > 1 && v >= 0xFE) { cur = (uint8_t)(0xFF - v); return; }   // #FF - чип 0, #FE - чип 1
     ayfx_bus_select(&bus[cur], v);
+    hw_sync(cur);
 }
 
 // Данные (#BFFD) в выбранный регистр: тень, протокол, событие для «Звука»
@@ -82,7 +101,9 @@ static void data_write(uint8_t v) {
     case AYFX_EV_REG:    if (to_chip && b->sel < 16) ev_put(AYFX_EV_REG, cur, b->sel, v); break;
     case AYFX_EV_OPEN:   bus_open(); break;              // закрытие (AYFX_EV_CLOSE) - только шина, эффекты играют
     case AYFX_EV_PACKET: if (to_chip) pk_put(cur, b->pkt); break;   // реалтайм FX - только когда чип у Спектрума
+    case AYFX_EV_SVC:    bus_hw_reply(cur, NULL, 0); break;   // новый пакет: старый ответ больше не читать
     }
+    hw_sync(cur);
 }
 
 void card_slot_write(bool a0, uint8_t v) {
@@ -97,7 +118,7 @@ uint8_t card_answer(void) {
     return regs[cur][bus[cur].sel];
 }
 
-void card_read_done(void) { ayfx_bus_read_done(&bus[cur]); }
+void card_read_done(void) { ayfx_bus_read_done(&bus[cur]); hw_sync(cur); }
 
 uint8_t card_sel(void) { return bus[cur].sel; }
 
@@ -127,7 +148,7 @@ static void ev_do(uint32_t e) {
 // Таймаут FX: Спектрум молчит - потоки закрыть (шина - при выключенных прерываниях), эффекты выкл
 static void fx_timeout(void) {
     uint32_t s = save_and_disable_interrupts();
-    for (int c = 0; c < CARD_CHIPS; c++) bus[c].on = 0, bus[c].info = 0;
+    for (int c = 0; c < CARD_CHIPS; c++) bus[c].on = 0;
     if (mode == MODE_FX) mode_set(MODE_AY);
     restore_interrupts(s);
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
@@ -145,6 +166,7 @@ static void mode_default(void) {
     for (int c = 0; c < chips(); c++) ayfx_off(&fx[c]);
     for (int c = 0; c < CARD_CHIPS; c++) {                      // тишина: тон и шум выкл, громкости 0
         regs[c][7] = 0x3F, regs[c][8] = regs[c][9] = regs[c][10] = 0;
+        bus_hw_value(c, 7, 0x3F), bus_hw_value(c, 8, 0), bus_hw_value(c, 9, 0), bus_hw_value(c, 10, 0);
         if (c < CHIP_N) chip_put(c, 7, 0x3F), chip_put(c, 8, 0), chip_put(c, 9, 0), chip_put(c, 10, 0);
     }
 }
@@ -158,20 +180,26 @@ void card_poll(void) {
         mode_default();
         touched = true;
     }
+    if (atari_off_req) {                                        // плеер кончился: из ATARI - карта по умолчанию.
+        if (mode == MODE_ATARI) mode_default();                 //   Раньше ATARI: STOP и сразу PLAY - по порядку.
+        atari_off_req = false;                                  //   Флаг - после дела: ядро 0 ждёт по нему
+        touched = true;
+    }
     if (atari_on_req) {                                         // ATARI - плагин: из AY / FX сначала карта по умолчанию
-        atari_on_req = false;                                   //   (FX выкл, тишина), потом чип у RP; UPDATE / TEST - нет
-        if (mode == MODE_AY || mode == MODE_FX) {
+        if (mode == MODE_AY || mode == MODE_FX) {               //   (FX выкл, тишина), потом чип у RP; UPDATE / TEST - нет
             mode_default();
             uint32_t s = save_and_disable_interrupts();         // режим читает прерывание шины
             mode_set(MODE_ATARI);
             restore_interrupts(s);
         }
+        atari_on_req = false;
         touched = true;
     }
-    if (atari_off_req) {                                        // плеер кончился: из ATARI - карта по умолчанию
-        atari_off_req = false;
-        if (mode == MODE_ATARI) mode_default();
-        touched = true;
+    for (int c = 0; c < chips(); c++) {                         // ответ ядра 0 - в поток, статус - железу
+        uint32_t s = save_and_disable_interrupts();             //   (модель шины трогает и прерывание записей)
+        ayfx_bus_take(&bus[c]);
+        hw_sync(c);
+        restore_interrupts(s);
     }
     while (ev_tail != ev_head) {                                // события шины - по порядку
         ev_do(ev[ev_tail]);
@@ -242,6 +270,10 @@ void card_atari(bool on) {
     if (on) atari_on_req = true; else atari_off_req = true;
 }
 
+bool card_atari_pending(void) {
+    return atari_on_req || atari_off_req;
+}
+
 // Состояние карты -> svc (биты статуса): чип, FX, ошибка
 static void svc_state(bool error) {
     static const uint8_t chip_of[MODE_COUNT] = { SVC_CHIP_AY, SVC_CHIP_AY, SVC_CHIP_PLAY, SVC_CHIP_UPDATE, SVC_CHIP_TEST };
@@ -250,9 +282,29 @@ static void svc_state(bool error) {
     svc.error = error;
 }
 
-// Служебные пакеты шины -> ответ, кусок задания, байт статуса в шину. Ответ в PIO освежится на следующем
-// обращении Спектрума (он опрашивает статус в цикле - опоздание на одно чтение)
+// Журнал служебных пакетов (диагностика, консоль): код, 2 первых байта данных, первый байт ответа; длина ответа.
+// Последние CARD_SVC_LOG, счёт - со старта
+volatile uint32_t card_svc_log[CARD_SVC_LOG], card_svc_n;
+volatile uint16_t card_svc_len[CARD_SVC_LOG], card_svc_rep[CARD_SVC_LOG];
+static void svc_log_add(const uint8_t *pkt, const uint8_t *rep, uint16_t n) {
+    uint32_t e = (uint32_t)pkt[0] << 24 | (uint32_t)pkt[3] << 16 | (uint32_t)pkt[4] << 8 | (n > 2 ? rep[2] : 0);
+    if (pkt[0] == SVC_P_SLOT_NEW) bus_hw_jr_clear();           // журнал шины - с этого пакета: видно чтение ответа
+    if (card_svc_n) {                                           // тот же пакет с тем же ответом подряд - только счёт
+        uint32_t p = (card_svc_n - 1) % CARD_SVC_LOG;
+        if (card_svc_log[p] == e && card_svc_len[p] == n) { card_svc_rep[p]++; return; }
+    }
+    uint32_t i = card_svc_n % CARD_SVC_LOG;
+    card_svc_log[i] = e;
+    card_svc_len[i] = n;
+    card_svc_rep[i] = 1;
+    card_svc_n++;
+}
+
+// Служебные пакеты шины -> ответ в ящик шины, кусок задания, байт статуса в модель шины. Железу ответ и статус
+// отдаёт ядро 1 (card_poll), метку «занята» снимает только после ответа
 void card_svc_poll(bool error) {
+    WD_KICK();                                                  // ядро 0 живо (и в стенде: он зовёт отсюда)
+    WD_AT(20);
     if (!svc.pool) {
         svc_init(&svc, PSRAM_BASE + PSRAM_SVC, SVC_POOL_KB * 1024);
         svc.mode_ay = svc_mode_ay;
@@ -261,13 +313,19 @@ void card_svc_poll(bool error) {
 #endif
     }
     for (int c = 0; c < CARD_CHIPS; c++)
-        if (bus[c].sbusy) {
+        if (bus[c].sbusy && !bus[c].pend) {                    // пакет есть, ответ шина ещё не забрала - не он
+            WD_AT(21), WD_PK(bus[c].sbuf[0]);
             uint16_t n = svc_packet(&svc, bus[c].sbuf);
+            WD_AT(22);
             ayfx_bus_reply(&bus[c], svc.reply, n);
+            svc_log_add(bus[c].sbuf, svc.reply, n);
         }
+    WD_AT(23);
     svc_step(&svc);
+    WD_AT(24);
 #ifdef SNDH
     atari_poll(&svc);                                           // задание плеера кончилось - стоп
+    WD_AT(25);
 #endif
     svc_state(error);
     uint8_t st = svc_status(&svc);
@@ -277,6 +335,7 @@ void card_svc_poll(bool error) {
 void card_test_bytes(const uint8_t *b, int n) {
     memcpy(test_res, b, n > 16 ? 16 : n);
     memcpy(&regs[0][0xE0], test_res, 16);
+    for (int i = 0; i < 16; i++) bus_hw_value(0, (uint8_t)(0xE0 + i), test_res[i]);
 }
 
 void card_resend(void) {
@@ -287,6 +346,8 @@ void card_resend(void) {
 void card_reset(void) {
     memset(regs, 0, sizeof regs);
     memcpy(&regs[0][0xE0], test_res, 16);       // итог теста чипа сброс не стирает
+    bus_hw_reset();
+    for (int i = 0; i < 16; i++) bus_hw_value(0, (uint8_t)(0xE0 + i), test_res[i]);
     cur = 0;
     ev_head = ev_tail = 0;
     pk_head = pk_tail = 0;
@@ -301,6 +362,7 @@ void card_reset(void) {
             chip_put(c, 8, 0), chip_put(c, 9, 0), chip_put(c, 10, 0);
         }
         regs[0][7] = 0x3F;
+        bus_hw_value(0, 7, 0x3F);
     }
     t_last = t_frame = t_act = time_us_32();
     tick_acc = 0;

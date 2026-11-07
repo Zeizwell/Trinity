@@ -162,8 +162,22 @@ static void row_set(ayfx_t *a, int c, const uint8_t *row, uint8_t shape, uint8_t
 // ---- Шина: протокол #C0 / #C1
 void ayfx_bus_reset(ayfx_bus_t *b) { memset(b, 0, sizeof *b); }
 
+// Шина: ответ ядра 0 из ящика - в работу (флаги «занята» / «ответ готов» ставит только шина). Метка «занята» была
+// поставлена на этот пакет - снять: ответ уже лежит
+void ayfx_bus_take(ayfx_bus_t *b) {
+    if (!b->pend) return;
+    AYFX_FENCE();                                           // ответ в памяти - после флага ящика
+    b->rbuf = b->pend_r, b->rlen = b->pend_n, b->rpos = 0;
+    b->rready = b->pend_n != 0;
+    b->sbusy = 0;
+    b->pend = 0;
+    b->taken = 1;
+    if (b->mark & 0x80) b->mark = 0, b->unmark = 1;
+}
+
 // Выбран регистр reg (запись в #FFFD): ключ "TRIN" - только подряд в #C0
 void ayfx_bus_select(ayfx_bus_t *b, uint8_t reg) {
+    ayfx_bus_take(b);
     if (reg != 0xC0) b->key = 0;
     b->sel = reg;
 }
@@ -186,11 +200,20 @@ static int svc_byte(ayfx_bus_t *b, uint8_t val) {
     return AYFX_EV_SVC;
 }
 
+// Запись в #C0: метка (её значение). С битом 7 и без пакета в работе - снять сразу: отвечать нечего (INFO уже лежит)
+static void mark_set(ayfx_bus_t *b, uint8_t val) {
+    b->mark = val;
+    if ((val & 0x80) && !b->sbusy) b->mark = 0, b->unmark = 1;
+}
+
 int ayfx_bus_write(ayfx_bus_t *b, uint8_t val) {
     static const char key[] = "TRIN";
+    static const uint8_t info[5] = { 'T', 'R', 'I', 'N', AYFX_VER };
+    ayfx_bus_take(b);
     if (b->sel == 0xC0) {
+        mark_set(b, val);
         b->pos = 0, b->spos = 0;                            // любая запись - разбор потока с начала
-        if (val == 0 && b->key == 0) { b->on = 0, b->info = 0; return AYFX_EV_CLOSE; }
+        if (val == 0 && b->key == 0) { b->on = 0; return AYFX_EV_CLOSE; }
         if ((char)val == key[b->key]) b->key++;
         else b->key = (char)val == key[0];
         if (b->key == 4) { b->on = 1, b->key = 0; return AYFX_EV_OPEN; }
@@ -207,36 +230,40 @@ int ayfx_bus_write(ayfx_bus_t *b, uint8_t val) {
     b->pkt[b->pos++] = val;
     if (b->pos < b->need) return AYFX_EV_NONE;
     b->pos = 0;
-    if (b->pkt[0] == AYFX_P_INFO) { b->info = 1; return AYFX_EV_NONE; }   // INFO - ответ шины, звуку нечего
+    if (b->pkt[0] == AYFX_P_INFO) {                         // INFO - ответ шины, звуку нечего
+        b->rbuf = info, b->rlen = 5, b->rpos = 0, b->rready = 1, b->taken = 1;
+        return AYFX_EV_NONE;
+    }
     return AYFX_EV_PACKET;
+}
+
+uint8_t ayfx_bus_status(const ayfx_bus_t *b) {
+    return (uint8_t)((b->status & 0x3F) | (b->sbusy ? 0x80 : 0) | (b->rready ? 0x40 : 0));
 }
 
 // Что ответить на чтение выбранного регистра (не сдвигая ответ). false - не наш (отвечает тень AY)
 bool ayfx_bus_peek(const ayfx_bus_t *b, uint8_t *val) {
     if (b->sel == 0xC0) {                                   // статус - всегда, без ключа (trinity-api.md п.3)
-        *val = (uint8_t)((b->status & 0x3F) | (b->sbusy ? 0x80 : 0) | (b->rready ? 0x40 : 0));
+        *val = (b->mark & 0x80) ? b->mark : ayfx_bus_status(b);
         return true;
     }
-    if (!b->on || b->sel != 0xC1) return false;
-    if (b->rready) { *val = b->rpos < b->rlen ? b->rbuf[b->rpos] : 0; return true; }   // ответ ядра 0
-    static const uint8_t info[5] = { 'T', 'R', 'I', 'N', AYFX_VER };
-    *val = (b->info >= 1 && b->info <= 5) ? info[b->info - 1] : 0;
+    if (b->sel != 0xC1 || !b->rready) return false;         // #C1 без ответа - тень (как железо RP: поток пуст)
+    *val = b->rpos < b->rlen ? b->rbuf[b->rpos] : 0;
     return true;
 }
 
-// Чтение было: ответ (ядра 0 или INFO) - следующий байт; ответ ядра 0 дочитали - больше не отдаётся
+// Чтение было: ответ - следующий байт; дочитали - больше не отдаётся
 void ayfx_bus_read_done(ayfx_bus_t *b) {
-    if (!b->on || b->sel != 0xC1) return;
-    if (b->rready) { if (++b->rpos >= b->rlen) b->rready = 0; return; }
-    if (b->info >= 1 && b->info < 5) b->info++; else b->info = 0;
+    ayfx_bus_take(b);
+    if (b->sel == 0xC1 && b->rready && ++b->rpos >= b->rlen) b->rready = 0;
 }
 
-// Ядро 0: пакет из sbuf разобран, ответ r (n байт вместе с длиной; 0 - ответа нет). Сначала ответ, потом флаги
+// Ядро 0: пакет из sbuf разобран, ответ r (n байт вместе с длиной; 0 - ответа нет) - в ящик. Шина заберёт на
+// ближайшем обращении Спектрума (он опрашивает статус: сначала выбор #C0 - уже свежий ответ)
 void ayfx_bus_reply(ayfx_bus_t *b, const uint8_t *r, uint16_t n) {
-    b->rbuf = r, b->rlen = n, b->rpos = 0;
-    AYFX_FENCE();                                           // ответ в памяти раньше флагов
-    b->rready = n != 0;
-    b->sbusy = 0;
+    b->pend_r = r, b->pend_n = n;
+    AYFX_FENCE();                                           // ответ в памяти раньше флага
+    b->pend = 1;
 }
 
 // ---- Звук: пакет от шины

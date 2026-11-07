@@ -92,6 +92,18 @@ uint8_t svc_slot_new(svc_t *s, uint32_t type, uint32_t size) {
 
 // ================= задания =================
 
+// Слот лога задания - всегда на своём месте сверху пула: не дробит место под файлы. -> номер (0 - нет)
+static uint8_t log_new(svc_t *s) {
+    for (uint8_t n = 1; n <= SVC_SLOTS; n++) {
+        if (s->slot[n].size) continue;
+        s->slot[n].type = 0x20474F4Cu, s->slot[n].size = SVC_LOG_SIZE;  // 'LOG '
+        s->slot[n].off = s->pool_size;
+        memset(s->pool + s->pool_size, 0, SVC_LOG_SIZE);
+        return n;
+    }
+    return 0;
+}
+
 // Строка в лог задания (слот 'LOG '): текст + перевод строки. Лог полон - дальше теряется, в конце «...»
 void svc_log(svc_t *s, const char *text) {
     svc_job_t *j = &s->job;
@@ -123,7 +135,7 @@ static uint8_t job_start(svc_t *s, const uint8_t *d, uint16_t n) {
     if (j->log) s->slot[j->log].size = 0;                   // лог прошлого задания - освободить
     memset(j, 0, sizeof *j);
     j->svc = d[0], j->cmd = d[1], j->in = d[2], j->out = d[3];
-    j->log = svc_slot_new(s, 0x20474F4Cu, SVC_LOG_SIZE);    // 'LOG ' (0 - нет места: задание без лога)
+    j->log = log_new(s);                                    // 0 - слотов нет: задание без лога
     memcpy(j->par, d + 4, n - 4 > sizeof j->par ? sizeof j->par : n - 4u);
     if (def->in && (!svc_slot_data(s, j->in) || s->slot[j->in].type != def->in)) return 3;
     j->state = def->start(s, j) ? SVC_JOB_RUN : SVC_JOB_ERR;
@@ -146,7 +158,7 @@ static void     wr32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v, p[1] = (uint8_
 
 void svc_init(svc_t *s, uint8_t *pool, uint32_t pool_size) {
     memset(s, 0, sizeof *s);
-    s->pool = pool, s->pool_size = pool_size;
+    s->pool = pool, s->pool_size = pool_size - SVC_LOG_SIZE; // верх пула - место лога задания (log_new)
 }
 
 uint8_t svc_status(const svc_t *s) {

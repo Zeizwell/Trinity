@@ -33,6 +33,7 @@ bool     sndh_open(const void *file, uint32_t size, int subsong, sndh_info_t *in
 int      sndh_frame(sndh_wr_t *out, int max);  // -> записей в out (лишние сверх max - в sndh_lost); -1 - машина упала
 void     sndh_close(void);
 void     sndh_arena(void *base, uint32_t size);    // область под машину; блоки по порядку, освобождает sndh_close
+extern void (*sndh_mark)(int step);             // диагностика: шаг sndh_open (1 машина, 2 песня, 3 длина, 4 готово); nullptr - нет
 extern uint32_t sndh_lost;                     // записей не влезло в out (с открытия)
 
 #ifdef __cplusplus

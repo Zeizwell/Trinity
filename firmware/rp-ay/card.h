@@ -30,6 +30,7 @@ void    sound_kick(void);                   // (main.c) будильник - с�
 void    phim_set(uint32_t hz);              // (main.c) такт чипов φM, Гц; 0 - как для Спектрума (cfg.phim_hz)
 void    card_atari(bool on);                // (ядро 0) просьба ядру 1: on - режим ATARI (из AY / FX - через MODE AY), off - был
                                             //   ATARI - карта по умолчанию (MODE AY)
+bool    card_atari_pending(void);           // (ядро 0) просьбы card_atari ещё не выполнены ядром 1
 void    card_reset(void);                   // сброс (/IC, включение): всё; звать при выключенных прерываниях
 void    card_resend(void);                  // тень Спектрума (SSG 0..13) - снова в чип (после теста)
 void    card_test_bytes(const uint8_t *b, int n);   // итог теста чипа - в тень #E0.. (номера, что никто не пишет):
@@ -37,3 +38,6 @@ void    card_test_bytes(const uint8_t *b, int n);   // итог теста чи�
 extern volatile uint32_t card_ev_lost;      // событий потеряно (очередь была полна)
 extern volatile uint32_t card_late_max, card_late_sum, card_late_n;   // опоздание шагов эффектов, мкс (консоль)
 extern volatile uint32_t card_pk[5];        // пакетов разобрано по кодам (1 ROW, 2 TABLE, 3 RESET), консоль
+#define CARD_SVC_LOG 16
+extern volatile uint32_t card_svc_log[CARD_SVC_LOG], card_svc_n;   // журнал служебных пакетов (card.c), консоль
+extern volatile uint16_t card_svc_len[CARD_SVC_LOG], card_svc_rep[CARD_SVC_LOG];   // длина ответа, сколько раз подряд

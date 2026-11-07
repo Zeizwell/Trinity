@@ -33,16 +33,21 @@ AYFX_P_TABLE    equ 2               ; EN: TABLE: number 0..255, 16 values   RU: 
 AYFX_TABLE_LEN  equ 18
 AYFX_P_RESET    equ 3               ; EN: RESET: channel mask - new note     RU: RESET: маска каналов - новая нота
 AYFX_RESET_LEN  equ 2
-AYFX_P_INFO     equ 4               ; EN: INFO: then read #C1 - "TRIN", version   RU: INFO: дальше читать #C1 - "TRIN", версия
+AYFX_P_INFO     equ 4               ; EN: INFO: answer in #C1 - "TRIN", version (Ayfx_InfoSend)   RU: INFO: ответ в #C1 - "TRIN", версия
 AYFX_INFO_LEN   equ 1
 AYFX_INFO_N     equ 5               ; EN: INFO answer bytes: "TRIN", protocol version   RU: байт ответа INFO: "TRIN", версия
 AYFX_P_MODE     equ #C0             ; EN: service MODE: [code][length 2][state], answer [length 2][0 done / FF not allowed]
                                     ; RU: служебный MODE: [код][длина 2][состояние], ответ [длина 2][0 сделано / FF нельзя]
 AYFX_MODE_AY    equ 0               ; EN: state AY - default (Spectrum commands + FX)   RU: состояние AY - по умолчанию
+AYFX_MARK       equ #80             ; EN: into #C0 after a service packet: status "busy" at once, until the answer is ready
+                                    ; RU: в #C0 после служебного пакета: статус «занята» сразу, пока ответ не готов
 AYFX_ST_BUSY    equ 7               ; EN: status bit: service packet is being parsed   RU: бит статуса: разбирается пакет
 AYFX_ST_REPLY   equ 6               ; EN: status bit: answer ready in #C1              RU: бит статуса: ответ готов в #C1
+AYFX_SVC_DONE   equ 0               ; EN: Ayfx_SvcState: done, no answer               RU: Ayfx_SvcState: разобрал, ответа нет
+AYFX_SVC_BUSY   equ 1               ; EN: still parsing                                RU: ещё разбирает
+AYFX_SVC_REPLY  equ 2               ; EN: answer ready                                 RU: ответ готов
 
-; --- Service packets (Ayfx_Svc; trinity-api.md 2) / Служебные пакеты: [code][length 2][data], LSB first / мл. байт вперёд
+; --- Service packets (Ayfx_SvcSend / Ayfx_SvcState / Ayfx_SvcReply; trinity-api.md 2) / Служебные пакеты: [code][length 2][data], LSB first / мл. байт вперёд
 AYFX_P_SLOT_NEW   equ #80           ; EN: type 4, size 4, flags -> slot (0 - no room)   RU: тип 4, размер 4, флаги -> слот (0 - нет места)
 AYFX_P_SLOT_WRITE equ #81           ; EN: slot, offset 4, bytes (up to 512) - no answer   RU: слот, смещение 4, байты (до 512) - без ответа
 AYFX_P_SLOT_READ  equ #82           ; EN: slot, offset 4, count 2 -> bytes               RU: слот, смещение 4, сколько 2 -> байты
@@ -106,6 +111,16 @@ Ayfx_Close
         out (c),a
         ret
 
+;-------- EN: Close and mark busy: 0, then AYFX_MARK into #C0. The card shows "busy" from this moment until the
+;             answer lies in #C1 - a status read never comes too early
+;         RU: Закрыть и пометить «занята»: 0, потом AYFX_MARK в #C0. Карта показывает «занята» с этого момента, пока
+;             ответ не ляжет в #C1 - чтение статуса не бывает слишком ранним
+Ayfx_CloseMark
+        call Ayfx_Close
+        ld a,AYFX_MARK
+        out (c),a
+        ret
+
 ;-------- EN: Select the stream #C1: then write packet bytes to #BFFD (B = #BF)
 ;         RU: Выбрать поток #C1: дальше байты пакетов в #BFFD (B = #BF)
 Ayfx_Stream
@@ -115,27 +130,39 @@ Ayfx_Stream
         ld b,high AYFX_PORT_DAT
         ret
 
-;-------- EN: Is the card on the selected chip? Key, INFO, read #C1: "TRIN"? close. -> A = 1, NZ - yes; A = 0, Z - no
-;         RU: Есть ли карта на выбранном чипе? Ключ, INFO, чтение #C1: "TRIN"? закрыть. -> A = 1, NZ - есть; A = 0, Z - нет
-Ayfx_Detect
-        push hl
-        push de
+;-------- EN: Ask INFO (is the card here?): key, stream, INFO, close and mark. Does not wait: the program polls
+;             Ayfx_SvcState in its own loop (#FF - no card; the loop gives up after its own limit), at AYFX_SVC_REPLY -
+;             Ayfx_Detect or Ayfx_Info
+;         RU: Спросить INFO (есть ли карта): ключ, поток, INFO, закрыть и пометить. Не ждёт: программа опрашивает
+;             Ayfx_SvcState в своём цикле (#FF - карты нет; цикл сдаётся по своему пределу), на AYFX_SVC_REPLY -
+;             Ayfx_Detect или Ayfx_Info
+Ayfx_InfoSend
         call Ayfx_Key
         call Ayfx_Stream
         ld a,AYFX_P_INFO
         out (c),a
-        ld b,high AYFX_PORT_REG     ; EN: read #FFFD = selected #C1   RU: чтение #FFFD - выбранный #C1
+        jp Ayfx_CloseMark
+
+;-------- EN: Read the INFO answer (after Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): "TRIN"? -> A = 1, NZ - card;
+;             A = 0, Z - not ours. Reads the answer whole. Keeps HL, DE
+;         RU: Прочитать ответ INFO (после Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): "TRIN"? -> A = 1, NZ - карта;
+;             A = 0, Z - не наша. Читает ответ целиком. HL, DE сохраняет
+Ayfx_Detect
+        push hl
+        push de
+        ld b,high AYFX_PORT_REG     ; EN: #C1 afresh, read #FFFD   RU: #C1 заново, чтение #FFFD
+        ld a,AYFX_STREAM
+        out (c),a
         ld hl,Ayfx_Sign
         ld de,4*256+1               ; EN: D - letters, E - result   RU: D - букв, E - итог
 .r      in a,(c)
         cp (hl)
         jr z,$+4
-        ld e,0                      ; EN: not the letter - no card   RU: не та буква - карты нет
+        ld e,0                      ; EN: not the letter - not ours   RU: не та буква - не наша
         inc hl
         dec d
         jr nz,.r
         in a,(c)                    ; EN: 5th byte - version (read the answer out)   RU: 5-й байт - версия (дочитать)
-        call Ayfx_Close
         ld a,e
         or a
         pop de
@@ -143,28 +170,28 @@ Ayfx_Detect
         ret
 Ayfx_Sign       db "TRIN"
 
-;-------- EN: Read INFO into HL (AYFX_INFO_N bytes: "TRIN", protocol version): key, stream, INFO, reads #C1, close.
-;             HL - after the last byte. Spoils A, B, D
-;         RU: Прочитать INFO в HL (AYFX_INFO_N байт: "TRIN", версия протокола): ключ, поток, INFO, чтения #C1, закрыть.
-;             HL - за последним байтом. Портит A, B, D
+;-------- EN: Read the INFO answer into HL (after Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): AYFX_INFO_N bytes -
+;             "TRIN", protocol version. HL - after the last byte. Spoils A, B, D
+;         RU: Прочитать ответ INFO в HL (после Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): AYFX_INFO_N байт -
+;             "TRIN", версия протокола. HL - за последним байтом. Портит A, B, D
 Ayfx_Info
-        call Ayfx_Key
-        call Ayfx_Stream
-        ld a,AYFX_P_INFO
+        ld b,high AYFX_PORT_REG     ; EN: #C1 afresh, read #FFFD   RU: #C1 заново, чтение #FFFD
+        ld a,AYFX_STREAM
         out (c),a
-        ld b,high AYFX_PORT_REG     ; EN: read #FFFD = selected #C1   RU: чтение #FFFD - выбранный #C1
         ld d,AYFX_INFO_N
 .r      in a,(c)
         ld (hl),a
         inc hl
         dec d
         jr nz,.r
-        jp Ayfx_Close
+        ret
 
 ;-------- EN: Card to default: MODE AY - stops the self-player (Atari etc.), the chip is Spectrum's again. Call it at
-;             player init. -> A = 0 done, #FF - not allowed / no card (no answer for ~65536 status reads). Spoils D, E
+;             player init. Only sends the packet (close and mark): the result - Ayfx_SvcState / Ayfx_SvcReply
+;             (1 byte: 0 done)
 ;         RU: Карту в состояние по умолчанию: MODE AY - стоп самоплеера (Atari и т.п.), чип снова у Спектрума. Звать
-;             при инициализации плеера. -> A = 0 сделано, #FF - нельзя / карты нет (нет ответа ~65536 чтений статуса). Портит D, E
+;             при инициализации плеера. Только отправляет пакет (закрыть и пометить): итог - Ayfx_SvcState /
+;             Ayfx_SvcReply (1 байт: 0 сделано)
 Ayfx_ModeAy
         call Ayfx_Key
         call Ayfx_Stream
@@ -176,66 +203,58 @@ Ayfx_ModeAy
         out (c),a
         ld a,AYFX_MODE_AY
         out (c),a
-        ld b,high AYFX_PORT_REG     ; EN: select #C0 - reads give the status byte   RU: выбрать #C0 - чтение даёт статус
-        ld a,AYFX_CTL
-        out (c),a
-        ld de,0                     ; EN: timeout counter   RU: счётчик таймаута
-.w      in a,(c)
-        bit AYFX_ST_BUSY,a          ; EN: still parsing - wait   RU: ещё разбирает - ждать
-        jr nz,.n
-        bit AYFX_ST_REPLY,a         ; EN: answer ready - read it   RU: ответ готов - читать
-        jr nz,.r
-.n      dec de
-        ld a,d
-        or e
-        jr nz,.w
-        call Ayfx_Close             ; EN: no answer - no card   RU: ответа нет - карты нет
-        ld a,#FF
-        ret
-.r      ld a,AYFX_STREAM            ; EN: answer: length 2, result   RU: ответ: длина 2, итог
-        out (c),a
-        in a,(c)
-        in a,(c)
-        in e,(c)
-        call Ayfx_Close
-        ld a,e
-        ret
+        jp Ayfx_CloseMark
 
-;-------- EN: Service packet from HL (DE bytes: code, length 2, data), wait for the card, the answer - right after the
-;             packet. -> HL = answer, DE = its bytes, A = its first byte (result). No answer (SLOT_WRITE etc.) - A = 0,
-;             DE = 0. No card (no answer for ~65536 status reads) - A = #FF, DE = 0
-;         RU: Служебный пакет с HL (DE байт: код, длина 2, данные), ждать карту, ответ - сразу за пакетом.
-;             -> HL = ответ, DE = его байт, A = первый байт (итог). Пакет без ответа (SLOT_WRITE и т.п.) - A = 0, DE = 0.
-;             Карты нет (нет ответа ~65536 чтений статуса) - A = #FF, DE = 0
-Ayfx_Svc
+;-------- EN: Send a service packet from HL (DE bytes: code, length 2, data): key, stream, bytes, close and mark.
+;             Does not wait: the program polls Ayfx_SvcState in its own loop, then Ayfx_SvcReply. Next packet - only
+;             after the card is not busy (a packet sent while busy is lost). Between the packet and the answer read -
+;             no other writes to #C0 / #C1 (FX player: hold it). HL - after the packet
+;         RU: Отправить служебный пакет с HL (DE байт: код, длина 2, данные): ключ, поток, байты, закрыть и пометить.
+;             Не ждёт: программа опрашивает Ayfx_SvcState в своём цикле, потом Ayfx_SvcReply. Следующий пакет - только
+;             когда карта не занята (пакет в занятую карту теряется). Между пакетом и чтением ответа - никаких других
+;             записей в #C0 / #C1 (плеер FX - придержать). HL - за пакетом
+Ayfx_SvcSend
         call Ayfx_Key
         call Ayfx_Stream
-.b      ld a,(hl)                   ; EN: packet bytes   RU: байты пакета
+.b      ld a,(hl)
         out (c),a
         inc hl
         dec de
         ld a,d
         or e
         jr nz,.b
-        ld b,high AYFX_PORT_REG     ; EN: select #C0 - reads give the status byte   RU: выбрать #C0 - чтение даёт статус
+        jp Ayfx_CloseMark
+
+;-------- EN: One status read (#C0, no key needed). -> A: AYFX_SVC_DONE (0) - done, no answer; AYFX_SVC_BUSY (1) -
+;             still parsing; AYFX_SVC_REPLY (2) - answer ready (Ayfx_SvcReply); #FF - no card (a live card never gives
+;             #FF: chip field 0..3, FX bit only with chip 0). Z flag: A = 0
+;         RU: Одно чтение статуса (#C0, ключ не нужен). -> A: AYFX_SVC_DONE (0) - разобрал, ответа нет; AYFX_SVC_BUSY (1)
+;             - ещё разбирает; AYFX_SVC_REPLY (2) - ответ готов (Ayfx_SvcReply); #FF - карты нет (живая карта #FF не
+;             даёт: поле чипа 0..3, бит FX - только при чипе 0). Флаг Z: A = 0
+Ayfx_SvcState
+        ld b,high AYFX_PORT_REG
         ld a,AYFX_CTL
         out (c),a
-.w      in a,(c)                    ; EN: DE = 0 - timeout counter   RU: DE = 0 - счётчик таймаута
-        bit AYFX_ST_BUSY,a          ; EN: still parsing - wait   RU: ещё разбирает - ждать
-        jr nz,.n
-        bit AYFX_ST_REPLY,a
-        jr nz,.r
-        call Ayfx_Close             ; EN: done, no answer   RU: разобрал, ответа нет
-        xor a
+        in a,(c)
+        cp #FF
+        ret z
+        bit AYFX_ST_BUSY,a
+        jr nz,.busy
+        and 1 << AYFX_ST_REPLY      ; EN: 0 - done, else answer   RU: 0 - разобрал, иначе ответ
+        ret z
+        ld a,AYFX_SVC_REPLY
         ret
-.n      dec de
-        ld a,d
-        or e
-        jr nz,.w
-        call Ayfx_Close             ; EN: no answer - no card   RU: ответа нет - карты нет
-        ld a,#FF
+.busy   ld a,AYFX_SVC_BUSY
+        or a
         ret
-.r      ld a,AYFX_STREAM            ; EN: answer: length 2, bytes   RU: ответ: длина 2, байты
+
+;-------- EN: Read the answer (after Ayfx_SvcState = AYFX_SVC_REPLY) to HL: #C1 afresh, length 2, bytes - whole (no
+;             key needed). -> HL = answer, DE = its bytes, A = its first byte (result)
+;         RU: Прочитать ответ (после Ayfx_SvcState = AYFX_SVC_REPLY) в HL: #C1 заново, длина 2, байты - целиком (ключ
+;             не нужен). -> HL = ответ, DE = его байт, A = первый байт (итог)
+Ayfx_SvcReply
+        ld b,high AYFX_PORT_REG     ; EN: read #FFFD = selected #C1   RU: чтение #FFFD - выбранный #C1
+        ld a,AYFX_STREAM
         out (c),a
         in e,(c)
         in d,(c)
@@ -251,7 +270,6 @@ Ayfx_Svc
         jr .d
 .e      pop de
         pop hl
-        call Ayfx_Close
         ld a,(hl)
         ret
 

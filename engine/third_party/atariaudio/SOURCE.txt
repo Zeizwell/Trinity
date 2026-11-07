@@ -11,3 +11,5 @@ AtariAudio 1.27 - github.com/arnaud-carre/AtariAudio, коммит f68f058 (2026
   g_aaBigFree - большие блоки (память Atari 4 МБ, файл, распаковка); на RP - из PSRAM (sndh_arena), иначе malloc / free;
 - external/Musashi (m68kops.h / .cpp, m68k.cpp): TRINITY_M68K_COMPACT - один 68000: номер обработчика на опкод
   (128 К) и такты 68000 - по строке обработчика (байт на строку) вместо таблиц на 832 К. Проверено: хэши записей на 302 SNDH те же, что без него.
+- trinity_aa.h, SndhRenderer.cpp, YmRenderer.cpp, AtariAudioRenderer.cpp: объект машины (~6 К) тоже
+  через g_aaBigAlloc: в куче RP (5.5 К) не помещался, new - panic (2026-11-07);

@@ -58,12 +58,12 @@ int main(void) {
     open_stream();
     check("TRIN - открыт", b.on);
 
-    // 2. INFO: T R I N версия, потом 0
+    // 2. INFO: T R I N версия, дальше #C1 - не наш (тень)
     { uint8_t p = AYFX_P_INFO; c1(&p, 1); }
     uint8_t info[6];
     for (int i = 0; i < 6; i++) info[i] = rd(0xC1);
-    check("INFO = T R I N 2 0", info[0] == 'T' && info[1] == 'R' && info[2] == 'I' && info[3] == 'N' &&
-                                info[4] == AYFX_VER && info[5] == 0);
+    check("INFO = T R I N версия, потом тень", info[0] == 'T' && info[1] == 'R' && info[2] == 'I' && info[3] == 'N' &&
+                                info[4] == AYFX_VER && info[5] == 0xEE);
     { uint8_t v; sel(8); check("чтение AY-регистра - не наше", !ayfx_bus_peek(&b, &v)); }
 
     // 3. SID на канале A: таблица 1 = уровни 15, 0; 2 шага; тон 100

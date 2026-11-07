@@ -9,15 +9,20 @@
 #include <string.h>
 #include <assert.h>
 #include "YmRenderer.h"
+#include "trinity_aa.h"
 #include "external/lzh.h"
 #include "ym2data.h"
 
 YmRenderer*	YmRenderer::Create(const void* ymMemoryData, uint32_t ymMemorySize, uint32_t hostReplayRate, uint32_t defaultYm2149Clock)
 {
-	YmRenderer* yr = new YmRenderer();
+	void* mem = g_aaBigAlloc(sizeof(YmRenderer));	// Trinity: объект - большой блок (trinity_aa.h)
+	if ( !mem )
+		return nullptr;
+	YmRenderer* yr = new (mem) YmRenderer();
 	if ( yr->Load(ymMemoryData, ymMemorySize, hostReplayRate, defaultYm2149Clock ))
 		return yr;
-	delete yr;
+	yr->~YmRenderer();	// Trinity
+	g_aaBigFree(yr);
 	return nullptr;
 }
 

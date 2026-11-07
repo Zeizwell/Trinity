@@ -53,12 +53,10 @@ uint32_t pio_sm_get(PIO pio, uint sm);
 uint pio_sm_get_pc(PIO pio, uint sm);
 
 // --- программы и их init из .pio.h
-extern const pio_program_t chip_wr_program, ws2812_program, bus_wr_program, bus_rd_program;
+extern const pio_program_t chip_wr_program, ws2812_program, bus_wr_program;
 void chip_wr_init(PIO pio, uint sm, uint offset, uint base);
 void ws2812_program_init(PIO pio, uint sm, uint offset, uint pin, float freq);
 void bus_wr_init(PIO pio, uint sm, uint offset);
-void bus_rd_init(PIO pio, uint sm, uint offset);
-void bus_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status);
 uint bus_add_program(PIO pio, const pio_program_t *prog, uint pin);
 
 // --- прерывания (в модели шина не прерывает: тест зовёт card_slot_write сам)
@@ -66,6 +64,7 @@ enum pio_interrupt_source { pis_sm0_rx_fifo_not_empty = 0 };
 enum { PIO1_IRQ_0 = 17 };
 void pio_set_irq0_source_enabled(PIO pio, enum pio_interrupt_source s, bool on);
 void irq_set_exclusive_handler(uint n, void (*h)(void));
+void sim_core1_loop(void);                     // ядро 1 дошло до своего цикла (main.c зовёт в модели)
 void irq_set_priority(uint n, uint8_t p);
 void irq_set_enabled(uint n, bool on);
 uint32_t save_and_disable_interrupts(void);

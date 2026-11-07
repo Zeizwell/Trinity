@@ -1,0 +1,129 @@
+; Ответ на чтение железом (doc/zx-trinity.md п.14е): автоматы A, D, R (bus_hw.c, макет) и bus_feed (замер, bus_dma.c).
+; Шина слота макета: ответ на чтение без процессора. Ножки - как в bus.pio (config.h PIN_SLOT_*): D0..D7, /CS,
+; /WR, /RD, A0 подряд. Номера ножек в WAIT - заглушки, патчит bus_add_program.
+.pio_version 1
+
+; ---- A: выбор регистра (/CS = 0, A0 = 0) -> в FIFO адрес слова ans[sel] = Y << 10 | sel << 2.
+; Y - база таблицы чипа >> 10 (кладёт ядро при старте). Данные - последний снимок, пока /WR внизу (как bus_wr).
+; FIFO читает только канал A1 (DMA) -> L: слово ans -> R.
+.program bus_sel
+.wrap_target
+top:
+    wait 0 gpio 0                    ; /WR вниз
+smp:
+    mov osr, pins                    ; снимок от D0 (IN_BASE = PIN_SLOT_D0)
+    jmp pin done                     ; JMP_PIN = /WR: вверх - X = прошлый снимок
+    mov x, osr
+    jmp smp
+done:
+    mov isr, y                       ; ISR = база >> 10
+    mov osr, x
+    in osr, 8                        ; + номер регистра
+    in null, 2                       ; слово 32 бита
+    out null, 8                      ; снимок: дальше /CS, /WR, /RD, A0
+    out x, 1                         ; /CS
+    jmp x-- top                      ; 1 - не наш чип
+    out null, 2
+    out x, 1                         ; A0
+    jmp x-- top                      ; 1 - данные, не наше
+    push noblock                     ; адрес слова - в FIFO
+.wrap
+
+; ---- D: данные (/CS = 0, A0 = 1) -> в FIFO адрес байта один[v] = Y << 8 | v (таблица один[i] = i, база - в Y).
+; FIFO читает только канал D1 -> D2.READ_ADDR, D1b: адрес слова выбранного регистра -> D2.WRITE_ADDR_TRIG,
+; D2: байт -> значение в ans, CHAIN_TO -> обновить ответ (L).
+.program bus_dat
+.wrap_target
+top:
+    wait 0 gpio 0                    ; /WR вниз
+smp:
+    mov osr, pins
+    jmp pin done
+    mov x, osr
+    jmp smp
+done:
+    mov isr, y                       ; ISR = база один[] >> 8
+    mov osr, x
+    in osr, 8                        ; + байт данных
+    out null, 8
+    out x, 1                         ; /CS
+    jmp x-- top
+    out null, 2
+    out x, 1                         ; A0
+    jmp !x top                       ; 0 - выбор, не наше
+    push noblock
+.wrap
+
+; ---- R: чтение. Пока /RD = 1, крутится и держит готовый ответ в X: rxfifo[0] - слово ans выбранного регистра
+; (кладёт DMA L): биты 0..7 - значение, 8 - STATUS, 9 - STREAM. STATUS: значение с битом 7 - метка «занята» (её
+; пишет запись #80 в #C0), иначе - статус ядра rxfifo[1]. На /RD: чужой чип - ждать; A0 = 0 - статус слота
+; rxfifo[2]; иначе - X. STREAM (#C1): значение слова - текущий байт потока, R отдаёт его и поднимает флаг 0 в PIO0
+; (irq next: у PIO2 следующий - PIO0) - автомат T и DMA N кладут в слово следующий байт.
+; Режим FIFO: FJOIN_RX_GET (rxfifo читает автомат, пишут ядро и DMA). IN_BASE = /CS, JMP_PIN = /RD.
+; TX FIFO у R НЕ использовать: на кремнии mov osr, rxfifo[] съедает из TX (замер v48, самопроверка «get eats TX»;
+; в даташите этого нет).
+.program bus_ans
+.fifo txget
+.wrap_target
+idle:
+    mov osr, rxfifo[0]               ; слово выбранного регистра
+    mov x, osr
+    out null, 7
+    out y, 1                         ; бит 7 значения: 1 - отдать X (значение или метка «занята»)
+    jmp !y st
+    jmp ready
+st:
+    out y, 1                         ; бит 8: STATUS без метки - статус ядра
+    jmp !y ready
+cpu:
+    mov osr, rxfifo[1]               ; статус ядра
+    mov x, osr
+ready:
+    jmp pin idle                     ; /RD = 1 - считать заново
+    mov osr, pins                    ; /RD внизу: биты /CS, /WR, /RD, A0
+    out y, 1
+    jmp !y ours
+    wait 1 gpio 0                    ; чужой чип - ждать конца /RD
+    jmp idle
+ours:
+    out null, 2
+    out y, 1                         ; A0
+    jmp !y slot
+    mov osr, x
+    out null, 9
+    out y, 1                         ; STREAM?
+    mov osr, x
+    jmp !y drive
+    irq next set 0                   ; байт потока отдаём - T (PIO0): положить следующий
+    jmp drive
+slot:
+    mov osr, rxfifo[2]               ; статус чипа слота (A0 = 0)
+drive:
+    out pins, 8                      ; значение на D0..D7
+    mov pindirs, ~null               ; выходы
+    wait 1 gpio 0                    ; /RD вверх
+    mov pindirs, null                ; снова входы
+.wrap
+
+; ---- T (PIO0): метки потока. Ядро в начале ответа кладёт в TX, сколько байт потока ещё положить (n); на каждый
+; флаг 0 от R (прочитали байт #C1) - метка в RX, пока n не кончилось. Метку снимает DMA N1, N2 кладёт следующий байт
+; в слово #C1 и обновляет R (A1b -> L). Потом флаги R не считаются (n = 0: ждёт новый ответ)
+.program bus_tok
+top:
+    pull block                       ; n
+    mov x, osr
+more:
+    jmp x-- go                       ; ещё есть байт
+    jmp top
+go:
+    wait 1 irq 0                     ; R прочитал байт потока (флаг снимается)
+    push noblock                     ; метка -> N1
+    jmp more
+
+; ---- Замер без Z80 (bus_dma.c): ядро кладёт слово в TX - автомат отдаёт его в RX, как A / D после записи Спектрума
+.program bus_feed
+.wrap_target
+    pull block
+    mov isr, osr
+    push block
+.wrap

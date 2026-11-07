@@ -11,6 +11,7 @@
 #include "AtariAudioRenderer.h"
 #include "SndhRenderer.h"
 #include "YmRenderer.h"
+#include "trinity_aa.h"
 #include "external/lzh.h"
 #include "external/ice_24.h"
 
@@ -26,7 +27,11 @@ AtariAudioRenderer* AtariAudioRenderer::Create(const void* fileMemoryData, uint3
 
 void AtariAudioRenderer::Destroy(AtariAudioRenderer* ar)
 {
-	delete ar;
+	if ( ar )	// Trinity: объект - из g_aaBigAlloc (aa_new); деструктор защищён - здесь, не в aa_delete
+	{
+		ar->~AtariAudioRenderer();
+		g_aaBigFree(ar);
+	}
 }
 
 AtariAudioRenderer::AtariAudioRenderer()

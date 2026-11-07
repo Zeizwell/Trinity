@@ -1,9 +1,10 @@
 ; Шина слота (макет: CPLD MultiSound -> наш чип). Все ножки - из config.h (PIN_SLOT_*): номера в инструкциях ниже -
 ; заглушки, при загрузке (bus_add_program) ожидание строба патчится ножкой из config.h, базы и ножки переходов -
 ; в init. Требование к плате: D0..D7 слота подряд (PIN_SLOT_D0..+7), остальные ножки - любые в окне 32 ножек PIO.
-; RP в разрыве: с чипа не читаем, на чтение отвечает RP.
+; RP в разрыве: с чипа не читаем, на чтение отвечает RP - автомат bus_ans (bus_dma.pio, doc/zx-trinity.md п.14е).
 
-; ---- Записи: на каждый /WR - в FIFO снимок 32 ножек от PIN_SLOT_D0 (данные, /CS, A0 - разбирает ядро по config.h).
+; ---- Записи: на каждый /WR - в FIFO снимок 32 ножек от PIN_SLOT_D0 (данные, /CS, A0). Снимки DMA уносит в кольцо,
+; разбирает ядро 1 без сроков (bus_hw.c).
 ; Данные - ПОСЛЕДНИЙ снимок, пока /WR ещё внизу (как NeoGS zxbus.v: защёлка по заднему фронту записи): на макете
 ; CPLD MultiSound выставляет данные одновременно с /AWR, раннее чтение ловило неустоявшиеся биты.
 .program bus_wr
@@ -16,11 +17,29 @@ sample:
     jmp sample
 done:
     mov isr, x
-    push noblock                     ; переполнение - теряем (счётчик - ядро 1 по уровню FIFO)
+    push noblock                     ; FIFO забирает DMA сразу (кольцо записей, bus_hw.c)
+.wrap
+
+; ---- Отладка (консоль, bus_hw.c журнал): на каждый /RD - длина импульса и последний снимок, пока /RD внизу.
+; Слово: биты 31..20 - D0..D7, /CS, /WR, /RD, A0; 19..0 - ~счётчик (оборот 3 такта RP). Ложный /ARD CPLD MultiSound
+; (защёлка clk32, top.v ioreq) - десятки нс, чтение Z80 - сотни
+.program bus_rdw
+.wrap_target
+    wait 0 gpio 0                    ; /RD вниз (патч при загрузке)
+    mov isr, null
+    mov x, ~null
+cnt:
+    mov osr, pins                    ; снимок от PIN_SLOT_D0
+    jmp pin up                       ; JMP_PIN = /RD: вверх - конец
+    jmp x-- cnt
+up:
+    in osr, 12
+    in x, 20
+    push noblock
 .wrap
 
 % c-sdk {
-// PIN_SLOT_* - из config.h (main.c подключает его до этого файла)
+// PIN_SLOT_* - из config.h (bus_hw.c подключает его до этого файла)
 
 // Загрузить программу шины: ожидания строба (WAIT GPIO) - на ножку pin (заглушки в .pio - 0)
 static inline uint bus_add_program(PIO pio, const pio_program_t *prog, uint pin) {
@@ -44,58 +63,5 @@ static inline void bus_wr_init(PIO pio, uint sm, uint offset) {
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);  // 8 записей в запасе
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
-}
-%}
-
-; ---- Чтения: /RD = 0 и /CS = 0 - выдать на D0..D7 из X (его держит ядро 1): A0 = 1 - младший байт X (значение
-; выбранного регистра из тени), A0 = 0 - второй байт X (статус, cfg.status_answer). Потом - снова входы.
-; После чтения данных - метка в FIFO (ответ мог быть потоком, как INFO протокола AY FX).
-.program bus_rd
-.wrap_target
-top:
-    wait 0 gpio 0                    ; /RD вниз (ножка - PIN_SLOT_RD, патч при загрузке)
-    mov isr, null
-    in pins, 1                       ; /CS (IN_BASE = PIN_SLOT_CS)
-    mov y, isr
-    jmp !y ours                      ; /CS = 0 - наш чип
-    wait 1 gpio 0                    ; чужой - ждать конца (/RD)
-    jmp top
-ours:                                ; здесь Y = 0
-    mov osr, x
-    jmp pin data                     ; JMP_PIN = A0: 1 - данные (младший байт)
-    out null, 8                      ; A0 = 0 - статус (второй байт)
-    jmp drive
-data:
-    set y, 1                         ; читали данные - в конце метка в FIFO
-drive:
-    out pins, 8                      ; значение на D0..D7 (OUT_BASE = PIN_SLOT_D0)
-    mov osr, ~null
-    out pindirs, 8                   ; выходы
-    wait 1 gpio 0                    ; /RD вверх (PIN_SLOT_RD)
-    mov osr, null
-    out pindirs, 8                   ; снова входы
-    jmp !y top                       ; статус - без метки
-    mov isr, x                       ; метка "прочитали данные" = что было на шине (статус << 8 | данные)
-    push noblock                     ;   ядро 1 сдвинет ответ (INFO) и обновит X
-.wrap
-
-% c-sdk {
-static inline void bus_rd_init(PIO pio, uint sm, uint offset) {
-    pio_sm_config c = bus_rd_program_get_default_config(offset);
-    sm_config_set_in_pins(&c, PIN_SLOT_CS);
-    sm_config_set_out_pins(&c, PIN_SLOT_D0, 8);
-    sm_config_set_jmp_pin(&c, PIN_SLOT_A0);
-    sm_config_set_out_shift(&c, true, false, 32);    // вправо: младший бит - D0
-    sm_config_set_in_shift(&c, false, false, 32);
-    for (uint i = 0; i < 8; i++) pio_gpio_init(pio, PIN_SLOT_D0 + i);
-    pio_sm_set_consecutive_pindirs(pio, sm, PIN_SLOT_D0, 8, false);   // по умолчанию - входы
-    pio_sm_init(pio, sm, offset, &c);
-    pio_sm_set_enabled(pio, sm, true);
-}
-// Новый ответ: X = статус << 8 | данные (пока PIO ждёт /RD - инструкции извне)
-static inline void bus_rd_set(PIO pio, uint sm, uint8_t data, uint8_t status) {
-    pio_sm_put(pio, sm, (uint32_t)status << 8 | data);
-    pio_sm_exec(pio, sm, pio_encode_pull(false, false));
-    pio_sm_exec(pio, sm, pio_encode_mov(pio_x, pio_osr));
 }
 %}

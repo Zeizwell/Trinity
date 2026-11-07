@@ -9,15 +9,20 @@
 #include <string.h>
 #include <assert.h>
 #include "SndhRenderer.h"
+#include "trinity_aa.h"
 #include "external/ice_24.h"
 #include "timedb.h"
 
 SndhRenderer*	SndhRenderer::Create(const void* sndhMemoryData, uint32_t sndhMemorySize, uint32_t hostReplayRate)
 {
-	SndhRenderer* sr = new SndhRenderer();
+	void* mem = g_aaBigAlloc(sizeof(SndhRenderer));	// Trinity: объект - большой блок (trinity_aa.h)
+	if ( !mem )
+		return nullptr;
+	SndhRenderer* sr = new (mem) SndhRenderer();
 	if ( sr->Load(sndhMemoryData, sndhMemorySize, hostReplayRate ))
 		return sr;
-	delete sr;
+	sr->~SndhRenderer();	// Trinity
+	g_aaBigFree(sr);
 	return nullptr;
 }
 

@@ -1,7 +1,9 @@
 // RP-AY (doc/zx-trinity.md, 14а и п.15): режимы AY и FX - записи из слота -> тень -> чип, эффекты AY FX
 // (движок engine/ayfx.c), чтение из слота - ответ RP из тени. Каркас режимов и настроек - под ATARI, обновление.
-// Ядро 1: шина - прерыванием PIO (уровень «Шина», doc 14б), в цикле - «Звук»: события, эффекты, писатель в чип, сброс.
+// Ядро 1: шина - на макете ответ железом (bus_hw.c, doc 14е), на рев А - прерыванием PIO (doc 14б); в цикле -
+// «Звук»: события, эффекты, писатель в чип, сброс.
 // Ядро 0: USB-консоль, светодиод.
+#include "wd.h"
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -16,15 +18,17 @@
 #include "card.h"
 #include "psram.h"
 #include "ws2812.pio.h"
+#include "bus_dma.h"
+#include "bus_hw.h"
 #ifdef BOARD_REV_A
 #include "bus_ay.pio.h"
-#else
-#include "bus.pio.h"
 #endif
 
 #define IC_PULSE_US 100                 // /IC вниз при старте и сбросе: у YM2203 от 72 тактов, это 20 мкс на 3.5 МГц
-static PIO  bus_pio = pio1;
+#ifdef BOARD_REV_A
+static PIO  bus_pio = pio1;                     // рев А: шина от CPLD, ответ - прерыванием (ниже)
 static uint sm_wr, sm_rd;
+#endif
 
 // Тест чтения чипа (режим TEST): просит ядро 0 (клавиша t в консоли), делает ядро 1
 static volatile bool test_req, test_done;
@@ -33,6 +37,7 @@ static volatile bool tune_req, tune_done;      // клавиша p: тест п�
 static chip_tune_t   tune_res;                  // клавиша h: замер напряжений на ножках чипа (chip_hold)
 static volatile int  boot_result = -1;          // тест при старте: -1 ещё нет, 0 - OK, 1 - ошибки (boot_res)
 static volatile int  boot_stage;                // шаг старта ядра 1 (светодиод): 0 - не начал, 1 - писк, 2 - тест
+static volatile bool svc_force;                     // консоль j: журнал служебных пакетов напечатать
 static chip_test_t   test_res, boot_res;
 static uint16_t      boot_pins;                // ножки RP к чипу с замыканием (chip_pins_check)
 static uint8_t       boot_probe[3];            // до теста: R14, R15, статус (chip_probe)
@@ -47,14 +52,9 @@ static void test_run(void) {                      // ядро 1: дождать�
     mode_set(MODE_AY);
 }
 
-// Ответ на чтение: данные - от карты, статус - из cfg
-static void answer_update(void) {
 #ifdef BOARD_REV_A
-    bus_ay_rd_set(bus_pio, sm_rd, card_answer());
-#else
-    bus_rd_set(bus_pio, sm_rd, card_answer(), cfg.status_answer);
-#endif
-}
+// Ответ на чтение (рев А): данные - от карты
+static void answer_update(void) { bus_ay_rd_set(bus_pio, sm_rd, card_answer()); }
 
 // ---- Уровень «Шина» (doc 14б): прерывание PIO, высший приоритет, ядро 1. Всё, от чего зависит ответ Спектруму,
 // считается здесь, ответ выставляется сразу после записи, которая его меняет. Нельзя: ждать, USB / printf, флеш.
@@ -68,14 +68,9 @@ static volatile uint32_t irq_max_cyc;           // самый долгий об�
 static void bus_irq(void) {
     uint32_t t0 = cyc_now();
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_wr)) {
-        uint32_t w = pio_sm_get(bus_pio, sm_wr);    // снимок ножек от PIN_SLOT_D0 (раскладка - config.h)
-#ifdef BOARD_REV_A
+        uint32_t w = pio_sm_get(bus_pio, sm_wr);    // снимок ножек от PIN_AY_D0 (раскладка - config.h)
         uint code = w >> (PIN_AY_C0 - PIN_AY_D0) & 3;       // cpld/rtl/top.v: 1 - #FFFD, 2 - #BFFD
         if (code == 1 || code == 2) card_slot_write(code == 2, (uint8_t)w);
-#else
-        if (w >> (PIN_SLOT_CS - PIN_SLOT_D0) & 1) continue;      // /CS = 1 - не наш чип
-        card_slot_write(w >> (PIN_SLOT_A0 - PIN_SLOT_D0) & 1, (uint8_t)w);
-#endif
         answer_update();
     }
     while (!pio_sm_is_rx_fifo_empty(bus_pio, sm_rd)) {   // метки PIO: данные прочитали
@@ -91,13 +86,15 @@ static void bus_irq(void) {
 }
 
 static void bus_irq_on(void) {
-    cyc_init();                                     // счётчик тактов: писатель в чип и замер обработчика
     pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_wr), true);
     pio_set_irq0_source_enabled(bus_pio, (enum pio_interrupt_source)(pis_sm0_rx_fifo_not_empty + sm_rd), true);
     irq_set_exclusive_handler(PIO1_IRQ_0, bus_irq);
     irq_set_priority(PIO1_IRQ_0, 0);                // высший
     irq_set_enabled(PIO1_IRQ_0, true);              // на ядре 1: обработчик - здесь
 }
+#else
+static void answer_update(void) {}               // макет: отвечает железо (bus_hw.c), ядро только сообщает ему
+#endif
 
 // ---- Уровень «Звук» (doc 14б): прерывание будильника RP, ниже шины. Будильник - на ближайший шаг эффекта
 // (card_sound говорит, через сколько мкс); шина будит его сразу, когда кладёт событие (sound_kick)
@@ -193,16 +190,34 @@ static bool bus_ic_high(void) { return gpio_get(PIN_SLOT_IC); }
 #endif
 
 static void core1_main(void) {
+    cyc_init();                                     // счётчик тактов: писатель в чип и замеры
+#ifdef BOARD_REV_A
     bus_irq_on();
+#else
+    bus_hw_init();                                  // автоматы и цепочки DMA - на ядре 1 (прерывание кольца - здесь)
+#endif
     boot_check();
     boot_beep();
     sound_on();                                     // после теста: эффекты пишут в чип только теперь
     bool ic_was = bus_ic_high();
     while (true) {
+#ifdef SIM_HOST
+        sim_core1_loop();                               // модель на ПК: старт ядра 1 закончен (test/mock/sim.c)
+#endif
+#ifdef BOARD_REV_A
         if (pio_sm_is_rx_fifo_full(bus_pio, sm_wr)) chip_stat.fifo_full++;   // прерывание не успело
+#endif
+        WD_BEAT1(), WD_AT1(1);
         card_poll();                                    // события шины, планы эффектов, кадр, таймаут
+        WD_AT1(2);
         chip_poll();                                    // писатель в чип: эффекты - первыми, потом очередь
+        WD_AT1(3);
         if (test_req) test_run();
+#ifndef SIM_HOST
+        if (bus_dma_load) bus_dma_hammer();              // замер цепочек DMA под нагрузкой (bus_dma.c)
+#endif
+        bus_hw_poll();                                  // журнал шины (bus_hw.c)
+        WD_AT1(4);
         if (hold_req && chip_idle()) { chip_hold(30000); hold_req = false; }
         if (tune_req && chip_idle()) {                   // тест пауз, потом tuned - в работу (до перезагрузки)
             mode_set(MODE_TEST);                         //   эффекты стоят, Спектрум в чип не пишет
@@ -349,7 +364,14 @@ static void bus_selftest(void) {
 }
 #endif
 
+static bool wd_was;                                    // прошлый запуск кончил сторож: висели
+static uint32_t wd_place[4];                           //   метки (wd.h) на тот момент
+
 int main(void) {
+#ifndef SIM_HOST
+    wd_was = watchdog_enable_caused_reboot();
+    for (int i = 0; i < 4; i++) wd_place[i] = watchdog_hw->scratch[i], watchdog_hw->scratch[i] = 0;
+#endif
     cfg_defaults();
     vreg_set_voltage(cfg.vreg);                        // разгон: ответ на чтение сразу за записью (14 МГц) успевает
     sleep_ms(2);
@@ -385,17 +407,14 @@ int main(void) {
     mode_reset();
     card_reset();
 
+#ifdef BOARD_REV_A
     sm_wr = pio_claim_unused_sm(bus_pio, true);
     sm_rd = pio_claim_unused_sm(bus_pio, true);
-#ifdef BOARD_REV_A
     pio_set_gpio_base(bus_pio, 16);                                // шина на GP28..GP40
     bus_ay_wr_init(bus_pio, sm_wr, pio_add_program(bus_pio, &bus_ay_wr_program));
     bus_ay_rd_init(bus_pio, sm_rd, pio_add_program(bus_pio, &bus_ay_rd_program));
-#else
-    bus_wr_init(bus_pio, sm_wr, bus_add_program(bus_pio, &bus_wr_program, PIN_SLOT_WR));   // ножки - config.h
-    bus_rd_init(bus_pio, sm_rd, bus_add_program(bus_pio, &bus_rd_program, PIN_SLOT_RD));
-#endif
     answer_update();
+#endif                                                             // макет: шину поднимает ядро 1 (bus_hw_init)
 
     multicore_launch_core1(core1_main);
     while (boot_result < 0) {                                      // тест чипа - жёлтый
@@ -408,16 +427,26 @@ int main(void) {
     }
 
     uint32_t last_wr = 0, last_cw = 0, t_log = 0;
+#ifndef SIM_HOST
+    watchdog_enable(16000, true);                                     // ядро 0 молчит 16 с (предел сторожа) - перезагрузка (метки - wd.h)
+#endif
     while (true) {
+        WD_AT(1);
         for (int i = 0; i < 100; i++) {                               // 100 мс: служебный API карты - каждую мс
             card_svc_poll(boot_result > 0);
             sleep_ms(1);
         }
+        WD_AT(2);
         int key = getchar_timeout_us(0);                              // консоль: t - тест чтения чипа
         if (key == 'p' && !tune_req && mode == MODE_AY) { tune_req = true; printf("pause test: ~1 min...\n"); }
 #ifdef BUS_SELFTEST
         if (key == 'u') { bus_selftest(); printf("готово\n"); }
 #endif
+#ifndef SIM_HOST
+        if (key == 'd') bus_dma_test();                               // замер цепочек DMA (п.14е), только железо
+#endif
+        if (key == 'j') { svc_force = true; bus_hw_jr_force = true; }      // журналы пакетов и шины - напечатать
+        if (key == 'b') bus_hw_bench();                               // стенд ответа шины (bus_hw.c), Ева выключена
         if (key == 'h') { hold_req = true; printf("hold 30 s: A0 (37) = 1, /WR (35) = 0, /CS (34) = 1\n"); }
         if (key == 't' && !test_req) {
             if (mode_set(MODE_TEST) == MODE_OK) test_req = true;
@@ -451,6 +480,8 @@ int main(void) {
         last_wr = wr, last_cw = cw;
         if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
             t_log = 0;
+            if (wd_was) printf("  WATCHDOG reboot: core 0 at %lu (svc packet %02lX), core 1 at %lu, loops %lu\n",
+                               (unsigned long)wd_place[0], (unsigned long)wd_place[1], (unsigned long)wd_place[2], (unsigned long)wd_place[3]);
             if (!boot_result) printf("rp-ay v%02d  chip test OK (%u)\n", FW_VERSION, boot_res.checks);
             else printf("rp-ay v%02d  chip test FAIL: %u of %u, bad bits %02X, first R%u wrote %02X read %02X\n",
                         FW_VERSION, boot_res.errors, boot_res.checks, boot_res.bad_bits,
@@ -460,8 +491,32 @@ int main(void) {
             for (int i = 0; i < 14; i++) printf(" %u", boot_res.reg_err[i]);
             printf("\n  phiM %lu kHz, /IC %d; before test R14 %02X R15 %02X status %02X; shorted pins %03X\n",
                    (unsigned long)phim_khz(), bus_ic_high(), boot_probe[0], boot_probe[1], boot_probe[2], boot_pins);
+#ifdef BOARD_REV_A
+            uint32_t irq_cyc = irq_max_cyc;
+#else
+            uint32_t irq_cyc = bus_hw_irq_cyc;                         // разбор кольца записей (bus_hw.c)
+            printf("  bus replies with old tail left (not read whole) %lu\n", (unsigned long)bus_hw_left);
+            bus_hw_print();
+            // журнал служебных: код[данные 0,1]>байт ответа/длина ответа (длина - с 2 байтами длины)
+            {
+                static uint32_t svc_shown;
+                uint32_t sn = card_svc_n;
+                if (sn != svc_shown || svc_force) {
+                    svc_force = false;
+                    svc_shown = sn;
+                    printf("  svc %lu:", (unsigned long)sn);
+                    for (uint32_t k = sn > CARD_SVC_LOG ? sn - CARD_SVC_LOG : 0; k < sn; k++) {
+                        uint32_t e = card_svc_log[k % CARD_SVC_LOG];
+                        printf(" %02lX[%02lX,%02lX]>%02lX/%u", (unsigned long)(e >> 24), (unsigned long)(e >> 16 & 0xFF),
+                               (unsigned long)(e >> 8 & 0xFF), (unsigned long)(e & 0xFF), (unsigned)card_svc_len[k % CARD_SVC_LOG]);
+                        if (card_svc_rep[k % CARD_SVC_LOG] > 1) printf("x%u", (unsigned)card_svc_rep[k % CARD_SVC_LOG]);
+                    }
+                    printf("\n");
+                }
+            }
+#endif
             printf("  bus irq max %lu cyc (%lu ns), events lost %lu, packets ROW %lu TABLE %lu RESET %lu\n",
-                   (unsigned long)irq_max_cyc, (unsigned long)((uint64_t)irq_max_cyc * 1000000000u / clock_get_hz(clk_sys)),
+                   (unsigned long)irq_cyc, (unsigned long)((uint64_t)irq_cyc * 1000000000u / clock_get_hz(clk_sys)),
                    (unsigned long)card_ev_lost, (unsigned long)card_pk[1], (unsigned long)card_pk[2], (unsigned long)card_pk[3]);
             printf("  fx steps %lu: late max %lu us, avg %lu us; fx writes overwritten (chip too slow) %lu\n",
                    (unsigned long)card_late_n, (unsigned long)card_late_max,

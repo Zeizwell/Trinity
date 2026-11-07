@@ -4,6 +4,8 @@
 #include "../main.c"
 #undef main
 #include "../atari.h"
+#include <string.h>
+#include "ayfx.h"                                      // AYFX_P_INFO, AYFX_VER
 
 static int fails;
 static void check(const char *what, int ok) {
@@ -18,20 +20,22 @@ static bool drain(uint32_t limit_ms) {
     return false;
 }
 
+void hwm_write(bool a0, uint8_t v);
+uint8_t hwm_read(void);
 // MODE AY как SDK: ключ, #C1: [C0][1][0][0], ждать ответ (ядро 0), прочитать [длина 2][итог], закрыть -> итог
 static int mode_ay_packet(void) {
     const char *key = "TRIN";
-    card_slot_write(0, 0xC0);
-    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
-    card_slot_write(0, 0xC1);
-    card_slot_write(1, 0xC0); card_slot_write(1, 1); card_slot_write(1, 0); card_slot_write(1, 0);
+    hwm_write(0, 0xC0);
+    for (int i = 0; i < 4; i++) hwm_write(1, (uint8_t)key[i]);
+    hwm_write(0, 0xC1);
+    hwm_write(1, 0xC0); hwm_write(1, 1); hwm_write(1, 0); hwm_write(1, 0);
     card_svc_poll(false);
-    card_slot_write(0, 0xC0);
-    if ((card_answer() & 0xC0) != 0x40) return -1;
-    card_slot_write(0, 0xC1);
+    hwm_write(0, 0xC0);
+    if ((hwm_read() & 0xC0) != 0x40) return -1;
+    hwm_write(0, 0xC1);
     uint8_t a[3];
-    for (int i = 0; i < 3; i++) { a[i] = card_answer(); card_read_done(); }
-    card_slot_write(0, 0xC0); card_slot_write(1, 0);
+    for (int i = 0; i < 3; i++) { a[i] = hwm_read(); }
+    hwm_write(0, 0xC0); hwm_write(1, 0);
     return a[0] == 1 && a[1] == 0 ? a[2] : -2;
 }
 
@@ -39,23 +43,73 @@ static int mode_ay_packet(void) {
 // -> байт в ответе (-1 - пакет без ответа)
 static int svc_req(uint8_t code, const uint8_t *d, int n, uint8_t *ans, int max) {
     const char *key = "TRIN";
-    card_slot_write(0, 0xC0);
-    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
-    card_slot_write(0, 0xC1);
-    card_slot_write(1, code); card_slot_write(1, (uint8_t)n); card_slot_write(1, (uint8_t)(n >> 8));
-    for (int i = 0; i < n; i++) card_slot_write(1, d[i]);
+    hwm_write(0, 0xC0);
+    for (int i = 0; i < 4; i++) hwm_write(1, (uint8_t)key[i]);
+    hwm_write(0, 0xC1);
+    hwm_write(1, code); hwm_write(1, (uint8_t)n); hwm_write(1, (uint8_t)(n >> 8));
+    for (int i = 0; i < n; i++) hwm_write(1, d[i]);
     card_svc_poll(false);
-    card_slot_write(0, 0xC0);
+    hwm_write(0, 0xC0);
     int k = -1;
-    if ((card_answer() & 0xC0) == 0x40) {
-        card_slot_write(0, 0xC1);
+    if ((hwm_read() & 0xC0) == 0x40) {
+        hwm_write(0, 0xC1);
         uint8_t l[2];
-        for (int i = 0; i < 2; i++) { l[i] = card_answer(); card_read_done(); }
+        for (int i = 0; i < 2; i++) { l[i] = hwm_read(); }
         k = l[0] | l[1] << 8;
-        for (int i = 0; i < k; i++) { uint8_t v = card_answer(); card_read_done(); if (i < max) ans[i] = v; }
+        for (int i = 0; i < k; i++) { uint8_t v = hwm_read(); if (i < max) ans[i] = v; }
     }
-    card_slot_write(0, 0xC0); card_slot_write(1, 0);
+    hwm_write(0, 0xC0); hwm_write(1, 0);
     return k;
+}
+
+// Путь Z80 точно как SDK (Ayfx_SvcSend, Ayfx_SvcState, Ayfx_SvcReply) и плагин WC: выбор чипа #FF, ключ, поток, байты,
+// закрыть, метка «занята» #80 в #C0 (п.14е-5); статус - по одному чтению, пока занята - время идёт; ответ - #C1 заново,
+// длина и байты - целиком. Спектрум ходит через модель железа (mock/bus_hw_model.c): hwm_write / hwm_read
+static void run_ms(uint32_t ms);
+static bool sdk_busy_seen;                                          // sdk_req: метка видна сразу после пакета
+static void sdk_key(void) {
+    hwm_write(0, 0xC0);
+    for (int i = 0; i < 4; i++) hwm_write(1, (uint8_t)"TRIN"[i]);
+}
+static uint8_t sdk_rd(void) { return hwm_read(); }          // читает железо (модель п.14е), ядру чтения не видны
+static int sdk_req(uint8_t code, const uint8_t *d, int n, uint8_t *ans, int max) {
+    hwm_write(0, 0xFF);                                       // Chip0
+    sdk_key();
+    hwm_write(0, 0xC1);
+    hwm_write(1, code); hwm_write(1, (uint8_t)n); hwm_write(1, (uint8_t)(n >> 8));
+    for (int i = 0; i < n; i++) hwm_write(1, d[i]);
+    hwm_write(0, 0xC0); hwm_write(1, 0);                // Ayfx_Close
+    hwm_write(1, 0x80);                                       //   метка: занята, пока ответ не лёг в поток
+    sdk_busy_seen = (hwm_read() & 0x80) != 0;                         // сразу после пакета - занята (ядро 0 не успело)
+    uint8_t st;
+    for (;;) {                                                      // Ayfx_SvcState в цикле программы
+        hwm_write(0, 0xC0);
+        st = sdk_rd();
+        if (st == 0xFF) return -2;
+        if (!(st & 0x80)) break;
+        run_ms(1);
+    }
+    if (!(st & 0x40)) return 0;
+    hwm_write(0, 0xC1);                                       // Ayfx_SvcReply: ответ целиком
+    int k = sdk_rd();
+    k |= sdk_rd() << 8;
+    for (int i = 0; i < k; i++) { uint8_t v = sdk_rd(); if (i < max) ans[i] = v; }
+    return k;
+}
+
+// Ayfx_Detect как SDK: ключ, INFO, закрыть, метка; статус - не занята, ответ есть; #C1: T R I N версия -> версия, -1 нет
+static int sdk_detect(void) {
+    hwm_write(0, 0xFF);
+    sdk_key();
+    hwm_write(0, 0xC1); hwm_write(1, AYFX_P_INFO);
+    hwm_write(0, 0xC0); hwm_write(1, 0); hwm_write(1, 0x80);
+    hwm_write(0, 0xC0);                                             // Ayfx_SvcState
+    uint8_t st = sdk_rd();
+    if (st == 0xFF || (st & 0xC0) != 0x40) return -1;               // INFO отвечает сразу: метка уже снята
+    hwm_write(0, 0xC1);
+    uint8_t a[5];
+    for (int i = 0; i < 5; i++) a[i] = sdk_rd();
+    return memcmp(a, "TRIN", 4) ? -1 : a[4];
 }
 
 // Оба ядра на ms модельного времени: ядро 0 - служебное раз в мс, ядро 1 - «Звук» и чип.
@@ -155,23 +209,24 @@ int main(void) {
     check("итог теста читается после сброса: 23 01 50 04 10 00", t[0] == 0x23 && t[1] == 0x01 && t[2] == 0x50 && t[3] == 4 && t[4] == 0x10 && t[5] == 0);
 
     // 5. Ключ FX, как FT2: #C0, "TRIN"; чтение #C0 - байт статуса (doc/trinity-api.md п.3)
-    card_slot_write(0, 0xC0);
+    hwm_write(0, 0xC0);
     card_svc_poll(false);
-    check("#C0 до ключа - статус: AY, задания нет (00)", card_answer() == 0x00);
+    check("#C0 до ключа - статус: AY, задания нет (00)", hwm_read() == 0x00);
     const char *key = "TRIN";
-    for (int i = 0; i < 4; i++) card_slot_write(1, (uint8_t)key[i]);
+    for (int i = 0; i < 4; i++) hwm_write(1, (uint8_t)key[i]);
     check("ключ TRIN: сразу режим FX (уровень «Шина»)", mode == MODE_FX);
-    card_svc_poll(false);                        // ядро 0: статус освежился
-    check("статус: FX включены (бит 4) = 10", card_answer() == 0x10);
-    card_slot_write(0, 0xC1);                    // служебный пакет: SVC_LIST -> ответ из #C1
-    card_slot_write(1, 0x90); card_slot_write(1, 0); card_slot_write(1, 0);
-    card_slot_write(0, 0xC0);
-    check("SVC_LIST принят: статус занято (бит 7)", (card_answer() & 0x80) != 0);
+    card_svc_poll(false); card_poll();           // ядро 0: статус освежился, ядро 1 донесло его до железа
+    check("статус: FX включены (бит 4) = 10", hwm_read() == 0x10);
+    hwm_write(0, 0xC1);                    // служебный пакет: SVC_LIST -> ответ из #C1
+    hwm_write(1, 0x90); hwm_write(1, 0); hwm_write(1, 0);
+    hwm_write(0, 0xC0);
+    check("SVC_LIST принят: статус занято (бит 7)", (hwm_read() & 0x80) != 0);
     card_svc_poll(false);
-    check("ядро 0 ответило: статус ответ готов (бит 6)", (card_answer() & 0xC0) == 0x40);
-    card_slot_write(0, 0xC1);
-    uint8_t sl[4];
-    for (int i = 0; i < 4; i++) { sl[i] = card_answer(); card_read_done(); }
+    hwm_write(0, 0xC0);                    // опрос статуса, как SDK: выбор - шина забирает ответ из ящика
+    check("ядро 0 ответило: статус ответ готов (бит 6)", (hwm_read() & 0xC0) == 0x40);
+    hwm_write(0, 0xC1);
+    uint8_t sl[55];                              // ответ - целиком (п.14е-4): длина 2 + 53
+    for (int i = 0; i < 55; i++) sl[i] = hwm_read();
     check("ответ: длина 53, 2 сервиса (4 тест, 1 плеер Atari), первый - 4", sl[0] == 53 && sl[1] == 0 && sl[2] == 2 && sl[3] == 4);
 
     // 6. Пакет через очередь: TABLE + ROW (SID канал A) - «Звук» пишет громкость в чип
@@ -200,7 +255,7 @@ int main(void) {
     check("дальше чип у Спектрума: R8 = 5 дошло", drain(100) && sim_ym_regs[8] == 5);
     mode_set(MODE_ATARI);                        // самоплеер играет: записи Спектрума до чипа не доходят
     card_slot_write(0, 8); card_slot_write(1, 9);
-    check("ATARI: запись Спектрума - только в тень", drain(100) && sim_ym_regs[8] == 5 && card_answer() == 9);
+    check("ATARI: запись Спектрума - только в тень (чип стоит молча - плеер не играет)", drain(100) && sim_ym_regs[8] == 0 && card_answer() == 9);
     check("из ATARI: протокол работает, ответ 0", mode_ay_packet() == 0);
     check("из ATARI: режим AY, тишина в чипе", drain(100) && mode == MODE_AY && sim_ym_regs[7] == 0x3F && sim_ym_regs[8] == 0);
     mode_set(MODE_TEST);
@@ -253,6 +308,9 @@ int main(void) {
           && sim_phim_hz == 0 && job_state() == SVC_JOB_DONE);
 
     check("PLAY снова (песня 2)", player(ATARI_PLAY, (uint8_t)slot, 2) == 0 && (run_ms(50), mode == MODE_ATARI));
+    check("STOP и сразу PLAY (песня 1): режим ATARI, задание идёт, кадры идут", player(ATARI_STOP, 0, 0) == 0
+          && player(ATARI_PLAY, (uint8_t)slot, 1) == 0 && (run_ms(50), mode == MODE_ATARI) && job_state() == SVC_JOB_RUN
+          && player_stat(st) && st32(st) >= 1);
     check("MODE AY во время игры: 0", mode_ay_packet() == 0);
     run_ms(5);
     check("MODE AY: плеер встал, режим AY, задание готово, φM Спектрума", mode == MODE_AY && job_state() == SVC_JOB_DONE && sim_phim_hz == 0);
@@ -270,6 +328,32 @@ int main(void) {
     mode_set(MODE_AY);
     mode_set(MODE_TEST);
     check("из TEST: ошибка, режим TEST", player(ATARI_PLAY, (uint8_t)slot, 1) == 0 && (run_ms(80), job_state() == SVC_JOB_ERR) && mode == MODE_TEST);
+
+    // 9. Тот же плеер путём SDK / плагина WC: слоты, запись, PLAY с входом и выходом, STOP
+    printf("--- путь SDK (плагин WC)\n");
+    mode_set(MODE_AY);
+    run_ms(5);
+    uint8_t ra[16];
+    static const uint8_t sn2[9] = { 'S', 'N', 'D', 'H', 5, 0, 0, 0, 0 };
+    static const uint8_t ss2[9] = { 'S', 'T', 'A', 'T', ATARI_ST_SIZE, 0, 0, 0, 0 };
+    check("SDK: Detect - INFO через поток, версия", sdk_detect() == AYFX_VER);
+    int si = sdk_req(0x80, sn2, 9, ra, 16) == 1 ? ra[0] : 0;
+    check("SDK: после пакета сразу занята (метка #80)", sdk_busy_seen);
+    int so = sdk_req(0x80, ss2, 9, ra, 16) == 1 ? ra[0] : 0;
+    check("SDK: слоты SNDH и STAT", si > 0 && so > 0);
+    uint8_t w2[10] = { (uint8_t)si, 0, 0, 0, 0, 'M', 'O', 'C', 'K', 2 };
+    check("SDK: SLOT_WRITE - без ответа (0)", sdk_req(0x81, w2, 10, ra, 16) == 0);
+    uint8_t c2[8] = { ATARI_SVC, ATARI_PLAY, (uint8_t)si, (uint8_t)so, 1, 0, 0, 0 };
+    int k2 = sdk_req(0x91, c2, 8, ra, 16);
+    printf("  PLAY: ответ %d байт, итог %d\n", k2, k2 > 0 ? ra[0] : -1);
+    check("SDK: PLAY - ответ 1 байт, 0", k2 == 1 && ra[0] == 0);
+    run_ms(50);
+    check("SDK: режим ATARI, задание идёт", mode == MODE_ATARI && job_state() == SVC_JOB_RUN);
+    c2[1] = ATARI_STOP;
+    check("SDK: STOP - 0", sdk_req(0x91, c2, 8, ra, 16) == 1 && ra[0] == 0);
+    run_ms(5);
+    printf("  после STOP: режим %s\n", mode_name[mode]);
+    check("SDK: плеер встал, карта в AY (ответ читают без ключа - FX не включается)", mode == MODE_AY && job_state() == SVC_JOB_DONE);
     mode_set(MODE_AY);
 
     printf("\n%s: %d ошибок\n", fails ? "FAIL" : "OK", fails);

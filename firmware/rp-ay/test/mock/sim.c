@@ -9,7 +9,7 @@
 pio_hw_t sim_pio0 = {0}, sim_pio1 = {1};
 uint8_t  sim_psram[PSRAM_SIZE];                 // PSRAM карты (psram.h)
 uint32_t sim_phim_hz;
-const pio_program_t chip_wr_program, ws2812_program, bus_wr_program, bus_rd_program;
+const pio_program_t chip_wr_program, ws2812_program, bus_wr_program;
 
 static uint64_t cyc;                    // модельное время, такты RP
 uint64_t sim_now_ns(void) { return cyc * 1000000000ull / HZ; }
@@ -137,11 +137,10 @@ void pio_sm_put(PIO pio, uint sm, uint32_t v) {
 void pio_sm_put_blocking(PIO pio, uint sm, uint32_t v) { pio_sm_put(pio, sm, v); }
 bool pio_sm_is_tx_fifo_full(PIO pio, uint sm) { (void)pio; (void)sm; advance(4); hang_check(); return f_n == 8; }
 bool pio_sm_is_tx_fifo_empty(PIO pio, uint sm) { (void)pio; (void)sm; advance(4); hang_check(); return f_n == 0; }
-bool pio_sm_is_rx_fifo_full(PIO pio, uint sm) {
-    (void)pio; (void)sm;
+void sim_core1_loop(void) {
     if (in_core1) { in_core1 = false; longjmp(core1_back, 1); } // ядро 1 дошло до своего цикла - старт закончен
-    return false;
 }
+bool pio_sm_is_rx_fifo_full(PIO pio, uint sm) { (void)pio; (void)sm; return false; }
 bool pio_sm_is_rx_fifo_empty(PIO pio, uint sm) { (void)pio; (void)sm; return true; }
 uint32_t pio_sm_get(PIO pio, uint sm) { (void)pio; (void)sm; return 0; }
 uint pio_sm_get_pc(PIO pio, uint sm) { (void)pio; (void)sm; advance(2); hang_check(); return wr_offset + (uint)pc; }
@@ -149,9 +148,7 @@ uint pio_sm_get_pc(PIO pio, uint sm) { (void)pio; (void)sm; advance(2); hang_che
 void chip_wr_init(PIO pio, uint sm, uint off, uint base) { (void)sm; (void)off; for (uint i = 0; i < 11; i++) pio_gpio_init(pio, base + i); }
 void ws2812_program_init(PIO pio, uint sm, uint off, uint pin, float f) { (void)pio; (void)sm; (void)off; (void)pin; (void)f; }
 void bus_wr_init(PIO pio, uint sm, uint off) { (void)pio; (void)sm; (void)off; }
-void bus_rd_init(PIO pio, uint sm, uint off) { (void)pio; (void)sm; (void)off; }
 uint bus_add_program(PIO pio, const pio_program_t *prog, uint pin) { (void)pin; return pio_add_program(pio, prog); }
-void bus_rd_set(PIO pio, uint sm, uint8_t d, uint8_t s) { (void)pio; (void)sm; (void)d; (void)s; }
 
 void stdio_init_all(void) {}
 int  getchar_timeout_us(uint32_t us) { (void)us; return -1; }

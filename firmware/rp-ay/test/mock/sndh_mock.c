@@ -5,6 +5,7 @@
 #include "sim.h"
 
 uint32_t sndh_lost;
+void (*sndh_mark)(int step);
 int      sim_sndh_crash_at = -1;        // кадр, где машина «падает» (-1 - нет)
 int      sim_sndh_opens;                // сколько раз открывали (перемотка назад - с начала)
 static int frame = -1;                  // -1 - не открыта

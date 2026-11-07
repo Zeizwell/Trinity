@@ -18,7 +18,7 @@ static uint8_t pool[64 * 1024];
 
 // «Ядро 0»: служебный пакет из шины -> ответ, статус в шину; core0_step - ещё и кусок задания
 static void core0(void) {
-    if (bus.sbusy) {
+    if (bus.sbusy && !bus.pend) {
         uint16_t n = svc_packet(&svc, bus.sbuf);
         ayfx_bus_reply(&bus, svc.reply, n);
     }

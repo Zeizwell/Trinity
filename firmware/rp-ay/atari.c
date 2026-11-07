@@ -10,13 +10,13 @@
 #include "psram.h"
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
+#include "wd.h"
 
 #define AT_FRAMES   3                       // кадров в кольце: один играет, два посчитаны вперёд
 #define AT_WR_MAX   1536                    // записей на кадр (по архиву - до ~1400)
 #define AT_TICK_US  (1000000 / SNDH_TICK_HZ)        // тик записи - 20 мкс
 #define AT_FRAME_US (AT_TICK_US * SNDH_FRAME_TICKS) // кадр - 20 мс
 #define AT_LATE_US  2000                    // кадр пришёл позже срока больше чем на это - время от «сейчас»
-#define AT_START_MS 50                      // ждать режим ATARI (его ставит ядро 1), потом ошибка
 #define AT_SEEK_US  10000                   // перемотка: счёт кадров за один шаг задания, мкс
 #define AT_PHIM_HZ  4000000                 // такт чипа: YM Atari 2 МГц = SSG YM2203 на φM / 2
 #define AT_STAT     0x54415453u             // 'STAT' - слот состояния плеера
@@ -26,7 +26,8 @@
 static sndh_wr_t at_wr[AT_FRAMES][AT_WR_MAX];
 static uint16_t  at_n[AT_FRAMES];
 static volatile uint32_t at_put, at_get;    // кадров положено / выведено
-static volatile bool at_hold, at_held;      // ядро 0: стой (пауза, перемотка, стоп) / ядро 1: стою, чип молчит
+static volatile bool at_hold = true;        // ядро 0: стой (пауза, перемотка, стоп, ждём режим)
+static volatile bool at_held;               // ядро 1: стою, чип молчит
 static volatile uint32_t at_late;           // кадр не успел к сроку
 
 // ---- ядро 1
@@ -38,9 +39,8 @@ static uint8_t  at_reg[16];                 // что записали в чип
 
 // ---- ядро 0
 enum { AT_WAIT, AT_PLAY };
-static bool     at_on;                      // плеер идёт (машина открыта)
+static bool     at_on;                      // плеер идёт (с PLAY до конца задания)
 static uint8_t  at_phase;                   // AT_WAIT - ждём режим ATARI, AT_PLAY - играем
-static uint32_t at_since;                   // мкс: начало ожидания режима
 static uint32_t at_frame;                   // кадров посчитано (позиция машины, впереди вывода на кольцо)
 static uint32_t at_seek;                    // перемотка: на какой кадр (UINT32_MAX - нет)
 static bool     at_pause;
@@ -106,7 +106,10 @@ static void wr16(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v, p[1] = (uint8_t)(v
 static void wr32(uint8_t *p, uint32_t v) { wr16(p, v), wr16(p + 2, v >> 16); }
 
 // Открыть песню из слота входа: машина - в PSRAM
+static void at_mark(int step) { WD_AT(30 + step); }        // метка сторожа: шаг sndh_open (wd.h)
+
 static bool at_open(svc_t *s, svc_job_t *j) {
+    sndh_mark = at_mark;
     sndh_arena(PSRAM_BASE + PSRAM_ATARI, PSRAM_ATARI_SIZE);
     return sndh_open(svc_slot_data(s, j->in), svc_slot_size(s, j->in), at_song, &at_info);
 }
@@ -183,34 +186,38 @@ static int at_seek_step(svc_t *s, svc_job_t *j) {
     return 0;
 }
 
-// PLAY: открыть песню, кольцо пустое, просьба ядру 1 - режим ATARI
+// PLAY: открыть песню (распаковка, машина Atari - Спектрум ждёт ответа, карта «занята»), кольцо пустое, ядро 1
+// стоит; просьба ядру 1 - режим ATARI. Прошлый плеер мог ещё не отпустить режим - его просьба выполнится раньше
 static bool at_start(svc_t *s, svc_job_t *j) {
     if (j->cmd != ATARI_PLAY) { svc_log(s, "player: not playing"); return false; }
-    if (mode == MODE_ATARI) { svc_log(s, "player: previous one still stopping"); return false; }
     at_song = j->par[0] ? j->par[0] : 1;
-    if (!at_open(s, j)) { svc_log(s, "player: not SNDH, no such song or Atari machine crashed"); return false; }
+    uint32_t t0 = time_us_32();
+    bool opened = at_open(s, j);
     char t[160];
+    snprintf(t, sizeof t, "player: open %lu ms", (unsigned long)((time_us_32() - t0) / 1000));   // замер: долго ли
+    svc_log(s, t);
+    if (!opened) { svc_log(s, "player: not SNDH, no such song or Atari machine crashed"); return false; }
     snprintf(t, sizeof t, "%s - %s, song %d of %d", at_info.author, at_info.name, at_song, at_info.subsongs);
     svc_log(s, t);
     if (!j->out) j->out = svc_slot_new(s, AT_STAT, ATARI_ST_SIZE);
-    at_put = at_get = 0, at_late = 0;                           // ядро 1 не в ATARI - кольцо не трогает
-    at_hold = at_held = false, at_run = false, at_sync = true;
+    at_hold = true;                                             // ядро 1 стоит, пока не наш режим (at_step)
+    at_put = at_get = 0, at_late = 0;
+    at_run = false, at_sync = true;
+    memset(at_reg, 0, sizeof at_reg), at_reg[7] = 0x3F;         // после стоянки ядро 1 вернёт это - тишина
     at_frame = 0, at_seek = UINT32_MAX, at_pause = false, at_sset = 0;
     at_load = at_peak = 0;
-    at_on = true, at_phase = AT_WAIT, at_since = time_us_32();
+    at_on = true, at_phase = AT_WAIT;
     card_atari(true);
     return true;
 }
 
 static int at_step(svc_t *s, svc_job_t *j) {
-    if (at_phase == AT_WAIT) {                                  // ядро 1 ставит режим (только из AY)
-        if (mode == MODE_ATARI) {
-            phim_set(AT_PHIM_HZ);
-            at_phase = AT_PLAY;
-        } else if (time_us_32() - at_since > AT_START_MS * 1000u) {
-            svc_log(s, "player: card busy (UPDATE / TEST)");
-            return -1;
-        }
+    if (at_phase == AT_WAIT) {                                  // ядро 1 выполнило просьбы (стоп прошлого, наш PLAY)
+        if (card_atari_pending()) return 0;
+        if (mode != MODE_ATARI) { svc_log(s, "player: card busy (UPDATE / TEST)"); return -1; }
+        phim_set(AT_PHIM_HZ);
+        at_phase = AT_PLAY;
+        at_hold = at_pause;                                     // играть (пауза могла прийти, пока ждали)
         return 0;
     }
     if (mode != MODE_ATARI) { svc_log(s, "player: stopped by MODE AY / reset"); return 1; }
@@ -228,7 +235,7 @@ static uint8_t at_cmd(svc_t *s, svc_job_t *j, uint8_t cmd, const uint8_t *par) {
         return 0;
     case ATARI_PAUSE:
         at_pause = par[0] != 0;
-        if (at_seek == UINT32_MAX) at_hold = at_pause;          // в перемотке - когда кончится
+        if (at_phase == AT_PLAY && at_seek == UINT32_MAX) at_hold = at_pause;   // ждём режим / перемотка - потом
         at_state(s, j);
         return 0;
     case ATARI_SEEK:

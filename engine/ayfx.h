@@ -41,7 +41,6 @@ typedef struct {
     uint8_t sel;                // выбранный регистр (запись в #FFFD)
     uint8_t on, key;            // открыт ли поток; сколько букв ключа "TRIN" пришло
     uint8_t pkt[AYFX_PKT], pos, need;   // кадр пакета
-    uint8_t info;               // ответ INFO: какой байт следующий (0 - нет)
     // служебный пакет (код >= #80, doc/trinity-api.md): [код][длина 2][данные] - целиком в sbuf, дальше ждёт
     // ядро 0 (sbusy); пришёл новый, пока sbusy, или длиннее sbuf - принимается мимо (slost)
     uint8_t  sbuf[AYFX_SVC_MAX];
@@ -49,16 +48,25 @@ typedef struct {
     uint8_t  sdrop;             // этот пакет - мимо
     volatile uint8_t sbusy;     // пакет в sbuf, ядро 0 ещё не разобрало
     uint32_t slost;             // служебных пакетов потеряно
-    // ответ ядра 0 - чтением #C1: [длина 2][данные] (ставит ядро 0, потом rready = 1)
+    // ответ - чтением #C1: служебный [длина 2][данные] или INFO "TRIN" + версия. Состояние шины меняет только шина:
+    // ядро 0 кладёт ответ в ящик (pend), шина забирает его (ayfx_bus_take, sbusy = 0, rready)
     const uint8_t *rbuf;
-    volatile uint16_t rlen;     // байт ответа вместе с длиной
+    uint16_t rlen;              // байт ответа (у служебного - вместе с длиной)
     uint16_t rpos;
-    volatile uint8_t rready;    // ответ лежит, его ещё не дочитали
+    uint8_t  rready;            // ответ лежит, его ещё не дочитали
+    const uint8_t *pend_r;      // ящик ядра 0: ответ, его байт; pend = 1 - лежит
+    uint16_t pend_n;
+    volatile uint8_t pend;
     volatile uint8_t status;    // байт статуса без битов 7 / 6 (ставит ядро 0, trinity-api.md п.3)
+    // метка «занята» (doc/zx-trinity.md п.14е-5): запись в #C0 - её значение; с битом 7 чтение #C0 отдаёт её, пока
+    // шина не снимет (ответ уже лежит). RP: метку ставит железо, снимает ядро - по флагу unmark
+    uint8_t  mark;
+    uint8_t  taken;             // новый ответ стал текущим (RP: отдать его в поток железа)
+    uint8_t  unmark;            // метку сняли (RP: снять и у железа - после ответа)
 } ayfx_bus_t;
 
 enum {                          // событие записи данных - для уровня «Звук»
-    AYFX_EV_NONE = 0,           // ничего (байт ключа, середина пакета, INFO, поток закрыт)
+    AYFX_EV_NONE = 0,           // ничего (байт ключа, метка, середина пакета, INFO, поток закрыт)
     AYFX_EV_REG,                // запись в регистр AY (не #C0 / #C1): регистр sel
     AYFX_EV_OPEN,               // ключ "TRIN": поток открыт
     AYFX_EV_CLOSE,              // 0 в #C0: поток закрыт; эффекты ИГРАЮТ дальше (ay-ports-map.md п.4) - звуку нечего
@@ -69,10 +77,12 @@ enum {                          // событие записи данных - д
 void ayfx_bus_reset(ayfx_bus_t *b);
 void ayfx_bus_select(ayfx_bus_t *b, uint8_t reg);             // запись в #FFFD
 int  ayfx_bus_write(ayfx_bus_t *b, uint8_t val);              // запись в #BFFD (в выбранный регистр) -> AYFX_EV_*
+void ayfx_bus_take(ayfx_bus_t *b);                            // ответ ядра 0 из ящика - в работу (если лежит)
+uint8_t ayfx_bus_status(const ayfx_bus_t *b);                 // статус без метки: биты 7 занята, 6 ответ, 0..5 карта
 bool ayfx_bus_peek(const ayfx_bus_t *b, uint8_t *val);        // ответ на чтение выбранного: false - не наш (тень AY);
-                                                              //   #C0 - статус всегда, #C1 - при открытом потоке
-void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение было - ответ (INFO / ядра 0) на следующий байт
-void ayfx_bus_reply(ayfx_bus_t *b, const uint8_t *r, uint16_t n);   // ЯДРО 0: служебный пакет разобран, ответ r
+                                                              //   #C0 - метка или статус всегда, #C1 - пока лежит ответ
+void ayfx_bus_read_done(ayfx_bus_t *b);                       // чтение было - ответ на следующий байт
+void ayfx_bus_reply(ayfx_bus_t *b, const uint8_t *r, uint16_t n);   // ЯДРО 0: служебный пакет разобран, ответ r - в ящик
                                                               //   (n байт с длиной; 0 - без ответа), sbuf свободен
 
 // ---- Звук

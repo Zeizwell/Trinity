@@ -7,6 +7,8 @@
 #define SNDH_ALIVE 1                    // метка в буфере сэмпла: живая машина без синтеза пишет туда 0
 
 uint32_t sndh_lost;
+void (*sndh_mark)(int step);
+#define MARK(n) do { if (sndh_mark) sndh_mark(n); } while (0)
 
 static AtariAudioRenderer *ar;          // машина открытого файла (nullptr - нет)
 static uint8_t   init_val[SNDH_REGS];   // записи инициализации, ещё не отданные: значение регистра
@@ -79,12 +81,14 @@ static void copy_str(char *d, const char *s, int n) {
 bool sndh_open(const void *file, uint32_t size, int subsong, sndh_info_t *info) {
     sndh_close();
     sndh_lost = 0;
+    MARK(1);
     mem_on();
     ar = AtariAudioRenderer::Create(file, size, SNDH_TICK_HZ);
     mem_off();
     if (!ar) return false;
     const AtariAudioRenderer::SongInfo &si = ar->GetSongInfo();
     if (subsong < 1 || subsong > si.subsongCount) { sndh_close(); return false; }
+    MARK(2);
     in_init = true;                                             // записи инициализации - в начало первого кадра
     hook_on(nullptr, 0);
     mem_on();                                                   // память Atari машина берёт здесь
@@ -93,12 +97,14 @@ bool sndh_open(const void *file, uint32_t size, int subsong, sndh_info_t *info) 
     hook_off();
     in_init = false;
     if (!ok) { sndh_close(); return false; }
+    MARK(3);
     if (info) {
         copy_str(info->name, si.musicName, sizeof info->name);
         copy_str(info->author, si.musicAuthor, sizeof info->author);
         info->subsongs = si.subsongCount;
         info->frames = ar->GetSubsongDurationSample(subsong) / SNDH_FRAME_TICKS;
     }
+    MARK(4);
     return true;
 }
 
