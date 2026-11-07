@@ -44,9 +44,9 @@ endif()
 target_link_libraries(rp_ay pico_stdlib pico_multicore hardware_pio hardware_dma hardware_gpio hardware_clocks hardware_vreg)
 pico_enable_stdio_usb(rp_ay 1)      # консоль - по USB (COM-порт)
 pico_enable_stdio_uart(rp_ay 0)
-# Консоль никогда не ждёт: порт открыт, но его не читают (DTR висит) - печать выбрасывается, а не держит ядро 0
-# по 0.5 с на printf (так вставали разбор пакетов и USB, 2026-11-07)
-target_compile_definitions(rp_ay PRIVATE PICO_STDIO_USB_STDOUT_TIMEOUT_US=0)
+# Консоль ждёт место в буфере USB (256 байт) не дольше 5 мс на printf (было 0.5 с): порт открыт, но не читают (DTR висит) -
+# печать не держит ядро 0; долгий отчёт - следующие пропускаются (main.c log_mute). 0 - отчёт рвался на куски
+target_compile_definitions(rp_ay PRIVATE PICO_STDIO_USB_STDOUT_TIMEOUT_US=5000)
 pico_set_binary_type(rp_ay copy_to_ram)   # вся программа - в ОЗУ: без промахов кэша флеша (разбор шины успевает)
 target_link_options(rp_ay PRIVATE -Wl,--print-memory-usage)
 pico_add_extra_outputs(rp_ay)       # rp_ay.uf2 - кинуть на диск RP (BOOT + USB)

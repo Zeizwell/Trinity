@@ -12,7 +12,8 @@ uint32_t sim_phim_hz;
 const pio_program_t chip_wr_program, ws2812_program, bus_wr_program;
 
 static uint64_t cyc;                    // модельное время, такты RP
-uint64_t sim_now_ns(void) { return cyc * 1000000000ull / HZ; }
+// нс без переполнения: cyc * 10^9 в 64 битах кончается через 123 с модели (эмулятор живёт дольше теста)
+uint64_t sim_now_ns(void) { return cyc / HZ * 1000000000ull + cyc % HZ * 1000000000ull / HZ; }
 
 // ---- ножки: у каждой - кому отдана (SIO / PIO), направление и уровень SIO
 static uint64_t sio_out, sio_oe, is_pio;

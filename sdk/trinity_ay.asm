@@ -11,9 +11,11 @@
 ;     Протокол: FT2 doc/ay-ports-map.md п.5а, строка FX - FT2/doc/fx-row.md.
 ;
 ; EN: Usage: select the chip (#FF / #FE to #FFFD for TurboSound), C = #FD, then call the routines.
-;     Every routine keeps C = #FD and the selected chip; B and A are spoiled.
+;     Black box: a routine gives only its documented outputs. Everything else - ALL registers, flags, the
+;     selected AY register - is spoiled. Before EVERY call: chip and C = #FD again; keep your own values in push / pop.
 ; RU: Порядок: выбрать чип (#FF / #FE в #FFFD для TurboSound), C = #FD, дальше звать процедуры.
-;     Все процедуры оставляют C = #FD и выбранный чип; портят B и A.
+;     Чёрный ящик: процедура отдаёт только описанные выходы. Всё остальное - ВСЕ регистры, флаги, выбранный
+;     регистр AY - испорчено. Перед КАЖДЫМ вызовом - чип и C = #FD заново; своё держать push / pop.
 ; =========================================================================
 
 ; --- Ports / Порты
@@ -144,9 +146,9 @@ Ayfx_InfoSend
         jp Ayfx_CloseMark
 
 ;-------- EN: Read the INFO answer (after Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): "TRIN"? -> A = 1, NZ - card;
-;             A = 0, Z - not ours. Reads the answer whole. Keeps HL, DE
+;             A = 0, Z - not ours. Reads the answer whole
 ;         RU: Прочитать ответ INFO (после Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): "TRIN"? -> A = 1, NZ - карта;
-;             A = 0, Z - не наша. Читает ответ целиком. HL, DE сохраняет
+;             A = 0, Z - не наша. Читает ответ целиком
 Ayfx_Detect
         push hl
         push de
@@ -171,9 +173,9 @@ Ayfx_Detect
 Ayfx_Sign       db "TRIN"
 
 ;-------- EN: Read the INFO answer into HL (after Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): AYFX_INFO_N bytes -
-;             "TRIN", protocol version. HL - after the last byte. Spoils A, B, D
+;             "TRIN", protocol version. HL - after the last byte
 ;         RU: Прочитать ответ INFO в HL (после Ayfx_InfoSend, Ayfx_SvcState = AYFX_SVC_REPLY): AYFX_INFO_N байт -
-;             "TRIN", версия протокола. HL - за последним байтом. Портит A, B, D
+;             "TRIN", версия протокола. HL - за последним байтом
 Ayfx_Info
         ld b,high AYFX_PORT_REG     ; EN: #C1 afresh, read #FFFD   RU: #C1 заново, чтение #FFFD
         ld a,AYFX_STREAM

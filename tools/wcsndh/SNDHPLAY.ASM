@@ -165,12 +165,17 @@ Size_Check
 
 ; Карта на чипе 0: INFO, ждать ответ, "TRIN"? -> CF = 1, HL - текст
 Card_Find
-        call Chip0
+        di
+        call Card
         call Ayfx_InfoSend
+        ei
         call Wait
         cp AYFX_SVC_REPLY
         jr nz,.no                       ; карты нет / Esc / ответа нет
+        di
+        call Card
         call Ayfx_Detect
+        ei
         ret nz
 .no     ld hl,TxNoCard
         scf
@@ -243,7 +248,6 @@ Load    ld hl,(Size)                    ; размер - в пакет SLOT_NEW
         ld (hl),e
         inc hl
         ld (hl),d
-        call Chip0
         ld hl,(N)                       ; пакет: 8 + n байт
         ld de,8
         add hl,de
@@ -317,19 +321,22 @@ Run     ei
         dec (hl)
         jr nz,Run
         ld (hl),POLL_FRAMES
-        call Poll
-        ld a,(JState)
+        call Poll                       ; CF = 1: ответа нет - ничего не решаем, опрос ещё раз
+        jr c,Run
+        ld a,(JState)                   ; играет - дальше
         cp SVC_JOB_RUN
         jr nz,.end
+        call Seek_Done
         call Track_End
         ld a,RET_NEXT
         jp c,Quit
         call Draw
         jr Run
-.end    cp SVC_JOB_ERR                  ; ошибка - первая строка лога карты
-        ld a,RET_OK
-        jp nz,Quit                      ; готово: остановили не мы (MODE AY, сброс)
-        call Log_Line
+.end    call Log_Line                   ; сама карта задание не кончает (конец - только по длине, STOP наш):
+        ld a,(hl)                       ;   ERR / DONE / NONE - сбой, не конец трека. Что сказала карта
+        or a
+        jp nz,Fail
+        ld hl,TxEarly                   ; лога нет (карту сбросили) - так и пишем
         jp Fail
 
 ; Конец песни: длина известна и позиция дошла -> CF = 1
@@ -417,11 +424,30 @@ Seek    ld de,(St+ATARI_ST_FRAME)
         ex de,hl
         ld a,ATARI_SEEK
         call Cmd
+        ld a,1
+        ld (Seeking),a
         ld hl,TxSeek
         call State_Set
         ld a,1                          ; опрос - сразу
         ld (Tick),a
         jr Key_Done
+
+; Перемотка кончилась (в STAT снят бит 1) - надпись снова Playing / Paused
+Seek_Done
+        ld a,(Seeking)
+        or a
+        ret z
+        ld a,(St+ATARI_ST_FLAGS)
+        bit 1,a
+        ret nz                          ; карта ещё перематывает
+        xor a
+        ld (Seeking),a
+        ld hl,TxPlay
+        ld a,(Paused)
+        or a
+        jr z,$+5
+        ld hl,TxPause
+        jp State_Set
 
 ; Песня Song + A (1..песен): STOP, PLAY
 Song_Step
@@ -454,9 +480,22 @@ Quit    push af
         call WLD
         ld a,(SlotIn)                   ; файла на карте нет - и плеера нет (карты может не быть)
         or a
+        jr z,.win
         ld a,ATARI_STOP
-        call nz,Cmd
-        ld ix,Win
+        call Cmd
+        di                              ; и MODE AY: карта - по умолчанию (плеер стоп, чип - тишина),
+        call Card                       ;   даже если STOP потерялся
+        call Ayfx_ModeAy
+        ei
+        call Wait
+        cp AYFX_SVC_REPLY
+        jr nz,.win
+        ld hl,Buf                       ; ответ - дочитать
+        di
+        call Card
+        call Ayfx_SvcReply
+        ei
+.win    ld ix,Win
         ld a,API_RRESB
         call WLD
         ld a,(SlotIn)
@@ -468,42 +507,56 @@ Quit    push af
 
 ; ================= карта (только через SDK) =================
 
-; Чип 0 TurboSound выбран, C = #FD
-Chip0   ld bc,AYFX_PORT_REG
+; SDK - API: что у него внутри, не знаем, считаем - портит все регистры. Поэтому перед КАЖДЫМ вызовом SDK - Card
+; (порт и чип); что нужно после вызова - push до него, pop после. Прерывания SDK не трогает - отвечаем мы:
+; Card .. вызов SDK - под DI, чтобы прерывание WC не перевыбрало чип / регистр AY посередине
+
+; Порт карты и чип 0 TurboSound: BC = #FFFD, в #FFFD - #FF. Портит A, BC
+Card    ld bc,AYFX_PORT_REG
         ld a,#FF
         out (c),a
         ret
 
-; Служебный пакет по шаблону HL (длина, байты): копия в Buf, отправить -> Send. Чип - после копии: ldir портит C (порт)
+; Служебный пакет по шаблону HL (длина, байты): копия в Buf, отправить -> Send
 Req     ld c,(hl)
         ld b,0
         inc hl
         push bc
         ld de,Buf
         ldir
-        call Chip0                      ; C = #FD - порт карты
         pop de
         ld hl,Buf
 
 ; Пакет HL (DE байт): отправить, ждать карту (Esc - бросить) -> HL - ответ (сразу за пакетом), DE - его байт,
 ; A - первый байт; ответа нет - A = 0, DE = 0; карты нет / Esc - A = #FF, DE = 0
-Send    call Ayfx_SvcSend               ; HL - за пакетом: туда ответ
+Send    push hl                         ; пакет и его байт - после SDK: где ответ
+        push de
+        di
+        call Card
+        call Ayfx_SvcSend
+        ei
         call Wait
+        pop de
+        pop hl
+        add hl,de                       ; HL - ответ (сразу за пакетом)
         ld de,0
         cp AYFX_SVC_REPLY
         ret nz                          ; 0 - ответа нет, #FF - карты нет / Esc
-        jp Ayfx_SvcReply
+        di
+        call Card
+        call Ayfx_SvcReply              ; -> HL - ответ, DE - его байт, A - первый
+        ei
+        ret
 
-; Ждать, пока карта занята (Esc - бросить) -> A: AYFX_SVC_DONE / AYFX_SVC_REPLY, #FF - карты нет / Esc. HL, C - как были
-Wait    call Ayfx_SvcState
+; Ждать, пока карта занята (Esc - бросить) -> A: AYFX_SVC_DONE / AYFX_SVC_REPLY, #FF - карты нет / Esc
+Wait    di
+        call Card
+        call Ayfx_SvcState
+        ei
         cp AYFX_SVC_BUSY
         ret nz
-        push hl
-        push bc                         ; C = #FD - порт карты
         ld a,API_ESC                    ; карта занята: можно уйти
         call WLD
-        pop bc
-        pop hl
         jr z,Wait
         ld a,#FF
         ret
@@ -527,9 +580,18 @@ Slot_Free
         ld hl,TFree
         jp Req
 
-; Опрос: состояние задания, прогресс, слот STAT -> JState, JProg, St
+; Опрос: состояние задания, прогресс, слот STAT -> JState, JProg, St. Ответа на статус нет (сбой, Esc) -
+; CF = 1, ничего не трогаем
 Poll    ld hl,TJob
         call Req
+        ld b,a
+        ld a,d                          ; ответ (4 байта: состояние, прогресс, лог) - не меньше 2
+        or a
+        jr nz,.no
+        ld a,e
+        cp 2
+        jr c,.no
+        ld a,b
         ld (JState),a
         inc hl
         ld a,(hl)
@@ -540,13 +602,16 @@ Poll    ld hl,TJob
         call Req
         ld a,d                          ; ответ не той длины - St не трогать
         or a
-        ret nz
+        jr nz,.ok
         ld a,e
         cp ATARI_ST_SIZE
-        ret nz
+        jr nz,.ok
         ld de,St
         ld bc,ATARI_ST_SIZE
         ldir
+.ok     or a                            ; CF = 0: состояние задания есть
+        ret
+.no     scf
         ret
 
 ; Первая строка лога задания (что сказала карта) -> HL - текст (0 в конце)
@@ -813,6 +878,7 @@ TxStop  db "No answer from the card / Esc",0
 TxRoom  db "No room on the card",0
 TxRead  db "Disk read error",0
 TxRefused db "The card refused to play",0
+TxEarly db "The card ended the song early",0
 
 ; Шаблоны пакетов: длина, байты (поля правятся перед Req)
 TSlotNew db 12, AYFX_P_SLOT_NEW,9,0, "SNDH", 0,0,0,0, 0
@@ -833,6 +899,7 @@ SlotIn  db 0                            ; слоты карты: файл, со�
 SlotSt  db 0
 Song    db 1
 Paused  db 0
+Seeking db 0                            ; 1 - ждём конца перемотки (надпись Seeking)
 Tick    db 1                            ; кадров до опроса
 JState  db 0                            ; задание: состояние, прогресс
 JProg   db 0

@@ -426,7 +426,7 @@ int main(void) {
         sleep_ms(3000);
     }
 
-    uint32_t last_wr = 0, last_cw = 0, t_log = 0;
+    uint32_t last_wr = 0, last_cw = 0, t_log = 0, log_mute = 0;   // log_mute - сколько отчётов ещё пропустить
 #ifndef SIM_HOST
     watchdog_enable(16000, true);                                     // ядро 0 молчит 16 с (предел сторожа) - перезагрузка (метки - wd.h)
 #endif
@@ -478,8 +478,9 @@ int main(void) {
         else if (wr != last_wr) rgb(0, 0, k);                             // синий - приходят, в чип не уходят
         else rgb(k / 2, k / 2, k / 2);                                    // белый (слабее цветов) - тишина
         last_wr = wr, last_cw = cw;
-        if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms) {
+        if (cfg.log_period_ms && (t_log += 100) >= cfg.log_period_ms && (!log_mute || !--log_mute)) {
             t_log = 0;
+            uint32_t log_t0 = time_us_32();
             if (wd_was) printf("  WATCHDOG reboot: core 0 at %lu (svc packet %02lX), core 1 at %lu, loops %lu\n",
                                (unsigned long)wd_place[0], (unsigned long)wd_place[1], (unsigned long)wd_place[2], (unsigned long)wd_place[3]);
             if (!boot_result) printf("rp-ay v%02d  chip test OK (%u)\n", FW_VERSION, boot_res.checks);
@@ -528,6 +529,8 @@ int main(void) {
                    (unsigned long)chip_stat.resets, card_sel(), (unsigned long)chip_stat.reads,
                    chip_stat.rd_sel[0], chip_stat.rd_ans[0], chip_stat.rd_sel[1], chip_stat.rd_ans[1],
                    chip_stat.rd_sel[2], chip_stat.rd_ans[2], chip_stat.rd_sel[3], chip_stat.rd_ans[3]);
+            if (time_us_32() - log_t0 > 300000) log_mute = 10;             // печать шла > 0.3 с: порт открыт, но не читают -
+                                                                    //   10 отчётов пропустить (ядро 0 не держать)
         }
     }
 }

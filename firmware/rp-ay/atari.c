@@ -253,6 +253,8 @@ const svc_def_t atari_svc = { ATARI_SVC, 1, "player", AT_SNDH, AT_STAT, at_start
 void atari_poll(svc_t *s) {
     if (!at_on || (s->job.state == SVC_JOB_RUN && s->job.svc == ATARI_SVC)) return;
     at_on = false;
+    printf("player end: job state %d, frame %lu of %lu, late %lu, mode %d\n", s->job.state, (unsigned long)at_pos(),   // консоль:
+           (unsigned long)at_info.frames, (unsigned long)at_late, (int)mode);                                      //   почему кончилось
     at_hold = true;                                             // ядро 1 - тишина, пока режим не сменится
     card_atari(false);                                          // ядро 1: был ATARI - карту по умолчанию
     phim_set(0);
