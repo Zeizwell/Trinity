@@ -21,15 +21,20 @@ For ZX-BUS / NemoBus and ZX Evolution.
 - Output: 32-bit I2S to a PCM5102A DAC. Paula and HiFi 48 kHz, GS 37.5 kHz like the original (each sample sent twice, DAC at 75 kHz)
 - Sound takes 10-17 % of one CPU core
 - Z80 API: find the card, settings, presets, CPU load, filter curves, versions (tested without a Spectrum)
+- Card protocol and Z80 SDK: data slots, jobs, status byte, service log
+- CPLD firmware, first version: builds (95 of 128 macrocells), testbench passes; not yet on hardware
+- Card emulator: the card firmware runs inside the Unreal Speccy emulator, card programs are tested there before the hardware
 
-### Works on a test setup
-- AY part: bus, registers and timer effects
+### Works on a test setup (ZX Evolution + RP2350 board)
+- AY part: bus, registers and timer effects; the FT2 tracker finds the card and uses the effects
+- Atari SNDH player on the card: the Atari machine runs on the card, the Spectrum only sends the file. Wild Commander plugin: play, pause, seek, next track
 - SD card with exFAT: tested on PC only
 
 ### To do
-- Build the first boards and test on a real Spectrum
-- CPLD firmware, firmware updates from SD, driver program for the Spectrum
-- OPL4 sound, SNDH player, NeoGS, XM
+- Build the first boards and test on a real Spectrum, CPLD on hardware
+- Firmware updates from SD, driver program for the Spectrum
+- OPL4 sound, NeoGS, MOD / XM / IT / S3M player
+- Trinity player program: all card modes, channel view, equalizers
 
 ---
 
@@ -56,12 +61,17 @@ For ZX-BUS / NemoBus and ZX Evolution.
 - Выход: I2S 32 бита на ЦАП PCM5102A. Paula и HiFi 48 кГц, GS 37.5 кГц как в оригинале (каждый отсчёт дважды, ЦАП на 75 кГц)
 - Звук занимает 10-17 % одного ядра процессора
 - API для Z80: поиск карты, настройки, пресеты, нагрузка, кривые фильтров, версии (проверено без Спектрума)
+- Протокол карты и SDK для Z80: слоты данных, задания, байт статуса, лог сервиса
+- Прошивка CPLD, первая версия: собирается (95 из 128 макроячеек), тест на модели проходит; на железе ещё нет
+- Эмулятор карты: прошивка карты работает внутри эмулятора Unreal Speccy, программы для карты проверяются там до железа
 
-### Работает на макете
-- Часть AY: шина, регистры и таймерные эффекты
+### Работает на макете (ZX Evolution + плата RP2350)
+- Часть AY: шина, регистры и таймерные эффекты; трекер FT2 находит карту и пользуется эффектами
+- Плеер Atari SNDH на карте: машина Atari работает на карте, Спектрум только отдаёт файл. Плагин для Wild Commander: игра, пауза, перемотка, следующий трек
 - SD-карта с exFAT: проверена только на ПК
 
 ### Дальше
-- Собрать первые платы и проверить на настоящем Спектруме
-- Прошивка CPLD, обновление прошивок с SD, программа-драйвер для Спектрума
-- Звук OPL4, SNDH-плеер, NeoGS, XM
+- Собрать первые платы и проверить на настоящем Спектруме, CPLD на железе
+- Обновление прошивок с SD, программа-драйвер для Спектрума
+- Звук OPL4, NeoGS, плеер MOD / XM / IT / S3M
+- Программа-плеер Trinity: все режимы карты, вид каналов, эквалайзеры
