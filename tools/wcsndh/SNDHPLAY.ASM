@@ -388,7 +388,7 @@ Keys    ld a,API_ESC
         ld a,API_UP
         call WLD
         ld a,-1
-        jr nz,Song_Step
+        jp nz,Song_Step
         ld a,API_DOWN
         call WLD
         ld a,1
@@ -414,12 +414,18 @@ Pause   ld a,(Paused)
         call State_Set
         jr Key_Done
 
-; Перемотка: позиция + HL кадров (не меньше 0; позиция - младшие 16 бит)
+; Перемотка: позиция + HL кадров (не меньше 0; позиция - младшие 16 бит). Карта ещё мотает - от цели
+; прошлой перемотки, а не от позиции карты (иначе быстрые нажатия теряются)
 Seek    ld de,(St+ATARI_ST_FRAME)
-        add hl,de
+        ld a,(Seeking)
+        or a
+        jr z,.add
+        ld de,(SeekTo)
+.add    add hl,de
         bit 7,h                         ; ушло ниже 0 (позиция до 32767 кадров - 10 мин)
         jr z,$+5
         ld hl,0
+        ld (SeekTo),hl
         ld (St+ATARI_ST_FRAME),hl
         ex de,hl
         ld a,ATARI_SEEK
@@ -900,6 +906,7 @@ SlotSt  db 0
 Song    db 1
 Paused  db 0
 Seeking db 0                            ; 1 - ждём конца перемотки (надпись Seeking)
+SeekTo  dw 0                            ; цель последней перемотки, кадр
 Tick    db 1                            ; кадров до опроса
 JState  db 0                            ; задание: состояние, прогресс
 JProg   db 0
