@@ -16,6 +16,10 @@ LINE_W          equ WIN_W-2             ;   строка текста
 BAR_W           equ 36                  ;   полоса прогресса
 POLL_FRAMES     equ 10                  ; опрос карты - раз в столько кадров
 SEEK_FRAMES     equ 500                 ; перемотка - 10 с (кадр 20 мс)
+END_FRAMES      equ 100                 ; итог конца песни на экране - 2 с
+CLOCK_TOL       equ 150
+REP_DELAY       equ 25                  ; перемотка с удержанием: первый повтор - через 0.5 с,
+REP_RATE        equ 5                   ;   дальше - каждые 0.1 с                 ; карта сказала "конец" - наш таймер может отставать на столько (3 с)
 
 ; --- API WC (номера оригинала v1.10)
 API_PRWOW       equ 1
@@ -93,6 +97,9 @@ Main    xor a                           ; WC держит плагин в пам
         ld (SlotSt),a
         ld (Paused),a
         ld (JProg),a
+        ld (Seeking),a                  ; перемотка, автоповтор <- ->
+        ld (SeekSend),a
+        ld (Rep),a
         ld hl,St                        ; песни, время, длина - пока карта не скажет
         ld b,ATARI_ST_SIZE
 .z      ld (hl),a
@@ -293,6 +300,14 @@ Load    ld hl,(Size)                    ; размер - в пакет SLOT_NEW
 ; PLAY песни Song -> CF = 1, HL - текст
 Play    xor a
         ld (Paused),a
+        ld hl,Clock                     ; свой таймер - с нуля
+        ld (hl),a
+        inc hl
+        ld (hl),a
+        inc hl
+        ld (hl),a
+        inc hl
+        ld (hl),a
         ld (St+ATARI_ST_FRAME),a        ; позиция - с начала, пока карта не ответила
         ld (St+ATARI_ST_FRAME+1),a
         ld a,(Song)
@@ -315,8 +330,12 @@ Play    xor a
 
 Run     ei
         halt
+        call Clock_Tick                 ; свой таймер - кадр
         call Keys                       ; клавиша кончила игру - A = выход
         jp c,Quit
+        ld a,(SeekSend)                 ; держат <- ->: карту не опрашиваем - на экране цель
+        or a
+        jr nz,Run
         ld hl,Tick
         dec (hl)
         jr nz,Run
@@ -328,9 +347,13 @@ Run     ei
         jr nz,.end
         call Seek_Done
         call Track_End
-        ld a,RET_NEXT
-        jp c,Quit
-        call Draw
+        jr nc,.draw
+        call Clock_End                  ; карта: конец. Наш таймер тоже дошёл - итог на экран, следующий файл
+        jp c,Song_Done
+        call End_Text                   ; не дошёл - не верим: что пришло с карты и наше время - в строку состояния
+        call State_Set                  ;   (видно, что был битый статус), играем дальше: следующий опрос - целый
+        jr Run
+.draw   call Draw
         jr Run
 .end    call Log_Line                   ; сама карта задание не кончает (конец - только по длине, STOP наш):
         ld a,(hl)                       ;   ERR / DONE / NONE - сбой, не конец трека. Что сказала карта
@@ -361,6 +384,83 @@ Track_End
         ccf
         ret
 
+; Конец песни: позиция карты, наш таймер, длина - в строку состояния, END_FRAMES подержать, следующий файл
+Song_Done
+        ld hl,(St+ATARI_ST_FRAME)
+        ld de,(St+ATARI_ST_FRAME+2)
+        ld ix,TxDone+TX_DONE_CARD
+        call Time
+        ld hl,(Clock)
+        ld de,(Clock+2)
+        ld ix,TxDone+TX_DONE_OURS
+        call Time
+        ld hl,(St+ATARI_ST_FRAMES)
+        ld de,(St+ATARI_ST_FRAMES+2)
+        ld ix,TxDone+TX_DONE_LEN
+        call Time
+        ld hl,TxDone
+        call State_Set
+        call Draw
+        ld b,END_FRAMES
+.w      ei
+        halt
+        djnz .w
+        ld a,RET_NEXT
+        jp Quit
+
+; Свой таймер: кадр (не на паузе)
+Clock_Tick
+        ld a,(Paused)
+        or a
+        ret nz
+        ld hl,Clock
+        inc (hl)
+        ret nz
+        inc hl
+        inc (hl)
+        ret nz
+        inc hl
+        inc (hl)
+        ret nz
+        inc hl
+        inc (hl)
+        ret
+
+; Наш таймер дошёл до длины (с запасом CLOCK_TOL) -> CF = 1. Длина - St+ATARI_ST_FRAMES
+Clock_End
+        ld hl,(St+ATARI_ST_FRAMES)      ; длина - таймер: заём - таймер уже за длиной
+        ld de,(Clock)
+        or a
+        sbc hl,de
+        ex de,hl                        ; DE - младшие 16 бит остатка
+        ld hl,(St+ATARI_ST_FRAMES+2)
+        ld bc,(Clock+2)
+        sbc hl,bc
+        ret c                           ; таймер за длиной - конец
+        ld a,h                          ; остаток больше 65535 - нет
+        or l
+        ret nz
+        ld hl,CLOCK_TOL                 ; остаток до CLOCK_TOL - конец (CF = 1 при DE < CLOCK_TOL+1)
+        or a
+        sbc hl,de
+        ccf
+        ret
+
+; Текст "карта сказала конец раньше нас": позиция / длина с карты (hex), наше время -> HL
+End_Text
+        ld hl,St+ATARI_ST_FRAME
+        ld de,TxEnd+TX_END_POS
+        call Hex32
+        ld hl,St+ATARI_ST_FRAMES
+        ld de,TxEnd+TX_END_POS+9
+        call Hex32
+        ld hl,(Clock)
+        ld de,(Clock+2)
+        ld ix,TxEnd+TX_END_OURS
+        call Time
+        ld hl,TxEnd
+        ret
+
 ; Клавиши -> CF = 1, A - выход в WC
 Keys    ld a,API_ESC
         call WLD
@@ -380,11 +480,16 @@ Keys    ld a,API_ESC
         ld a,API_LEFT
         call WLD
         ld hl,-SEEK_FRAMES
-        jr nz,Seek
+        jr nz,Seek_Key
         ld a,API_RIGHT
         call WLD
         ld hl,SEEK_FRAMES
-        jr nz,Seek
+        jr nz,Seek_Key
+        xor a                           ; <- -> отпущены - автоповтор сначала, цель - карте
+        ld (Rep),a
+        ld a,(SeekSend)
+        or a
+        call nz,Seek_Send
         ld a,API_UP
         call WLD
         ld a,-1
@@ -392,7 +497,7 @@ Keys    ld a,API_ESC
         ld a,API_DOWN
         call WLD
         ld a,1
-        jr nz,Song_Step
+        jp nz,Song_Step
         or a
         ret
 .quit   scf
@@ -412,7 +517,21 @@ Pause   ld a,(Paused)
         jr z,$+5
         ld hl,TxPause
         call State_Set
-        jr Key_Done
+        jp Key_Done
+
+; <- / -> держат: первое нажатие - сразу, дальше - через REP_DELAY кадров и каждые REP_RATE. HL - шаг.
+; Отпускания не ждём: свой таймер идёт. CF = 0
+Seek_Key
+        ld a,(Rep)
+        or a
+        ld a,REP_DELAY
+        jr z,.go                        ; первое нажатие
+        ld a,(Rep)
+        dec a
+        ld (Rep),a
+        ret nz                          ; ещё рано (CF = 0 после or a)
+        ld a,REP_RATE
+.go     ld (Rep),a
 
 ; Перемотка: позиция + HL кадров (не меньше 0; позиция - младшие 16 бит). Карта ещё мотает - от цели
 ; прошлой перемотки, а не от позиции карты (иначе быстрые нажатия теряются)
@@ -425,18 +544,51 @@ Seek    ld de,(St+ATARI_ST_FRAME)
         bit 7,h                         ; ушло ниже 0 (позиция до 32767 кадров - 10 мин)
         jr z,$+5
         ld hl,0
+        call Seek_Clip                  ; не дальше длины
         ld (SeekTo),hl
         ld (St+ATARI_ST_FRAME),hl
-        ex de,hl
-        ld a,ATARI_SEEK
-        call Cmd
-        ld a,1
+        ld (Clock),hl                   ; свой таймер - туда же
+        push hl
+        ld hl,0
+        ld (Clock+2),hl
+        pop hl
+        ld a,1                          ; карте - когда отпустят (Seek_Send): держат - только цель на экране
         ld (Seeking),a
+        ld (SeekSend),a
         ld hl,TxSeek
         call State_Set
+        call Draw
+        or a
+        ret
+
+; <- -> отпустили: цель перемотки - карте одной командой (назад карта считает песню с начала - не на каждый повтор)
+Seek_Send
+        xor a
+        ld (SeekSend),a
+        ld de,(SeekTo)
+        ld a,ATARI_SEEK
+        call Cmd
         ld a,1                          ; опрос - сразу
         ld (Tick),a
-        jr Key_Done
+        ret
+
+; Цель перемотки HL - не дальше длины песни (длина известна и до 65535 кадров). Портит A, DE
+Seek_Clip
+        ld de,(St+ATARI_ST_FRAMES+2)
+        ld a,d
+        or e
+        ret nz                          ; длина больше 65535 кадров - цель (до 32767) всегда меньше
+        ld de,(St+ATARI_ST_FRAMES)
+        ld a,d
+        or e
+        ret z                           ; длины нет - играет по кругу, мотаем куда угодно
+        push hl                         ; цель - длина: заём - цель внутри песни
+        or a
+        sbc hl,de
+        pop hl
+        ret c
+        ex de,hl                        ; не внутри - встаём на конец (длина)
+        ret
 
 ; Перемотка кончилась (в STAT снят бит 1) - надпись снова Playing / Paused
 Seek_Done
@@ -475,10 +627,21 @@ Song_Step
 ; Клавишу отпустили - дальше; CF = 0
 Key_Done
         call Draw
-        ld a,API_UNPRESS
-        call WLD
+.w      ei                              ; ждём, пока отпустят: свой таймер идёт (UNPRESS WC его бы остановил)
+        halt
+        call Clock_Tick
+        ld hl,KeyList
+.k      ld a,(hl)
         or a
-        ret
+        ret z                           ; ни одна не нажата - CF = 0
+        push hl
+        call WLD
+        pop hl
+        jr nz,.w                        ; ещё держат
+        inc hl
+        jr .k
+
+KeyList db API_ESC,API_PGDN,API_PGUP,API_SPACE,API_LEFT,API_RIGHT,API_UP,API_DOWN,0
 
 ; Выход: STOP, окно убрать, слоты освободить. A - выход в WC
 Quit    push af
@@ -834,6 +997,34 @@ Mul     ld b,h
         jr nz,.l
         ret
 
+; 4 байта (HL, младший первым) -> 8 знаков hex в DE.., старший первым
+Hex32   inc hl
+        inc hl
+        inc hl
+        ld b,4
+.l      ld a,(hl)
+        call Hex8
+        dec hl
+        djnz .l
+        ret
+
+; Байт A -> 2 знака hex в DE..
+Hex8    push af
+        rrca
+        rrca
+        rrca
+        rrca
+        call .n
+        pop af
+.n      and 15
+        add a,'0'
+        cp '9'+1
+        jr c,$+4
+        add a,7
+        ld (de),a
+        inc de
+        ret
+
 ; Число HL справа налево: DE - последняя цифра, B - знаков; слева пробелы (DecS) / нули (DecZ)
 DecZ    ld a,'0'
         jr Dec
@@ -885,6 +1076,13 @@ TxRoom  db "No room on the card",0
 TxRead  db "Disk read error",0
 TxRefused db "The card refused to play",0
 TxEarly db "The card ended the song early",0
+TxEnd   db "Card end ________/________ ours __:__",0
+TxDone  db "End: card __:__ ours __:__ len __:__",0
+TX_DONE_CARD equ 10
+TX_DONE_OURS equ 21
+TX_DONE_LEN  equ 31
+TX_END_POS  equ 9
+TX_END_OURS equ 32
 
 ; Шаблоны пакетов: длина, байты (поля правятся перед Req)
 TSlotNew db 12, AYFX_P_SLOT_NEW,9,0, "SNDH", 0,0,0,0, 0
@@ -905,8 +1103,11 @@ SlotIn  db 0                            ; слоты карты: файл, со�
 SlotSt  db 0
 Song    db 1
 Paused  db 0
+SeekSend db 0                           ; 1 - цель перемотки ещё не отправлена (держат <- ->)
+Rep     db 0                            ; автоповтор <- ->: кадров до повтора (0 - не держат)
 Seeking db 0                            ; 1 - ждём конца перемотки (надпись Seeking)
 SeekTo  dw 0                            ; цель последней перемотки, кадр
+Clock   dd 0                            ; свой таймер: кадров сыграно (по прерываниям, без пауз; перемотка - на цель)
 Tick    db 1                            ; кадров до опроса
 JState  db 0                            ; задание: состояние, прогресс
 JProg   db 0
