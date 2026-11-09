@@ -100,7 +100,8 @@ static void call(int entry) {
     }
 }
 
-enum { E_DETECT = 0, E_CLOSE = 3, E_GET = 6, E_SET = 9, E_SAVE = 12, E_PRESET = 15, E_STAT = 18, E_STAT_RES = 21, E_CURVE = 24, E_VERSION = 27 };
+enum { E_DETECT = 0, E_CLOSE = 3, E_GET = 6, E_SET = 9, E_SAVE = 12, E_PRESET = 15, E_STAT = 18, E_STAT_RES = 21, E_CURVE = 24, E_VERSION = 27,
+       E_SD_OPEN = 30, E_SD_READ = 33, E_SD_WRITE = 36, E_SD_CLOSE = 39 };
 
 #define TAG 0xC000
 #define VAL 0xC010
@@ -136,6 +137,74 @@ static void check(const char *what, int got, int want) {
 
 static int saves;
 static int save_stub(void) { saves++; return 1; }
+
+// Диск шлюза секторов в памяти: номер берём по модулю, последний запрошенный помним (проверка старшего слова)
+#define DISK_SECS 64
+static uint8_t disk_mem[DISK_SECS][512];
+static uint32_t disk_last;
+static int disk_ok = 1, disk_releases;
+static int dk_init(void) { return disk_ok; }
+static int dk_read(uint32_t s, uint8_t *b) { disk_last = s; memcpy(b, disk_mem[s % DISK_SECS], 512); return 1; }
+static int dk_write(uint32_t s, const uint8_t *b) { disk_last = s; memcpy(disk_mem[s % DISK_SECS], b, 512); return 1; }
+static void dk_release(void) { disk_releases++; }
+static const gs_disk_t mem_disk = { dk_init, dk_read, dk_write, dk_release };
+
+// Вызов чтения / записи: A секторов, HL буфер, BC:DE номер
+static void sd_call(int entry, uint8_t n, uint16_t buf, uint32_t sec) {
+    r[A] = n, r[H] = (uint8_t)(buf >> 8), r[L] = (uint8_t)buf;
+    r[B] = (uint8_t)(sec >> 24), r[C] = (uint8_t)(sec >> 16), r[D] = (uint8_t)(sec >> 8), r[E] = (uint8_t)sec;
+    call(entry);
+}
+
+static void test_sd(void) {
+    gs_gs_set_disk(&mem_disk);
+    call(E_DETECT);
+    disk_ok = 0;
+    r[A] = 0;
+    call(E_SD_OPEN);
+    check("SD нет: NC", fc, 0);
+    check("SD нет: отказ", r[A], 0xFF);
+    call(E_SD_CLOSE);
+    check("SD нет: выход C", fc, 1);
+    disk_ok = 1;
+
+    call(E_DETECT);
+    r[A] = 0;
+    call(E_SD_OPEN);
+    check("SD: открыт, C", fc, 1);
+    for (int i = 0; i < 3 * 512; i++) mem[BUF + i] = (uint8_t)(i * 5 + i / 512 + 1);
+    memset(disk_mem[(0x00020005 + 3) % DISK_SECS], 0xA5, 512);
+    sd_call(E_SD_WRITE, 3, BUF, 0x00020005);
+    check("SD запись: C", fc, 1);
+    check("SD запись: HL за данными", HL, BUF + 3 * 512);
+    check("SD запись: номер с BC", disk_last == 0x00020007, 1);
+    check("SD запись: данные на диске", !memcmp(disk_mem[0x00020005 % DISK_SECS], mem + BUF, 512)
+                                        && !memcmp(disk_mem[0x00020007 % DISK_SECS], mem + BUF + 1024, 512), 1);
+    memset(mem + VAL + 0x100, 0, 4 * 512);
+    sd_call(E_SD_READ, 4, VAL + 0x100, 0x00020005);
+    check("SD чтение: C", fc, 1);
+    check("SD чтение: то же, что писали", !memcmp(mem + VAL + 0x100, mem + BUF, 3 * 512), 1);
+    check("SD чтение: соседний сектор", mem[VAL + 0x100 + 3 * 512] == 0xA5 && mem[VAL + 0x100 + 4 * 512 - 1] == 0xA5, 1);
+    call(E_SD_CLOSE);
+    check("SD выход: C", fc, 1);
+    check("SD выход: FAT перечитать", disk_releases, 2);
+    check("SD выход: снова GS, MAST не пишется без канала", cfg_set("MAST", 10), 0);
+
+    // Тестовый диск в ОЗУ карты: есть и без SD
+    gs_gs_set_disk(0);
+    call(E_DETECT);
+    r[A] = 1;
+    call(E_SD_OPEN);
+    check("тестовый диск: открыт без SD", fc, 1);
+    for (int i = 0; i < 2 * 512; i++) mem[BUF + i] = (uint8_t)(i ^ 0x5A);
+    sd_call(E_SD_WRITE, 2, BUF, 20);
+    memset(mem + VAL + 0x100, 0, 1024);
+    sd_call(E_SD_READ, 2, VAL + 0x100, 4);
+    check("тестовый диск: номер по модулю 16", fc && !memcmp(mem + VAL + 0x100, mem + BUF, 1024), 1);
+    call(E_SD_CLOSE);
+    check("тестовый диск: выход, SD не трогали", fc && disk_releases == 2, 1);
+    gs_gs_set_disk(0);
+}
 
 int main(int argc, char **argv) {
 #ifdef _WIN32
@@ -226,6 +295,10 @@ int main(int argc, char **argv) {
     call(E_SAVE);
     check("запись во флеш: C", fc, 1);
     check("запись во флеш вызвана", saves, 1);
+
+    printf("--- SD: шлюз секторов ---\n");
+    test_sd();
+    gs_core_init();
 
     call(E_CLOSE);
     gs_dev_gs.work();

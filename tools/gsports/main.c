@@ -107,6 +107,125 @@ static int ctl_tag(const char *tag, uint8_t *o) {
 static int saves;
 static int save_stub(void) { saves++; return 1; }
 
+// ---- Шлюз секторов: Спектрум как драйвер WC SD_NGS.ASM, диск - в памяти ----
+#define DISK_SECS 4096
+static uint8_t disk_mem[DISK_SECS][512];
+static int disk_releases, disk_inits;
+static int dk_init(void) { disk_inits++; return 1; }
+static int dk_read(uint32_t s, uint8_t *b) { if (s >= DISK_SECS) return 0; memcpy(b, disk_mem[s], 512); return 1; }
+static int dk_write(uint32_t s, const uint8_t *b) { if (s >= DISK_SECS) return 0; memcpy(disk_mem[s], b, 512); return 1; }
+static void dk_release(void) { disk_releases++; }
+static const gs_disk_t mem_disk = { dk_init, dk_read, dk_write, dk_release };
+
+// Начало GS-части SD_NGS, собрано из исходника WC (45 байт): по нему прошивка узнаёт драйвер
+static const uint8_t togs_sig[45] = {
+    0xF3,0x31,0x00,0x60,0x3E,0x00,0xD3,0x0F,0xDB,0x05,0xDB,0x04,0x0F,0x30,0xFB,0xDB,
+    0x01,0xB7,0x28,0xF4,0xFE,0x10,0x28,0x1C,0xFE,0x12,0xCA,0xA2,0x40,0xFE,0x20,0x28,
+    0x0C,0xFE,0xF3,0xCA,0x00,0x00,0xFE,0xF4,0xCA,0x00,0x00,0x18,0xDD };
+
+// Ожидания Z80 с работой ядра 0: бит команды снят, бит данных стоит / снят. Два шага ядра на опрос - как в
+// trinity_gs.dll: ядро успевает больше, чем Спектрум (ловит гонку, когда карта отвечает раньше, чем Спектрум дождался)
+static void w_cmd(void) { for (int i = 0; st() & 1; i++) { if (i > 100000) { printf("бит команды завис\n"); fails++; return; } gs_dev_gs.work(); gs_dev_gs.work(); } }
+static void w_dat(int want) { for (int i = 0; (st() >> 7) != want; i++) { if (i > 100000) { printf("бит данных завис\n"); fails++; return; } gs_dev_gs.work(); gs_dev_gs.work(); } }
+static void ngs_com(uint8_t c) { gs_dev_gs.port_write(GS_PORT_BB, c); w_cmd(); }            // SENDCOM
+static void ngs_dat(uint8_t v) { gs_dev_gs.port_write(GS_PORT_B3, v); w_dat(0); }           // SENDDAT
+
+// SELDEV: #F3, проверка NeoGS (#1D -> #8B), заливка 1К кода в #4000, переход. code - 1024 байта
+static int ngs_seldev(const uint8_t *code) {
+    gs_dev_gs.port_write(GS_PORT_BB, 0xF3); w_cmd();
+    gs_dev_gs.port_write(GS_PORT_B3, 0);
+    gs_dev_gs.port_write(GS_PORT_BB, 0x1D); w_cmd();
+    int id = gs_dev_gs.port_read(GS_PORT_B3);
+    gs_dev_gs.port_write(GS_PORT_B3, 0);
+    ngs_com(0x14);
+    ngs_dat(0x04); ngs_dat(0x00); ngs_dat(0x40);
+    for (int i = 0; i < 1024; i++) ngs_dat(code[i]);
+    gs_dev_gs.port_write(GS_PORT_B3, 0);
+    ngs_com(0x13);
+    ngs_dat(0x40);
+    gs_dev_gs.port_write(GS_PORT_BB, 0);
+    return id;
+}
+
+// SNDPAR: число секторов в #B3, команда, номер 4 байта, потом команда 0 и пустой байт
+static void ngs_par(uint8_t cmd, uint32_t sec, uint8_t n) {
+    gs_dev_gs.port_write(GS_PORT_B3, n);
+    ngs_com(cmd);
+    for (int i = 0; i < 4; i++) ngs_dat((uint8_t)(sec >> i * 8));
+    gs_dev_gs.port_write(GS_PORT_BB, 0);
+    gs_dev_gs.port_write(GS_PORT_B3, 0);
+}
+
+static void ngs_read(uint32_t sec, uint8_t n, uint8_t *buf) {     // RDDSE
+    ngs_par(0x10, sec, n);
+    for (int i = 0; i < n * 512; i++) { w_dat(1); buf[i] = gs_dev_gs.port_read(GS_PORT_B3); }
+    ngs_com(0);
+}
+
+static void ngs_write(uint32_t sec, uint8_t n, const uint8_t *buf) {   // SDDSE
+    ngs_par(0x12, sec, n);
+    for (int i = 0; i < n * 512; i++) { w_dat(0); gs_dev_gs.port_write(GS_PORT_B3, buf[i]); }
+    ngs_com(0);
+}
+
+// Запись трёх секторов, чтение назад, соседний не тронут
+static void ngs_rw_check(const char *who, uint32_t sec, uint8_t seed) {
+    static uint8_t wr[3 * 512], rd[4 * 512];
+    for (int i = 0; i < (int)sizeof wr; i++) wr[i] = (uint8_t)(i * 7 + seed + i / 512);
+    memset(disk_mem[sec + 3], 0xA5, 512);
+    ngs_write(sec, 3, wr);
+    ngs_read(sec, 4, rd);
+    char t[80];
+    snprintf(t, sizeof t, "%s: 3 сектора туда и назад", who);
+    check(t, !memcmp(wr, rd, sizeof wr) && !memcmp(disk_mem[sec], wr, sizeof wr), 1);
+    snprintf(t, sizeof t, "%s: соседний сектор цел", who);
+    check(t, rd[3 * 512] == 0xA5 && rd[4 * 512 - 1] == 0xA5, 1);
+}
+
+// Память GS: настройка, но не больше, чем есть
+static int gs_ram(void) { uint32_t k = gs_cfg.gs_ram_kb * 1024u; return (int)(k < RAM_SIZE ? k : RAM_SIZE); }
+
+static void test_sd_gate(void) {
+    uint8_t o[GS_CTL_OUT_MAX], code[1024];
+    for (int i = 0; i < 1024; i++) code[i] = (uint8_t)(i * 13 + 5);     // хвост за отпечатком - что угодно
+    gs_gs_set_disk(0);
+    for (const char *k = GS_CTL_SIGN; *k; k++) { sd((uint8_t)*k); sc(GS_CTL_CMD_KEY); }
+    gd();
+    check("шлюз: без диска - отказ", ctl(GS_CTL_SD, 0, 0, o) == 1 && o[0] == GS_CTL_ERR, 1);
+    sc(0x00);
+    gs_gs_set_disk(&mem_disk);
+
+    // Наш вход: пакет GS_CTL_SD, дальше те же команды
+    for (const char *k = GS_CTL_SIGN; *k; k++) { sd((uint8_t)*k); sc(GS_CTL_CMD_KEY); }
+    gd();
+    check("шлюз: пакет SD", ctl(GS_CTL_SD, 0, 0, o) == 1 && o[0] == GS_CTL_OK, 1);
+    ngs_com(0x20);
+    check("шлюз: init", gs_dev_gs.port_read(GS_PORT_B3) == 0 && disk_inits == 1, 1);
+    ngs_rw_check("шлюз", 100, 1);
+    ngs_rw_check("шлюз, номер > 256", 0x123, 2);
+    ngs_com(0xF3);
+    check("шлюз: #F3 - выход, FAT перечитать", disk_releases, 1);
+    ngs_com(0x20);
+    check("шлюз: после выхода #20 - снова GS", gd3(), gs_ram());
+
+    // Чужой код: шлюз не включается
+    memset(code, 0, 45);
+    check("NeoGS: #1D -> #8B", ngs_seldev(code), 0x8B);
+    ngs_com(0x20);
+    check("NeoGS: чужой код - шлюза нет", gd3(), gs_ram());
+
+    // Драйвер WC SD_NGS: узнан по отпечатку
+    memcpy(code, togs_sig, sizeof togs_sig);
+    ngs_seldev(code);
+    ngs_com(0x20);
+    check("NeoGS: SD_NGS узнан, init", gs_dev_gs.port_read(GS_PORT_B3) == 0 && disk_inits == 2, 1);
+    ngs_rw_check("NeoGS", 7, 3);
+    ngs_com(0xF4);
+    check("NeoGS: #F4 - выход", disk_releases, 2);
+    gs_gs_set_disk(0);
+}
+
+
 int main(int argc, char **argv) {
     if (argc < 2) { printf("gsports файл.mod\n"); return 1; }
     FILE *f = fopen(argv[1], "rb");
@@ -500,6 +619,9 @@ int main(int argc, char **argv) {
         gs_cfg_defaults();
         gs_core_init();
     }
+
+    printf("--- шлюз секторов (SD, драйвер NeoGS) ---\n");
+    test_sd_gate();
 
     printf(fails ? "ОШИБОК: %d\n" : "ВСЁ OK\n", fails);
     return fails != 0;

@@ -40,6 +40,10 @@
 ;   Gsc_Stat        EN: load, peak, late blocks...              RU: нагрузка, пик, опоздания...
 ;   Gsc_Stat_Reset  EN: peak and late blocks from zero          RU: пик и опоздания с нуля
 ;   Gsc_Curve       EN: filter curve                            RU: кривая фильтров
+;   Gsc_Sd_Open     EN: card SD: enter the sector gate          RU: SD карты: войти в шлюз секторов
+;   Gsc_Sd_Read     EN: read sectors                            RU: читать сектора
+;   Gsc_Sd_Write    EN: write sectors                           RU: писать сектора
+;   Gsc_Sd_Close    EN: leave the gate (GS restarts)            RU: выйти из шлюза (GS перезапускается)
 ;
 ; SETTINGS / НАСТРОЙКИ: tag 4 chars / тег 4 знака, value 4 bytes / значение 4 байта
 ;   Tag     EN                              RU                              Limits / Пределы
@@ -125,6 +129,15 @@ GSC_P_STAT      equ #D4
 GSC_P_STAT_RES  equ #D5
 GSC_P_CURVE     equ #D6
 GSC_P_VERSION   equ #D7
+GSC_P_SD        equ #D8
+; EN: sector gate commands, as the GS part of the NeoGS SD driver    RU: команды шлюза секторов, как у GS-части драйвера SD NeoGS
+GSC_SD_INIT     equ #20
+GSC_SD_READ     equ #10
+GSC_SD_WRITE    equ #12
+GSC_SD_EXIT     equ #F3
+GSC_SD_CARD     equ 0               ; EN: Gsc_Sd_Open: SD of the card     RU: Gsc_Sd_Open: SD карты
+GSC_SD_TEST     equ 1               ; EN: Gsc_Sd_Open: test disk in RAM   RU: Gsc_Sd_Open: тестовый диск в ОЗУ
+GSC_SD_WAIT     equ 8               ; EN: command wait, x 65536 polls (SD init)   RU: ожидание команды, x 65536 опросов (init SD)
 
 ; =========================== API ===========================
 
@@ -442,4 +455,207 @@ Gsc_Answer_End
         ret
 Gsc_Answer_Fail
         pop hl                      ; EN: pop keeps NC and A    RU: pop не трогает NC и A
+        ret
+
+; =========================== SD: sector gate / Шлюз секторов ===========================
+
+;-------------------------------------------------------------------------
+; Gsc_Sd_Open - EN: card SD: enter the sector gate and init the SD. After it only Gsc_Sd_* until Gsc_Sd_Close.
+;                   Raw sectors, 512 bytes: the file system is yours (FAT driver of the program).
+;               RU: SD карты: войти в шлюз секторов и включить SD. Дальше только Gsc_Sd_* до Gsc_Sd_Close.
+;                   Сырые сектора по 512 байт: файловая система - своя (FAT-драйвер программы).
+; In:     A  - GSC_SD_CARD: SD of the card / SD карты; GSC_SD_TEST: test disk in the card RAM, 16 sectors (bus test)
+;              GSC_SD_TEST: тестовый диск в ОЗУ карты, 16 секторов (проверка шины)
+;         EN: channel open (Gsc_Detect)             RU: канал открыт (Gsc_Detect)
+; Out:    C  - EN: SD ready                         RU: SD готова
+;         NC - EN: A = error. GSC_E_REFUSED: no SD (inside the gate - call Gsc_Sd_Close)
+;              RU: A = ошибка. GSC_E_REFUSED: нет SD (шлюз открыт - вызвать Gsc_Sd_Close)
+; Spoils: A, BC, L
+; Time:   EN: SD init up to about 1 s               RU: включение SD - до 1 с
+;-------------------------------------------------------------------------
+Gsc_Sd_Open
+        ld l,a
+        ld a,GSC_P_SD
+        ld c,1
+        call Gsc_Head
+        ret nc
+        ld a,l
+        call Gsc_Put
+        ret nc
+        call Gsc_Ack
+        ret nc
+        ld a,GSC_SD_INIT
+        call Gsc_Sd_Cmd
+        ret nc
+        in a,(GSC_PORT_DAT)         ; EN: 0 - ready, 1 - no SD    RU: 0 - готова, 1 - нет SD
+        or a
+        scf
+        ret z
+        jp Gsc_Refused
+
+;-------------------------------------------------------------------------
+; Gsc_Sd_Read - EN: read sectors of the card SD.
+;               RU: читать сектора SD карты.
+; In:     A  - EN: sectors, 0 = 256                 RU: секторов, 0 = 256
+;         HL - EN: buffer, A * 512 bytes            RU: буфер, A * 512 байт
+;         BC:DE - EN: first sector, BC high word    RU: первый сектор, BC - старшее слово
+; Out:    C  - EN: done, HL after the data          RU: прочитано, HL за данными
+;         NC - EN: A = error, HL after the bytes    RU: A = ошибка, HL за пришедшими
+;              that came                                 байтами
+; Spoils: A, BC, DE, HL
+;-------------------------------------------------------------------------
+Gsc_Sd_Read
+        out (GSC_PORT_DAT),a        ; EN: count before the command    RU: число секторов - до команды
+        push hl
+        ld h,a
+        ld a,GSC_SD_READ
+        call Gsc_Sd_Par
+        ld d,h                      ; EN: D = sectors    RU: D = секторов
+        pop hl
+        ret nc
+Gsc_Sd_Read_Sec
+        push de
+        ld de,#0200                 ; EN: 512 bytes: E 256 times, D twice    RU: 512 байт: E по 256, D дважды
+Gsc_Sd_Read_Byte
+        call Gsc_Get
+        jr nc,Gsc_Sd_Fail
+        ld (hl),a
+        inc hl
+        dec e
+        jr nz,Gsc_Sd_Read_Byte
+        dec d
+        jr nz,Gsc_Sd_Read_Byte
+        pop de
+        dec d
+        jr nz,Gsc_Sd_Read_Sec
+        xor a                       ; EN: command 0: end    RU: команда 0: конец
+        jp Gsc_Sd_Cmd
+
+;-------------------------------------------------------------------------
+; Gsc_Sd_Write - EN: write sectors of the card SD. Returns when they are on the SD.
+;                RU: писать сектора SD карты. Возвращается, когда они уже на SD.
+; In:     A  - EN: sectors, 0 = 256                 RU: секторов, 0 = 256
+;         HL - EN: data, A * 512 bytes              RU: данные, A * 512 байт
+;         BC:DE - EN: first sector, BC high word    RU: первый сектор, BC - старшее слово
+; Out:    C  - EN: done, HL after the data          RU: записано, HL за данными
+;         NC - EN: A = error                        RU: A = ошибка
+; Spoils: A, BC, DE, HL
+;-------------------------------------------------------------------------
+Gsc_Sd_Write
+        out (GSC_PORT_DAT),a        ; EN: count before the command    RU: число секторов - до команды
+        push hl
+        ld h,a
+        ld a,GSC_SD_WRITE
+        call Gsc_Sd_Par
+        ld d,h                      ; EN: D = sectors    RU: D = секторов
+        pop hl
+        ret nc
+Gsc_Sd_Write_Sec
+        push de
+        ld de,#0200
+Gsc_Sd_Write_Byte
+        ld a,(hl)
+        inc hl
+        call Gsc_Sd_Dat
+        jr nc,Gsc_Sd_Fail
+        dec e
+        jr nz,Gsc_Sd_Write_Byte
+        dec d
+        jr nz,Gsc_Sd_Write_Byte
+        pop de
+        dec d
+        jr nz,Gsc_Sd_Write_Sec
+        xor a                       ; EN: command 0: waits for the last sector    RU: команда 0: ждёт последний сектор
+        jp Gsc_Sd_Cmd
+
+;-------------------------------------------------------------------------
+; Gsc_Sd_Close - EN: leave the gate. Like the NeoGS driver: the GS restarts (#F3), the module and effects are gone,
+;                    the channel is closed. The card reads its file system again.
+;                RU: выйти из шлюза. Как у драйвера NeoGS: GS перезапускается (#F3), модуль и эффекты стёрты,
+;                    канал закрыт. Карта перечитывает свою файловую систему.
+; In:     -
+; Out:    C  - EN: done                             RU: сделано
+;         NC - EN: A = error                        RU: A = ошибка
+; Spoils: A
+;-------------------------------------------------------------------------
+Gsc_Sd_Close
+        ld a,GSC_SD_EXIT
+        jp Gsc_Sd_Cmd
+
+; EN: inside, do not call    RU: внутреннее, не вызывать
+
+; EN: Error inside a sector loop: drop the counter    RU: Ошибка в цикле сектора: снять счётчик
+Gsc_Sd_Fail
+        pop de                      ; EN: pop keeps NC and A    RU: pop не трогает NC и A
+        ret
+
+; EN: Gate command A, then sector BC:DE, then command 0 and the empty byte. Keeps HL
+; RU: Команда шлюза A, номер сектора BC:DE, потом команда 0 и пустой байт. Сохраняет HL
+Gsc_Sd_Par
+        call Gsc_Sd_Cmd
+        ret nc
+        ld a,e
+        call Gsc_Sd_Dat
+        ret nc
+        ld a,d
+        call Gsc_Sd_Dat
+        ret nc
+        ld a,c
+        call Gsc_Sd_Dat
+        ret nc
+        ld a,b
+        call Gsc_Sd_Dat
+        ret nc
+        xor a
+        out (GSC_PORT_CMD),a
+        out (GSC_PORT_DAT),a
+        scf
+        ret
+
+; EN: A = data byte: into #B3, wait until the card takes it. Keeps BC, DE, HL
+; RU: A = байт данных: в #B3, ждём, пока карта возьмёт. Сохраняет BC, DE, HL
+Gsc_Sd_Dat
+        out (GSC_PORT_DAT),a
+        push bc
+        ld bc,0
+Gsc_Sd_Dat_Wait
+        in a,(GSC_PORT_CMD)
+        rlca
+        jr nc,Gsc_Sd_Ok
+        dec bc
+        ld a,b
+        or c
+        jr nz,Gsc_Sd_Dat_Wait
+        pop bc
+        ld a,GSC_E_TIMEOUT          ; EN: or c left NC    RU: or c оставил NC
+        ret
+
+; EN: A = gate command, wait until it is done (long: SD init). Keeps BC, DE, HL
+; RU: A = команда шлюза, ждём выполнения (долго: включение SD). Сохраняет BC, DE, HL
+Gsc_Sd_Cmd
+        out (GSC_PORT_CMD),a
+        push bc
+        push de
+        ld d,GSC_SD_WAIT
+Gsc_Sd_Cmd_Outer
+        ld bc,0
+Gsc_Sd_Cmd_Wait
+        in a,(GSC_PORT_CMD)
+        rrca
+        jr nc,Gsc_Sd_Cmd_Done
+        dec bc
+        ld a,b
+        or c
+        jr nz,Gsc_Sd_Cmd_Wait
+        dec d
+        jr nz,Gsc_Sd_Cmd_Outer
+        pop de
+        pop bc
+        ld a,GSC_E_TIMEOUT          ; EN: or c left NC    RU: or c оставил NC
+        ret
+Gsc_Sd_Cmd_Done
+        pop de
+Gsc_Sd_Ok
+        pop bc
+        scf
         ret

@@ -5,6 +5,7 @@
 #include "gs_core.h"
 #include "gs_filter.h"
 #include "gs_stat.h"
+#include "gs_dev_gs.h"
 
 typedef enum { T_U8, T_I8, T_U32, T_HZ, T_Q, T_RS, T_LED, T_MODE } type_t;
 enum { F_KNOB = 1, F_RO = 2 };      // F_KNOB - общая ручка, режим остаётся. Остальное - уже не канон, режим становится Custom. F_RO - только чтение
@@ -163,6 +164,9 @@ int gs_ctl_packet(uint8_t code, const uint8_t *in, int len, uint8_t *out) {
         out[0] = GS_CTL_PROTO;
         put16(out + 1, fw_ver);
         return 3;
+    case GS_CTL_SD:
+        if (len > 1 || (len == 1 && in[0] > 1)) return answer(out, GS_CTL_ERR);
+        return answer(out, gs_gs_sd_gate(len == 1 && in[0]) ? GS_CTL_OK : GS_CTL_ERR);
     default: return answer(out, GS_CTL_ERR);
     }
 }

@@ -26,7 +26,9 @@ enum {
     GS_CTL_STAT       = 0xD4,
     GS_CTL_STAT_RESET = 0xD5,
     GS_CTL_CURVE      = 0xD6,
-    GS_CTL_VERSION    = 0xD7
+    GS_CTL_VERSION    = 0xD7,
+    GS_CTL_SD         = 0xD8    // в шлюз секторов: дальше команды #20 / #10 / #12 как у драйвера SD NeoGS, выход #F3.
+                                // Данные: 0 или нет - SD, 1 - тестовый диск в ОЗУ (16 секторов, проверка шины)
 };
 
 // Ответ GS_CTL_STAT: смещения

@@ -6,6 +6,7 @@
 #include "gs_chan.h"
 #include "gs_dev_gs.h"
 #include "gs_ctl.h"
+#include <string.h>
 
 #define PAGE_SIZE 32768u
 #define VOL_MAX   0x40
@@ -40,7 +41,7 @@ static uint8_t vol_master, vol_module;              // #2A, #35
 static uint8_t notes_old[4], vols_old[4];           // для бита 7 в #63, #64
 
 // Команда с несколькими байтами данных: следующие приходят после снятия бита команды
-static uint8_t arg_cmd, arg_first, arg_buf[2], arg_need, arg_k;
+static uint8_t arg_cmd, arg_first, arg_buf[3], arg_need, arg_k;
 
 // Ответ из нескольких байт: следующий - когда Спектрум прочёл предыдущий
 static uint8_t send_buf[GS_CTL_OUT_MAX + 2], send_n, send_k;
@@ -136,10 +137,137 @@ static void fx_direct(uint8_t c, uint8_t h, int note, int vol) {
     gs_core_claim(&gs_dev_gs);
 }
 
+// ---- Код Z80, залитый в GS (#14 загрузить, #13 перейти) ----
+// Z80 в карте нет: код не храним, считаем отпечаток - CRC32 первых байт. Известный код заменяет прошивка (заплатка,
+// doc/zx-trinity.md), остальной пока ничего не делает (ловушка - todo п.71)
+#define SIG_LEN    45u          // начало GS-части драйвера SD NeoGS: цикл команд #10 / #12 / #20
+#define SIG_SD_NGS 0xDB92866Eu  // WC core32/drivers/SD_NGS.ASM (BUDDER/MGN 2015), залит в #4000
+
+static uint32_t ld_left, ld_k, ld_crc;
+static uint16_t ld_addr;
+
+static uint32_t crc32_byte(uint32_t crc, uint8_t v) {
+    crc ^= v;
+    for (int i = 0; i < 8; i++) crc = crc >> 1 ^ (0xEDB88320u & (0u - (crc & 1)));
+    return crc;
+}
+
+// #14: длина и адрес пришли, дальше байты кода по одному (бит данных)
+static void load_start(uint16_t len, uint16_t addr) {
+    ld_left = len, ld_addr = addr;
+    ld_k = 0, ld_crc = 0xFFFFFFFFu;
+}
+
+static void load_byte(void) {
+    uint8_t v = data_in();
+    if (ld_k < SIG_LEN) ld_crc = crc32_byte(ld_crc, v);
+    ld_k++, ld_left--;
+}
+
+static void gate_ngs(void);
+
+// #13: переход на залитый код. Узнали - включаем заплатку
+static void load_jump(uint16_t addr) {
+    if (addr == ld_addr && ld_k >= SIG_LEN && ~ld_crc == SIG_SD_NGS) gate_ngs();
+}
+
+// ---- Шлюз секторов: протокол GS-части драйвера SD NeoGS ----
+// #20 - init, ответ 0 / 1 (нет диска). #10 читать, #12 писать: перед командой в #B3 число секторов (0 = 256), потом
+// номер 4 байта младшим вперёд и пустой байт; дальше 512 байт на сектор по биту данных. Конец - Спектрум шлёт команду
+// 0 и ждёт снятия бита команды. #F3 / #F4 - выход, как перезапуск GS. Остальные команды в шлюзе ничего не делают.
+// Пустой байт глотает шина: сразу за ним драйвер ждёт бит данных. Z80 NeoGS забирает его за ~1 мкс, ядро 0 может
+// опоздать - Спектрум прочёл бы свой же пустой байт как первый байт сектора
+static const gs_disk_t *disk;                       // SD карты (прошивка), 0 - нет
+static const gs_disk_t *gate_disk;                  // диск шлюза сейчас: SD или тестовый
+
+// Тестовый диск для проверки шины без SD: 16 секторов в ОЗУ, номер - по модулю
+#define TEST_SECS 16
+static uint8_t test_mem[TEST_SECS][512];
+static int t_init(void) { return 1; }
+static int t_read(uint32_t s, uint8_t *b) { memcpy(b, test_mem[s % TEST_SECS], 512); return 1; }
+static int t_write(uint32_t s, const uint8_t *b) { memcpy(test_mem[s % TEST_SECS], b, 512); return 1; }
+static const gs_disk_t test_disk = { t_init, t_read, t_write, 0 };
+static uint8_t gate;                                // 1 - шлюз включён
+static enum { SG_IDLE, SG_PAR, SG_DUMMY, SG_RD, SG_WR } sg_st;
+static uint8_t sg_cmd, sg_par[5], sg_k;           // число секторов, номер 4 байта
+static volatile uint8_t sg_swallow;                 // 1 - следующую запись #B3 (пустой байт) не принимать
+static uint8_t sg_buf[512];
+static uint32_t sg_sec, sg_left, sg_pos;
+
+static void gate_on(const gs_disk_t *d) { gate_disk = d, gate = 1, sg_st = SG_IDLE, sg_swallow = 0; }
+static void gate_ngs(void) { gate_on(disk); }        // драйвер NeoGS: всегда SD карты
+
+static void gate_off(void) {
+    gate = 0, sg_st = SG_IDLE;
+    if (gate_disk && gate_disk->release) gate_disk->release();
+}
+
+// Номер и число секторов пришли: начинаем передачу
+static void gate_par_done(void) {
+    sg_sec = (uint32_t)sg_par[1] | (uint32_t)sg_par[2] << 8 | (uint32_t)sg_par[3] << 16 | (uint32_t)sg_par[4] << 24;
+    sg_left = sg_par[0] ? sg_par[0] : 256u;
+    if (sg_cmd == 0x10) sg_st = SG_RD, sg_pos = 512;    // сектор ещё не прочитан
+    else sg_st = SG_WR, sg_pos = 0;
+}
+
+// Чтение: сектор с диска в буфер, байты - по одному, когда Спектрум забрал предыдущий
+static void gate_read(void) {
+    if (sg_pos == 512) {
+        if (!sg_left) { sg_st = SG_IDLE; return; }
+        if (!gate_disk || !gate_disk->read(sg_sec, sg_buf)) memset(sg_buf, 0xFF, sizeof sg_buf);
+        sg_sec++, sg_left--, sg_pos = 0;
+    }
+    if (!bit_data) data_out(sg_buf[sg_pos++]);
+}
+
+// Запись: 512 байт в буфер, потом на диск
+static void gate_write(void) {
+    if (!bit_data) return;
+    sg_buf[sg_pos++] = data_in();
+    if (sg_pos < 512) return;
+    if (gate_disk) gate_disk->write(sg_sec, sg_buf);
+    sg_sec++, sg_left--, sg_pos = 0;
+    if (!sg_left) sg_st = SG_IDLE;
+}
+
+static void gate_cmd(uint8_t c) {
+    send_n = send_k = 0;
+    switch (c) {
+    case 0x20: data_out(gate_disk && gate_disk->init() ? 0 : 1); break;
+    case 0x10: case 0x12:                           // команду приняли сразу, число секторов уже в #B3
+        sg_cmd = c, sg_par[0] = data_in(), sg_k = 1;
+        sg_st = SG_PAR;
+        break;
+    case 0xF3: case 0xF4:                           // выход: команду выполнит обычный GS
+        gate_off();
+        return;
+    default: break;
+    }
+    bit_cmd = 0;
+}
+
+// Ядро 0, пока шлюз включён: передача сектора важнее новой команды (так и у NeoGS)
+static void gate_work(void) {
+    if (sg_st == SG_PAR) {
+        if (!bit_data) return;
+        if (sg_k == sizeof sg_par - 1) sg_swallow = 1;  // до снятия бита: после него Спектрум шлёт пустой байт
+        sg_par[sg_k++] = data_in();
+        if (sg_k == sizeof sg_par) sg_st = SG_DUMMY;
+    } else if (sg_st == SG_DUMMY) {
+        if (!sg_swallow) gate_par_done();           // пустой байт пришёл: только теперь свой бит данных - Спектрум
+                                                    // ещё ждал снятия бита после последнего байта номера
+    } else if (sg_st == SG_RD) gate_read();
+    else if (sg_st == SG_WR) gate_write();
+    else if (bit_cmd) gate_cmd(reg_cmd);
+    else if (send_k < send_n && !bit_data) data_out(send_buf[send_k++]);     // ответ пакета GS_CTL_SD
+}
+
 // Пришли все байты команды
 static void args_done(void) {
     uint8_t c = arg_cmd;
-    if (c == 0x48 || c == 0x49) {
+    if (c == 0x14) load_start((uint16_t)(arg_first | arg_buf[0] << 8), (uint16_t)(arg_buf[1] | arg_buf[2] << 8));
+    else if (c == 0x13) load_jump((uint16_t)(arg_first | arg_buf[0] << 8));
+    else if (c == 0x48 || c == 0x49) {
         gs_fx_t *f = gs_fx_get(fx_cur);
         uint32_t v = (uint32_t)arg_first | (uint32_t)arg_buf[0] << 8 | (uint32_t)arg_buf[1] << 16;
         if (f) { if (c == 0x48) f->loop_begin = v; else f->loop_end = v; }
@@ -203,6 +331,11 @@ static void cmd_run(uint8_t c) {
         return;
     }
     switch (c) {
+    case 0x13: args_wait(c, data_in(), 1); break;   // перейти: адрес 2 байта
+    case 0x14: args_wait(c, data_in(), 3); break;   // загрузить: длина 2, адрес 2, потом байты
+    case 0x1D:                                      // прочитать байт #20xx: WC узнаёт NeoGS по #8B в #2000
+        data_out(data_in() == 0 ? 0x8B : 0xFF);
+        break;
     case 0x00: case 0x08:                           // сброс флагов
         bit_data = 0;
         break;
@@ -319,6 +452,7 @@ static void dev_reset(void) {
     reg_cmd = reg_in = reg_out = 0;
     ctl_close();
     bit_cmd = bit_data = 0;
+    ld_left = 0, gate = 0, sg_st = SG_IDLE, sg_swallow = 0;
     vars_reset();
 }
 
@@ -331,6 +465,8 @@ static void dev_sound_stop(void) {
 static void dev_port_write(uint8_t code, uint8_t v) {
     if (code == GS_PORT_BB) {
         reg_cmd = v, bit_cmd = 1;
+    } else if (sg_swallow) {
+        sg_swallow = 0;                             // пустой байт шлюза секторов
     } else if (stream) {
         uint32_t fill = ring_wr - ring_rd;
         if (fill < RING_SIZE) ring[ring_wr & (RING_SIZE - 1)] = v ^ stream_xor, ring_wr++;
@@ -362,6 +498,7 @@ static void ring_drain(void) {
 }
 
 static void dev_work(void) {
+    if (gate) { gate_work(); return; }
     if (ring_rd != ring_wr) ring_drain();
     if (bit_cmd) {
         ring_drain();                               // до команды: #D2 должен видеть все байты
@@ -371,7 +508,7 @@ static void dev_work(void) {
             ctl_close();
             gs_core_lock();
             send_n = send_k = 0;                    // новая команда отменяет недосланный ответ, как HSEND в ROM
-            arg_need = arg_k = 0;
+            arg_need = arg_k = 0, ld_left = 0;      // и загрузку кода (#14), как COMINT1 в ROM
             cmd_run(c);
             gs_core_unlock();
         }
@@ -386,6 +523,8 @@ static void dev_work(void) {
                 gs_core_unlock();
             }
         }
+    } else if (ld_left) {
+        if (bit_data) load_byte();
     } else if (send_k < send_n && !bit_data) {
         data_out(send_buf[send_k++]);
     }
@@ -396,6 +535,16 @@ static void dev_audio(float *out, int n) { gs_mod_audio(out, n); }
 const gs_dev_t gs_dev_gs = {
     "GS", dev_enabled, dev_reset, dev_sound_stop, dev_port_write, dev_port_read, dev_port_peek, dev_work, dev_audio
 };
+
+void gs_gs_set_disk(const gs_disk_t *d) { disk = d; }
+
+// Пакет GS_CTL_SD (ядро 0, внутри dev_work): ответ уйдёт уже из шлюза
+int gs_gs_sd_gate(int test) {
+    const gs_disk_t *d = test ? &test_disk : disk;
+    if (!d) return 0;
+    gate_on(d);
+    return 1;
+}
 
 void gs_gs_set_ram(void *mem, uint32_t size) {
     ram = (uint8_t *)mem, ram_cap = size;

@@ -18,7 +18,15 @@
 #if BOARD_HAS_SD
 #include "ff.h"
 #include "sdport.h"
+#include "sd/sd_card.h"
 static FATFS sd_fs;
+
+// Диск шлюза секторов - SD карты (gs_dev_gs.h). Спектрум пишет мимо FatFs: после выхода монтируем заново
+static int disk_init(void) { return sdport_present() && sd_init(); }
+static int disk_read(uint32_t s, uint8_t *b) { return sd_read(s, b, 1); }
+static int disk_write(uint32_t s, const uint8_t *b) { return sd_write(s, b, 1); }
+static void disk_release(void) { if (sdport_present()) f_mount(&sd_fs, "0:", 1); }
+static const gs_disk_t sd_disk = { disk_init, disk_read, disk_write, disk_release };
 #endif
 
 static spin_lock_t *engine_lock;
@@ -41,6 +49,7 @@ int main(void) {
 #if BOARD_HAS_SD
     sdport_init();
     if (sdport_present()) f_mount(&sd_fs, "0:", 1);     // нет карты - работаем без неё (п.42)
+    gs_gs_set_disk(&sd_disk);
 #endif
     audio_start();
     bus_start();

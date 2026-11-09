@@ -11,5 +11,9 @@
         jp Gsc_Stat_Reset       ; +21
         jp Gsc_Curve            ; +24
         jp Gsc_Version          ; +27
+        jp Gsc_Sd_Open          ; +30
+        jp Gsc_Sd_Read          ; +33
+        jp Gsc_Sd_Write         ; +36
+        jp Gsc_Sd_Close         ; +39
         include "sdk/trinity_gs.asm"
         savebin "sdktest.bin",#8000,$-#8000
