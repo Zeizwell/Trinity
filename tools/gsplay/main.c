@@ -1,5 +1,5 @@
 // gsplay - движок RP-GS на ПК: модуль в колонки или в WAV. Тот же код, что на RP (engine/gs), HAL здесь - waveOut.
-//   gsplay файл.mod             - играть. Клавиши: 1-4 режим, пробел пауза, s стоп / с начала, q выход
+//   gsplay файл.mod             - играть. Клавиши: 1-4 режим (1 Clean, 2 A500, 3 A1200, 4 HiFi), пробел пауза, s стоп / с начала, q выход
 //   gsplay файл.mod -wav x.wav [сек] [режим 1-4]   - без звука, в файл
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,10 +11,10 @@
 #include "../../engine/gs/gs_cfg.h"
 #include "../../engine/gs/gs_dev_gs.h"
 
-// 1-4 - пресеты. 5 - только для сравнения на ПК: GS с выводом 37500 вместо 75000
+// 1-4 - пресеты. 5 - только для сравнения на ПК: пересчёт ROM GS с выводом 37500 вместо 75000
 static void set_mode(int m) {
     gs_cfg_mode((gs_mode_t)((m == 5 ? 1 : m) - 1));
-    if (m == 5) gs_cfg.rate_hz = 37500;
+    if (m == 5) gs_cfg_set_resample(GS_RS_ROM), gs_cfg.hold_hz = 37500, gs_cfg.rate_hz = 37500;
 }
 
 #define BLOCK 2048              // отсчётов в блоке

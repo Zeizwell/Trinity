@@ -517,10 +517,10 @@ int main(int argc, char **argv) {
         gs_voice_set_inc(v, 0.4f);
         gs_voice_set_pos(v, 0.0f);
         check("период: новая нота отменяет ожидание", v->inc_f == 0.4f && v->inc_next == 0.0f, 1);
-        gs_cfg_mode(GS_MODE_GS);
+        gs_cfg_mode(GS_MODE_CLEAN);
         gs_voice_set_inc(v, 0.1f);
         gs_voice_period(v, 0.2f);
-        check("период: GS - сразу", v->inc_f == 0.2f, 1);
+        check("период: Clean - сразу", v->inc_f == 0.2f, 1);
         gs_cfg_defaults();
         gs_core_init();
     }

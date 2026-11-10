@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-typedef enum { GS_MODE_GS, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
+typedef enum { GS_MODE_CLEAN, GS_MODE_A500, GS_MODE_A1200, GS_MODE_HIFI, GS_MODE_CUSTOM } gs_mode_t;
 typedef enum { GS_RS_STEP, GS_RS_BLEP, GS_RS_INTERP, GS_RS_ROM, GS_RS_CUBIC } gs_resample_t;     // пересчёт: ступеньки / BLEP / линейная / как ROM GS / кубическая
 enum { GS_ST_RC, GS_ST_LP, GS_ST_LED, GS_ST_HP, GS_ST_COUNT };           // ступени цепочки фильтров, в порядке звука (п.48г)
 #define GS_TONE_DB_MAX 12       // ручки НЧ и ВЧ: -12..12 дБ, и сумма с окраской режима тоже

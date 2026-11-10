@@ -3,7 +3,7 @@
 #include "gs_cfg.h"
 
 #ifndef GS_RATE_GS
-#define GS_RATE_GS 75000     // ЦАП режима GS: 2 x 37500, как NeoGS (24 МГц / 5 / 64). Тик ровно на два отсчёта, без пересчёта
+#define GS_RATE_GS 75000     // ЦАП пересчёта ROM GS (Custom): 2 x 37500, как NeoGS (24 МГц / 5 / 64). Тик ровно на два отсчёта, без пересчёта
 #endif
 #define RATE_PAULA 48000
 
@@ -51,9 +51,9 @@ void gs_cfg_mode(gs_mode_t mode) {
     stages_schematic();
     gs_cfg.color_bass_db = gs_cfg.color_treble_db = 0, gs_cfg.comp = 0;
     switch (mode) {
-    case GS_MODE_GS:                            // оригинальный GS: генератор ROM на 37500 Гц прямо в ЦАП, RC после ЦАП
-        gs_cfg.resample = GS_RS_ROM, gs_cfg.hold_hz = 37500, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
-        gs_cfg.led = GS_LED_OFF, gs_cfg.st[GS_ST_RC].on = 1;
+    case GS_MODE_CLEAN:                         // звук как есть (config п.48б): ближайший отсчёт на 48 кГц, ступени выключены
+        gs_cfg.resample = GS_RS_STEP, gs_cfg.hold_hz = RATE_PAULA, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
+        gs_cfg.led = GS_LED_OFF;
         break;
     case GS_MODE_A500:
         gs_cfg.resample = GS_RS_BLEP, gs_cfg.pwm = 0, gs_cfg.ramp = 0, gs_cfg.stereo_pct = 100;
@@ -77,6 +77,6 @@ void gs_cfg_mode(gs_mode_t mode) {
 }
 
 const char *gs_cfg_mode_name(gs_mode_t mode) {
-    static const char *const name[] = { "GS", "Paula A500", "Paula A1200", "HiFi", "Custom" };
+    static const char *const name[] = { "Clean", "Paula A500", "Paula A1200", "HiFi", "Custom" };
     return name[mode];
 }

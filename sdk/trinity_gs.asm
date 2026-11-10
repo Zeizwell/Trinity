@@ -81,7 +81,7 @@ GSC_E_REFUSED   equ #FF             ; EN: card said no: no such tag, out of limi
                                     ; RU: карта отказала: нет тега, вне пределов, только чтение, неверный номер
 
 ; --- Presets, A for Gsc_Preset / Пресеты, A для Gsc_Preset
-GSC_MODE_GS     equ 0
+GSC_MODE_CLEAN  equ 0
 GSC_MODE_A500   equ 1
 GSC_MODE_A1200  equ 2
 GSC_MODE_HIFI   equ 3

@@ -229,15 +229,15 @@ void bench_key(void) {
     case 'b':
         offline_begin();
         printf("такт %lu МГц, модуль %d байт\n", (unsigned long)(clock_get_hz(clk_sys) / 1000000), size);
-        for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench_mode(mod_bin, size, (gs_mode_t)m);
+        for (int m = GS_MODE_CLEAN; m <= GS_MODE_HIFI; m++) bench_mode(mod_bin, size, (gs_mode_t)m);
         offline_end();
         break;
     case 'v':
         offline_begin();
-        for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench_voices(mod_bin + 1084, 90000, (gs_mode_t)m);
+        for (int m = GS_MODE_CLEAN; m <= GS_MODE_HIFI; m++) bench_voices(mod_bin + 1084, 90000, (gs_mode_t)m);
         memcpy(PSRAM_BASE, mod_bin, (size_t)size);
         printf("из PSRAM:\n");
-        for (int m = GS_MODE_GS; m <= GS_MODE_HIFI; m++) bench_voices(PSRAM_BASE + 1084, 90000, (gs_mode_t)m);
+        for (int m = GS_MODE_CLEAN; m <= GS_MODE_HIFI; m++) bench_voices(PSRAM_BASE + 1084, 90000, (gs_mode_t)m);
         offline_end();
         break;
     case 'f': check_format(); printf("готово\n"); break;
