@@ -14,11 +14,11 @@ For ZX-BUS / NemoBus and ZX Evolution.
 
 ### Done
 - Board rev A is designed and ordered
-- Amiga sound: Paula output, A500 / A1200 / LED filters, presets GS, A500, A1200, HiFi
+- Amiga sound: Paula output, A500 / A1200 / LED filters, presets Clean, A500, A1200, HiFi
 - ProTracker player: Paula registers match the pt2-clone replayer on 80,595 real modules and 200 stress tests
 - Sound on PC: A1200 mode matches recordings of a real A1200, GS mode matches MultiSound, both within ±1 dB up to 16 kHz
 - General Sound: ports, loading modules and effects, commands (tested without a Spectrum)
-- Output: 32-bit I2S to a PCM5102A DAC. Paula and HiFi 48 kHz, GS 37.5 kHz like the original (each sample sent twice, DAC at 75 kHz)
+- Output: 32-bit I2S to a PCM5102A DAC. all presets 48 kHz
 - Sound takes 10-17 % of one CPU core
 - Z80 API: find the card, settings, presets, CPU load, filter curves, versions (tested without a Spectrum)
 - Card protocol and Z80 SDK: data slots, jobs, status byte, service log
