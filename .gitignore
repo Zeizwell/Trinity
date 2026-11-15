@@ -18,13 +18,13 @@ KiCad/**/*-backups/
 KiCad/**/.schgen-backup/
 
 # генератор: проектные файлы его временного проекта
-KiCad/trinity/gen/analog.kicad_pro
-KiCad/trinity/gen/analog.kicad_prl
-KiCad/trinity/gen/__pycache__/
-KiCad/trinity/gen/test/
-KiCad/trinity/gen/before/
-KiCad/trinity/gen/mixer.kicad_pro
-KiCad/trinity/gen/mixer.kicad_prl
+KiCad/*/gen/analog.kicad_pro
+KiCad/*/gen/analog.kicad_prl
+KiCad/*/gen/__pycache__/
+KiCad/*/gen/test/
+KiCad/*/gen/before/
+KiCad/*/gen/mixer.kicad_pro
+KiCad/*/gen/mixer.kicad_prl
 cpld/syn/db/
 cpld/syn/incremental_db/
 cpld/syn/*.rpt

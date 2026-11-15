@@ -1,7 +1,7 @@
 #!/bin/sh
 # Сборка корневого листа из сгенерированных блоков (от корня 4ce7fe2 - до вставки GS / RP-AY).
 # Результат - gen/test/root.kicad_sch; в trinity.kicad_sch копировать руками при закрытом KiCad.
-#   sh gen/build_root.sh   (из KiCad/trinity)
+#   sh gen/build_root.sh   (из KiCad/revA1)
 set -e
 T=gen/test
 mkdir -p $T
