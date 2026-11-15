@@ -24,8 +24,8 @@ PARTS = [
     ("U9", STD + r"\Package_DIP.pretty", "DIP-16_W7.62mm", "74HC4053"),
     ("J2", OWN, "PJ-324M_placeholder", "PJ-324M (линия)"),
     ("J3", STD + r"\Connector_Card.pretty", "microSD_HC_Hirose_DM3AT-SF-PEJM5", "microSD DM3AT"),
-    ("J4", STD + r"\Connector_PinHeader_2.54mm.pretty", "PinHeader_2x05_P2.54mm_Vertical", "HD Audio (без 8)"),
-    ("J5", OWN, "Molex_8981_4pin_placeholder", "Molex 4-pin"),
+    ("J4", STD + r"\Connector_PinHeader_2.54mm.pretty", "PinHeader_2x05_P2.54mm_Horizontal", "HD Audio (без 8), угловой"),
+    ("J5", STD + r"\Connector_PinHeader_2.54mm.pretty", "PinHeader_1x02_P2.54mm_Vertical", "+5 / GND"),
 ]
 
 mm = pcbnew.FromMM

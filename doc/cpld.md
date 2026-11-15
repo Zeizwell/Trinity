@@ -1,6 +1,6 @@
 # CPLD карты: шпаргалка
 
-Исходник `cpld/rtl/top.v`, проект Quartus `cpld/syn/`, тест `cpld/tb/tb.v`. Чип EPM3128ATC100-10N, ножки из `KiCad/trinity/gen/cpld_gen.py`.
+Исходник `cpld/rtl/top.v`, проект Quartus `cpld/syn/`, тест `cpld/tb/tb.v`. Чип EPM3128ATC100-10N, ножки из `KiCad/revA1/gen/cpld_gen.py`.
 
 **Статус:** собрано в Quartus II 13.0sp1 (13.1 MAX3000A не поддерживает): 95 / 128 макроячеек, 72 / 80 ножек, Fmax 52.4 МГц при 32 (запас 12.15 нс), SVF делается. Тест `tb.v` (Icarus Verilog, `D:_WorkToolsiverilog`) проходит и ловит 9 намеренных поломок кода. Он проверяет логику на моей модели Z80 и RP; на железе не проверено.
 
