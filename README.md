@@ -11,7 +11,7 @@
 | Tracker modules | MOD (ProTracker), S3M, XM up to 32 channels; IT - in progress |
 | Amiga | Paula A500 / A1200, BLEP, LED filter; presets Clean, A500, A1200, HiFi, Custom |
 | MSX | Moonsound OPL4, MIDI (GM) - in progress |
-| DAC | PCM5102A, I2S 32 bit, 48 kHz |
+| DAC | PCM5102A, I2S 32 bit |
 | Output | 3.5 mm line out: AY through an OPA1656 mixer, DAC directly; narrow stereo - DIP switch |
 | Processors | 2 × RP2350B (16 MB flash, 8 MB PSRAM each), CPLD EPM3128 with its own 32 MHz clock |
 | Storage | microSD |
@@ -23,19 +23,17 @@
 |---|---|
 | Channels | 4, samples 8 bit signed |
 | Rate | own per channel: note period at 3.55 MHz (PAL), no common output rate |
-| Signal | steps (zero-order hold), sample never resampled; steps band-limited: minBLEP 16 × 16 -> 48 kHz |
+| Signal | steps (zero-order hold), sample never resampled; steps band-limited: minBLEP 16 × 16 |
 | Volume | 0..64; 6-bit PWM - option, off by default |
 | Stereo | hard: 0 + 3 left, 1 + 2 right |
 | Filters (board values) | A500: low-pass 1st order 4.4 kHz; LED: low-pass 2nd order 3.1 kHz, Q 0.66, on the fly (`E0x`); high-pass ~5 Hz; A1200: no 4.4 kHz |
 | Modes | Clean, A500, A1200, HiFi (cubic), Custom - on the fly |
 | ProTracker | replayer one to one, PT quirks kept; Paula registers = pt2-clone on 80,595 modules |
-| Accuracy | A1200 mode vs a real A1200: ±0.9 dB, 20 Hz - 16 kHz |
 
 ## Status
 
 ### Done
 - Board rev A2: schematic, placement and routing done, DRC clean; next - Gerbers and order (rev A1 was made, but unusable: edge connector defect)
-- Sound on PC: A1200 mode matches recordings of a real A1200, GS mode matches MultiSound, both within ±1 dB up to 16 kHz
 - S3M player: matches OpenMPT on 8,394 of 8,459 modules (99.2 %); XM player (up to 32 channels): 35,160 of 35,458 (99.2 %) (on PC, every song played to the end)
 - General Sound: ports, loading modules and effects, commands (tested without a Spectrum)
 - Z80 API and SDK: find the card, settings, presets, CPU load, filter curves, versions
@@ -68,7 +66,7 @@
 | Трекерные модули | MOD (ProTracker), S3M, XM до 32 каналов; IT - в работе |
 | Amiga | Paula A500 / A1200, BLEP, LED-фильтр; пресеты Clean, A500, A1200, HiFi, Custom |
 | MSX | Moonsound OPL4, MIDI (GM) - в работе |
-| ЦАП | PCM5102A, I2S 32 бита, 48 кГц |
+| ЦАП | PCM5102A, I2S 32 бита |
 | Выход | линия 3.5 мм: AY через сумматор на OPA1656, ЦАП напрямую; узкое стерео - DIP-переключатель |
 | Процессоры | 2 × RP2350B (флеш 16 МБ, PSRAM 8 МБ у каждого), CPLD EPM3128 со своим генератором 32 МГц |
 | Носитель | microSD |
@@ -80,19 +78,17 @@
 |---|---|
 | Каналы | 4, сэмплы 8 бит со знаком |
 | Частота | своя у каждого канала: период ноты на 3.55 МГц (PAL), общей частоты вывода нет |
-| Сигнал | ступеньки (удержание отсчёта), сэмпл не пересчитывается; ступеньки с ограниченной полосой: minBLEP 16 × 16 -> 48 кГц |
+| Сигнал | ступеньки (удержание отсчёта), сэмпл не пересчитывается; ступеньки с ограниченной полосой: minBLEP 16 × 16 |
 | Громкость | 0..64; ШИМ 6 бит - опция, по умолчанию выключен |
 | Стерео | жёсткое: 0 + 3 слева, 1 + 2 справа |
 | Фильтры (номиналы плат) | A500: ФНЧ 1-го порядка 4.4 кГц; LED: ФНЧ 2-го порядка 3.1 кГц, Q 0.66, на лету (`E0x`); ФВЧ ~5 Гц; A1200: без 4.4 кГц |
 | Режимы | Clean, A500, A1200, HiFi (кубическая), Custom - на лету |
 | ProTracker | реплеер один в один, причуды PT сохранены; регистры Paula = pt2-clone на 80 595 модулях |
-| Точность | режим A1200 против настоящей A1200: ±0.9 дБ, 20 Гц - 16 кГц |
 
 ## Что сейчас
 
 ### Готово
 - Плата рев A2: схема, расстановка и разводка готовы, DRC чистый; дальше - гербера и заказ (рев A1 изготовлена, но не годится: брак разъёма шины)
-- Звук на ПК: режим A1200 совпал с записями настоящей A1200, режим GS с MultiSound, оба в пределах ±1 дБ до 16 кГц
 - Плеер S3M: совпал с OpenMPT на 8 394 из 8 459 модулей (99.2 %); плеер XM (до 32 каналов): 35 160 из 35 458 (99.2 %) (на ПК, каждая песня до конца)
 - General Sound: порты, загрузка модулей и эффектов, команды (проверено без Спектрума)
 - API и SDK для Z80: поиск карты, настройки, пресеты, нагрузка, кривые фильтров, версии
