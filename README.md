@@ -19,8 +19,18 @@
 
 ## Paula
 
+**What Paula is.** The sound chip of the Amiga: 4 channels, 8-bit samples. Its sound is different from an ordinary sample engine because of how a note gets to the speaker:
+
+- **An ordinary sample engine** (General Sound, PC sound cards, trackers on a PC) mixes all channels at one fixed output rate, and every note is recalculated to that rate: GS steps through the sample at 37.5 kHz, a PC at 44.1 / 48 kHz with interpolation. The recalculation folds high frequencies back into the audible band - hiss and "dirt" on high notes, or a dull sound if it is smoothed by interpolation.
+- **Paula has no common rate.** Each channel plays its sample at its own frequency (the note period) and simply holds every sample value until the next one - clean steps, nothing recalculated. The images of the steps go up, above the music, and the board's RC filters cut them gently. This is the bright, "glassy" Amiga sound that PC players with interpolation do not have.
+- **Volume** on Paula does not coarsen the sample: it is a 6-bit PWM on top of it. **Stereo** is hard: channels 0 + 3 left, 1 + 2 right.
+- **Filters on the board**: A500 - a fixed low-pass at 4.4 kHz (the "warm" A500), plus the "LED" filter at 3.1 kHz that music switches as an effect (`E0x`); A1200 - without the 4.4 kHz filter, brighter.
+
+**How Trinity does it.** Each channel is computed like Paula - its own frequency, its own steps - and the steps are rendered band-limited (minBLEP 16 × 16, as in pt2-clone): the character of the steps stays, and no aliasing of our own is added when output at 48 kHz.
+
+**What is done:**
+
 - 4 channels, each at its own frequency (Paula period at 3.55 MHz), 8-bit samples, Amiga stereo: channels 0 + 3 left, 1 + 2 right.
-- Paula's stepped sound without resampling aliasing: band-limited steps (minBLEP 16 × 16, as in pt2-clone).
 - Amiga board filters modelled from the real part values: A500 low-pass 4.4 kHz; LED filter, 2nd order, 3.1 kHz, switched on the fly (`E0x`); high-pass ~5 Hz. A1200 - without the 4.4 kHz filter.
 - Volume 0..64; Paula's real 6-bit PWM volume is a setting, off by default (on Elysium the difference is -34 dB, not audible).
 - Modes switch on the fly: Clean, A500, A1200, HiFi (cubic interpolation), Custom.
@@ -73,8 +83,18 @@
 
 ## Paula
 
+**Что такое Paula.** Звуковой чип Амиги: 4 канала, сэмплы 8 бит. Звучит не так, как обычный сэмпловый движок, из-за того, как нота доходит до динамика:
+
+- **Обычный сэмпловый движок** (General Sound, звуковые карты ПК, трекеры на ПК) сводит все каналы на одной общей частоте вывода, и каждая нота пересчитывается к ней: GS шагает по сэмплу на 37.5 кГц, ПК - на 44.1 / 48 кГц с интерполяцией. Пересчёт заворачивает высокие частоты обратно в слышимую полосу - шипение и «грязь» на высоких нотах, или тусклый звук, если всё сгладить интерполяцией.
+- **У Paula общей частоты нет.** Каждый канал играет свой сэмпл на своей частоте (период ноты) и просто держит каждое значение до следующего - честные ступеньки, ничего не пересчитывается. Образы ступенек уходят вверх, выше музыки, и их мягко срезают RC-фильтры платы. Это и есть яркий, «стеклянный» звук Амиги, которого нет у плееров на ПК с интерполяцией.
+- **Громкость** у Paula не огрубляет сэмпл: это 6-битный ШИМ поверх него. **Стерео** жёсткое: каналы 0 + 3 слева, 1 + 2 справа.
+- **Фильтры на плате**: A500 - постоянный ФНЧ 4.4 кГц («тёплая» A500) и LED-фильтр 3.1 кГц, который музыка включает как эффект (`E0x`); A1200 - без фильтра 4.4 кГц, ярче.
+
+**Как это сделано в Trinity.** Каждый канал считается как у Paula - своя частота, свои ступеньки, - а ступеньки выводятся с ограниченной полосой (minBLEP 16 × 16, как в pt2-clone): характер ступенек остаётся, а своего алиасинга при выводе на 48 кГц не добавляется.
+
+**Что сделано:**
+
 - 4 канала, у каждого своя частота (период Paula на 3.55 МГц), сэмплы 8 бит, стерео как на Амиге: каналы 0 + 3 слева, 1 + 2 справа.
-- Ступенчатый звук Paula без алиасинга от пересчёта частоты: ступеньки с ограниченной полосой (minBLEP 16 × 16, как в pt2-clone).
 - Фильтры плат Амиги по номиналам настоящих деталей: A500 - ФНЧ 4.4 кГц; LED-фильтр 2-го порядка 3.1 кГц, включается на лету (`E0x`); ФВЧ ~5 Гц. A1200 - без фильтра 4.4 кГц.
 - Громкость 0..64; настоящая ШИМ-громкость Paula (6 бит) - настройкой, по умолчанию выключена (на Elysium разница -34 дБ, на слух не слышно).
 - Режимы переключаются на лету: Clean, A500, A1200, HiFi (кубическая интерполяция), Custom.
